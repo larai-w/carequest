@@ -1,65 +1,174 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import Layout from "@/components/Layout";
+import AuthPanel from "@/components/AuthPanel";
+import EnergySelector from "@/components/EnergySelector";
+import EncouragementCard from "@/components/EncouragementCard";
+import StatCard from "@/components/StatCard";
+import { getEncouragementMessage } from "@/lib/messages";
+import { getTodayDate, loadCareState, saveCareState } from "@/lib/storage";
+import type { CareLog, EnergyLevel } from "@/lib/types";
+
+interface HomeViewState {
+  energyLevel: EnergyLevel;
+  todayPoints: number;
+  completedCount: number;
+  profileName: string;
+  latestTaskTitle: string;
+  restMode: boolean;
+  todayLogs: CareLog[];
+}
+
+function loadHomeViewState(): HomeViewState {
+  const state = loadCareState();
+  const todayLogs = state.logs.filter((log) => log.date === getTodayDate());
+
+  return {
+    energyLevel: state.user.energyLevel,
+    todayPoints: todayLogs.reduce((sum, log) => sum + log.points, 0),
+    completedCount: todayLogs.length,
+    profileName: state.user.name || "あなた",
+    latestTaskTitle: todayLogs.at(-1)?.title ?? "",
+    restMode: state.user.restMode ?? false,
+    todayLogs,
+  };
+}
+
+export default function HomePage() {
+  const [viewState, setViewState] = useState<HomeViewState>(() => loadHomeViewState());
+  const { energyLevel, todayPoints, completedCount, profileName, latestTaskTitle, restMode, todayLogs } = viewState;
+
+  const message = useMemo(
+    () => getEncouragementMessage(energyLevel, todayPoints, completedCount, latestTaskTitle),
+    [energyLevel, todayPoints, completedCount, latestTaskTitle],
+  );
+
+  const handleEnergyChange = (value: EnergyLevel) => {
+    const state = loadCareState();
+    setViewState((current) => ({ ...current, energyLevel: value }));
+    saveCareState({
+      user: {
+        ...state.user,
+        energyLevel: value,
+        todayPoints,
+        lastActiveDate: getTodayDate(),
+      },
+      logs: state.logs,
+      note: state.note,
+    });
+  };
+
+  const handleProfileNameChange = (value: string) => {
+    setViewState((current) => ({ ...current, profileName: value }));
+    const state = loadCareState();
+    saveCareState({
+      user: {
+        ...state.user,
+        name: value || "あなた",
+      },
+      logs: state.logs,
+      note: state.note,
+    });
+  };
+
+  const handleRestModeToggle = () => {
+    const nextRestMode = !restMode;
+    setViewState((current) => ({ ...current, restMode: nextRestMode }));
+    const state = loadCareState();
+    saveCareState({
+      user: {
+        ...state.user,
+        restMode: nextRestMode,
+      },
+      logs: state.logs,
+      note: state.note,
+    });
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <Layout>
+      <div className="space-y-4">
+        <section className="rounded-[28px] border border-amber-100 bg-white/80 p-4 shadow-sm">
+          <p className="text-sm text-stone-500">今日の自分のポイント</p>
+          <p className="mt-2 text-4xl font-semibold text-amber-700">{todayPoints}pt</p>
+          <p className="mt-2 text-sm text-stone-600">{completedCount}件の介護を記録しました。</p>
+        </section>
+
+        <EncouragementCard title="今日のひとこと" body={message} />
+
+        <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-stone-800">今日の記録</h2>
+              <p className="mt-1 text-sm text-stone-600">今日やったことを、ゆっくり見返せます。</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleRestModeToggle}
+              className={`rounded-full px-3 py-2 text-sm font-semibold ${
+                restMode ? "bg-amber-100 text-amber-700" : "bg-stone-100 text-stone-700"
+              }`}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              {restMode ? "休憩モード中" : "今日はここまででOK"}
+            </button>
+          </div>
+
+          {restMode ? (
+            <p className="mt-3 rounded-2xl bg-amber-50 p-3 text-sm text-amber-700">
+              今日は無理をしなくても大丈夫です。呼吸を整えて、今日できたことだけを残しましょう。
+            </p>
+          ) : todayLogs.length === 0 ? (
+            <p className="mt-3 text-sm text-stone-600">まだ記録はありません。小さな一歩でも大丈夫です。</p>
+          ) : (
+            <div className="mt-3 space-y-2">
+              {todayLogs.map((log) => (
+                <div key={log.id} className="rounded-2xl bg-stone-50 px-3 py-2 text-sm text-stone-700">
+                  {log.title} <span className="ml-2 text-amber-700">+{log.points}pt</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <AuthPanel />
+
+        <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
+          <h2 className="text-lg font-semibold text-stone-800">プロフィール</h2>
+          <p className="mt-1 text-sm text-stone-600">名前を入れて、今日の記録にひとつの安心を添えましょう。</p>
+          <input
+            value={profileName}
+            onChange={(event) => handleProfileNameChange(event.target.value)}
+            className="mt-3 w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-sm text-stone-700 outline-none"
+            placeholder="あなたの名前"
+          />
+        </section>
+
+        <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
+          <h2 className="text-lg font-semibold text-stone-800">エネルギーレベル</h2>
+          <p className="mt-1 text-sm text-stone-600">今日の気分に合わせて選びましょう。</p>
+          <div className="mt-3">
+            <EnergySelector value={energyLevel} onChange={handleEnergyChange} />
+          </div>
+        </section>
+
+        <div className="grid grid-cols-2 gap-3">
+          <StatCard label="今日の達成" value={completedCount} accent="text-amber-700" />
+          <StatCard
+            label="今日の気持ち"
+            value={energyLevel === "low" ? "ゆっくり" : energyLevel === "normal" ? "ふつう" : "やる気"}
+            accent="text-stone-800"
+          />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+
+        <Link
+          href="/quest"
+          className="flex items-center justify-center rounded-[24px] bg-stone-800 px-4 py-3 text-sm font-semibold text-white shadow-sm"
+        >
+          今日の介護を記録する
+        </Link>
+      </div>
+    </Layout>
   );
 }

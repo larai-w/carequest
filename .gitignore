@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/infra/node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -20,9 +21,15 @@
 # production
 /build
 
+# infrastructure build artifacts
+/infra/cdk.out/
+/infra/dist/
+/infra/outputs.json
+
 # misc
 .DS_Store
 *.pem
+AWSCLIV2.pkg
 
 # debug
 npm-debug.log*
