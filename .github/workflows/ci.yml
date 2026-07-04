@@ -36,15 +36,7 @@ jobs:
         run: npm run lint
 
       - name: Build
-        run: |
-          set +e
-          npm run build 2>&1 | tee build.log
-          status=${PIPESTATUS[0]}
-          if [ "$status" -ne 0 ]; then
-            message=$(tail -n 80 build.log | perl -0pe 's/%/%25/g; s/\r/%0D/g; s/\n/%0A/g')
-            echo "::error title=Next build failed::$message"
-            exit "$status"
-          fi
+        run: npm run build
 
   infra:
     name: Infrastructure build and synth
