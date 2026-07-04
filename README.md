@@ -33,6 +33,10 @@ GitHub Actions で `main` / `development` への push と Pull Request 時に以
 - Web: lint と production build
 - Infra: TypeScript build と CDK synth
 
+## デプロイ
+
+本番デプロイは `main` への反映時に GitHub Actions で `veai.jp/carequest/` へ配信します。必要な GitHub Secrets と CloudFront/S3 設定は [docs/deploy.md](docs/deploy.md) を参照してください。
+
 ## 現在の MVP 機能
 
 - ホーム画面: 今日のポイント、励ましメッセージ、エネルギーレベル選択
