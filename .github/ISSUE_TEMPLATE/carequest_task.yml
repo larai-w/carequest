@@ -1,0 +1,77 @@
+name: Care Quest task
+description: Track a Care Quest project task
+title: "[Area] Short task title"
+labels: []
+body:
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P0
+        - P1
+        - P2
+        - P3
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Product
+        - Frontend
+        - Backend
+        - AWS
+        - GitHub
+        - Docs
+        - QA
+    validations:
+      required: true
+  - type: dropdown
+    id: owner
+    attributes:
+      label: Owner
+      options:
+        - Human
+        - Codex
+        - Claude Code
+        - Shared
+    validations:
+      required: true
+  - type: input
+    id: estimate
+    attributes:
+      label: Estimate
+      placeholder: "10-20m, 1h, 1-2d"
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Why this task matters and where to look.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Checklist for considering this task done.
+      value: |
+        - [ ] Criterion 1
+        - [ ] Criterion 2
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification plan
+      value: |
+        - [ ] npm run lint
+        - [ ] npm run build
+        - [ ] npm run smoke:backend
+        - [ ] npm run smoke:prod
+    validations:
+      required: false
+
