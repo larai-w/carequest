@@ -48,7 +48,7 @@ These are the remaining tasks that most likely need you because they involve Git
   - CI passes on the branch/PR
   - You are comfortable making the current MVP the `main` branch state
 - Note: Codex can prepare the commit/PR later, but you should decide the release timing.
-- Current local changes are not committed yet. Before merge/release, commit the documentation, automation scripts, deploy doc update, and Lambda runtime fix.
+- Current local changes have been committed and pushed to `development` as `a004e0d7bf03bbba91d45736230b478d72ab49f5`.
 
 ### 3. Cognito sign-up/sign-in smoke test with a real email
 
@@ -96,7 +96,9 @@ Human total remaining estimate: 25-55 minutes for release readiness, plus 10-20 
 - API health: `200 {"status":"ok"}`
 - Production static deploy: complete
 - CloudFront invalidation: `I6OSO6N4MVWFM9GEO5SBI57Y2L`, completed
-- GitHub CI for current remote HEAD `70ada26dae7ca3d98975740d0533e80e1f25da16`: success
+- Previous GitHub CI for remote HEAD `70ada26dae7ca3d98975740d0533e80e1f25da16`: success
+- Current committed/pushed HEAD: `a004e0d7bf03bbba91d45736230b478d72ab49f5`
+- GitHub connector note: the available workflow-run tool returns PR-triggered runs only, so the push-triggered run for `a004e0d7bf03bbba91d45736230b478d72ab49f5` was not visible through that connector at verification time.
 - Production smoke tests:
   - `https://veai.jp/carequest/`: `200`
   - `https://veai.jp/carequest`: `200`
@@ -173,7 +175,7 @@ These are practical estimates for elapsed working time, assuming AWS/GitHub acce
 | P0 | Deploy static site to S3 and invalidate CloudFront | Done | 0 min | Done | Deployed to `veai-jp-toc-web/carequest/`. |
 | P0 | Production smoke test for `https://veai.jp/carequest/` | Done | 0 min | Done | Key URLs returned `200`. |
 | P1 | Add/verify GitHub Actions secrets | Human | 10-20 min | No | GitHub UI or admin access required unless GitHub CLI/app permissions are configured. |
-| P1 | Commit current local changes | Codex/Claude Code | 5 min | Yes | Do this before opening PR/merging. |
+| P1 | Commit current local changes | Done | 0 min | Done | Pushed to `development` as `a004e0d7bf03bbba91d45736230b478d72ab49f5`. |
 | P1 | Merge `development` to `main` after CI | Human or Codex | 5-15 min | Partly | Human should decide when production release is acceptable. |
 | P1 | Cognito sign-up/sign-in UI smoke test | Human or Codex | 15-30 min | Partly | Human can use a real email; Codex can create admin test users if approved. |
 | P2 | Local-first vs AWS write-through decision | Human | 10-20 min | No | Product behavior decision. |
@@ -227,7 +229,7 @@ Do not update this CloudFront distribution casually. It is shared with existing 
   - `NEXT_PUBLIC_API_URL=https://sx2rh60mtb.execute-api.ap-northeast-1.amazonaws.com/dev/`
   - `NEXT_PUBLIC_AWS_REGION=ap-northeast-1`
 - [ ] Confirm the deploy IAM user is scoped to only the production bucket path and CloudFront invalidation.
-- [ ] Commit current local changes.
+- [x] Commit current local changes.
 - [ ] Merge `development` to `main` after CI passes.
 - [ ] Confirm `.github/workflows/deploy-prod.yml` uploads to the same bucket/origin that CloudFront actually serves.
 
