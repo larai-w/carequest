@@ -47,8 +47,57 @@ export class CareQuestStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'index.handler',
       code: lambda.Code.fromInline(`
-const AWS = require('aws-sdk');
-const dynamodb = new AWS.DynamoDB.DocumentClient();
+const { DynamoDBClient, PutItemCommand, QueryCommand } = require('@aws-sdk/client-dynamodb');
+const dynamodb = new DynamoDBClient({});
+
+function toAttributeValue(value) {
+  if (value === null || value === undefined) {
+    return { NULL: true };
+  }
+  if (Array.isArray(value)) {
+    return { L: value.map(toAttributeValue) };
+  }
+  if (typeof value === 'object') {
+    return {
+      M: Object.fromEntries(
+        Object.entries(value).map(([key, childValue]) => [key, toAttributeValue(childValue)])
+      ),
+    };
+  }
+  if (typeof value === 'number') {
+    return { N: String(value) };
+  }
+  if (typeof value === 'boolean') {
+    return { BOOL: value };
+  }
+  return { S: String(value) };
+}
+
+function fromAttributeValue(attributeValue) {
+  if ('S' in attributeValue) return attributeValue.S;
+  if ('N' in attributeValue) return Number(attributeValue.N);
+  if ('BOOL' in attributeValue) return attributeValue.BOOL;
+  if ('NULL' in attributeValue) return null;
+  if ('L' in attributeValue) return attributeValue.L.map(fromAttributeValue);
+  if ('M' in attributeValue) {
+    return Object.fromEntries(
+      Object.entries(attributeValue.M).map(([key, childValue]) => [key, fromAttributeValue(childValue)])
+    );
+  }
+  return undefined;
+}
+
+function toItem(record) {
+  return Object.fromEntries(
+    Object.entries(record).map(([key, value]) => [key, toAttributeValue(value)])
+  );
+}
+
+function fromItem(item) {
+  return Object.fromEntries(
+    Object.entries(item).map(([key, value]) => [key, fromAttributeValue(value)])
+  );
+}
 
 const corsHeaders = {
   'Content-Type': 'application/json',
@@ -86,13 +135,13 @@ exports.handler = async (event) => {
       const params = { 
         TableName: process.env.TABLE_NAME,
         KeyConditionExpression: 'pk = :userId',
-        ExpressionAttributeValues: { ':userId': userId }
+        ExpressionAttributeValues: { ':userId': { S: userId } }
       };
-      const result = await dynamodb.query(params).promise();
+      const result = await dynamodb.send(new QueryCommand(params));
       return { 
         statusCode: 200, 
         headers: corsHeaders, 
-        body: JSON.stringify(result.Items || []) 
+        body: JSON.stringify((result.Items || []).map(fromItem))
       };
     } catch (error) {
       console.error('Query error:', error);
@@ -113,7 +162,7 @@ exports.handler = async (event) => {
         ...body,
         userId: userId,
       };
-      await dynamodb.put({ TableName: process.env.TABLE_NAME, Item: item }).promise();
+      await dynamodb.send(new PutItemCommand({ TableName: process.env.TABLE_NAME, Item: toItem(item) }));
       return { 
         statusCode: 201, 
         headers: corsHeaders, 
