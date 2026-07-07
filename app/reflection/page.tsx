@@ -4,10 +4,12 @@ import { useMemo, useState } from "react";
 import Layout from "@/components/Layout";
 import EncouragementCard from "@/components/EncouragementCard";
 import { loadCareState, saveCareState, getTodayDate } from "@/lib/storage";
+import { getRecentDaySummaries, type RecentDaySummary } from "@/lib/stats";
 import type { CareLog } from "@/lib/types";
 
 interface ReflectionViewState {
   logs: CareLog[];
+  recentDays: RecentDaySummary[];
   note: string;
   goodThings: string[];
 }
@@ -17,6 +19,7 @@ function loadReflectionViewState(): ReflectionViewState {
 
   return {
     logs: state.logs.filter((log) => log.date === getTodayDate()),
+    recentDays: getRecentDaySummaries(state.logs),
     note: state.note,
     goodThings: state.user.goodThings ?? [],
   };
@@ -24,7 +27,7 @@ function loadReflectionViewState(): ReflectionViewState {
 
 export default function ReflectionPage() {
   const [viewState, setViewState] = useState<ReflectionViewState>(() => loadReflectionViewState());
-  const { logs, note, goodThings } = viewState;
+  const { logs, recentDays, note, goodThings } = viewState;
 
   const goodThingOptions = [
     "小さな介護ができた",
@@ -89,6 +92,30 @@ export default function ReflectionPage() {
           title="今日のまとめ"
           body="今日は薬のサポート、食事の準備、声かけができました。小さく見えても、大切な介護です。"
         />
+
+        <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
+          <h3 className="text-lg font-semibold text-stone-800">ここ7日間のあゆみ</h3>
+          {recentDays.length === 0 ? (
+            <p className="mt-3 text-sm leading-6 text-stone-600">
+              これからの記録が、ここに少しずつ残っていきます。今日の分だけで十分です。
+            </p>
+          ) : (
+            <div className="mt-3 space-y-2">
+              {recentDays.map((day) => (
+                <div
+                  key={day.date}
+                  className="flex items-center justify-between rounded-2xl bg-stone-50 px-3 py-3 text-sm text-stone-700"
+                >
+                  <span>{day.label}</span>
+                  <span>
+                    {day.completedTasks}件の支え
+                    <span className="ml-2 text-amber-700">+{day.totalPoints}pt</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h3 className="text-lg font-semibold text-stone-800">今日のよかったこと</h3>
