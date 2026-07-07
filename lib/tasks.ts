@@ -49,4 +49,16 @@ export const careTasks: CareTask[] = [
     points: 10,
     description: "自分をいたわることも介護です。",
   },
+  {
+    id: "phone",
+    title: "電話やメッセージで話した",
+    points: 5,
+    description: "離れていても、声はちゃんと届いています。",
+  },
+  {
+    id: "arrange",
+    title: "手続き・調整をした",
+    points: 10,
+    description: "暮らしを整えることも、大切な介護です。",
+  },
 ];
