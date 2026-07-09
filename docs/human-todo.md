@@ -27,6 +27,12 @@ AI エージェントでは代行できない、あなたにしかできない�
 
 - [ ] **ローカルファースト方針の最終確定**(5分): 推奨は local-first。決定を Issue「Decide local-first vs AWS-first saving」にコメントで記録 → T10(AWS 同期)の着手条件が外れる
 
+## T14 監視のデプロイ(コードは準備済み・2026-07-10)
+
+- [ ] **アラート通知付きでデプロイ**(T6 の差分と一緒にデプロイ可): `cd infra && npx cdk diff` → `npx cdk deploy -c alertEmail=あなたのメールアドレス`
+- [ ] デプロイ直後に届く AWS からの確認メールで「Confirm subscription」をクリック(しないとアラートが届かない)
+- [ ] `npm run smoke:backend` で green を確認
+
 ## T6 デプロイ(コードは準備済み・2026-07-09)
 
 - [ ] **CDK 差分確認 → deploy**(15–30分): `cd infra && npx cdk diff` を見てから `npx cdk deploy`
