@@ -6,6 +6,7 @@ import EncouragementCard from "@/components/EncouragementCard";
 import { loadCareState, saveCareState, getTodayDate } from "@/lib/storage";
 import { getRecentDaySummaries, type RecentDaySummary } from "@/lib/stats";
 import { getTodaySummaryBody } from "@/lib/messages";
+import { buildExportPayload, downloadAsJson } from "@/lib/export";
 import type { CareLog } from "@/lib/types";
 
 interface ReflectionViewState {
@@ -150,6 +151,23 @@ export default function ReflectionPage() {
             className="mt-3 w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-sm text-stone-700 outline-none"
             placeholder="今日の気持ちや小さなできごとを書いてみましょう。"
           />
+        </section>
+
+        <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
+          <h3 className="text-base font-semibold text-stone-700">自分の記録を手元に残す</h3>
+          <p className="mt-2 text-sm leading-6 text-stone-600">
+            これまでの記録は、いつでも手元に持ち出せます。
+          </p>
+          <p className="mt-1 text-xs leading-5 text-stone-500">
+            このファイルはあなたの端末に保存されるだけで、どこにも送信されません。
+          </p>
+          <button
+            type="button"
+            onClick={() => downloadAsJson(buildExportPayload())}
+            className="mt-3 rounded-full bg-stone-100 px-4 py-2 text-sm text-stone-700 hover:bg-stone-200 active:bg-stone-300"
+          >
+            自分の記録を保存する（JSON）
+          </button>
         </section>
       </div>
     </Layout>
