@@ -42,8 +42,7 @@ export default function ReflectionPage() {
     setViewState((current) => ({ ...current, note: value }));
     const state = loadCareState();
     saveCareState({
-      user: state.user,
-      logs: state.logs,
+      ...state,
       note: value,
     });
   };
@@ -56,12 +55,11 @@ export default function ReflectionPage() {
     setViewState((current) => ({ ...current, goodThings: nextGoodThings }));
     const state = loadCareState();
     saveCareState({
+      ...state,
       user: {
         ...state.user,
         goodThings: nextGoodThings,
       },
-      logs: state.logs,
-      note: state.note,
     });
   };
 

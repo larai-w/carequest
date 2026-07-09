@@ -1,4 +1,4 @@
-import type { CareLog, User } from "@/lib/types";
+import type { CareLog, CareTask, User } from "@/lib/types";
 
 const STORAGE_KEY = "carequest-state-v1";
 
@@ -6,6 +6,7 @@ export interface CareStorageState {
   user: User;
   logs: CareLog[];
   note: string;
+  customTasks: CareTask[];
 }
 
 export function createInitialUser(): User {
@@ -27,13 +28,13 @@ export function getTodayDate(): string {
 
 export function loadCareState(): CareStorageState {
   if (typeof window === "undefined") {
-    return { user: createInitialUser(), logs: [], note: "" };
+    return { user: createInitialUser(), logs: [], note: "", customTasks: [] };
   }
 
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      return { user: createInitialUser(), logs: [], note: "" };
+      return { user: createInitialUser(), logs: [], note: "", customTasks: [] };
     }
 
     const parsed = JSON.parse(raw) as Partial<CareStorageState>;
@@ -44,9 +45,11 @@ export function loadCareState(): CareStorageState {
       },
       logs: parsed.logs ?? [],
       note: parsed.note ?? "",
+      // 後方互換: customTasks キーが存在しない古いデータでも壊れないよう ?? [] を使う
+      customTasks: parsed.customTasks ?? [],
     };
   } catch {
-    return { user: createInitialUser(), logs: [], note: "" };
+    return { user: createInitialUser(), logs: [], note: "", customTasks: [] };
   }
 }
 
