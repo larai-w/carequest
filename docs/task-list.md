@@ -6,44 +6,41 @@ Last updated: 2026-07-09 JST
 - 第2バッチ(2026-07-09): 下記「次のおすすめ5タスク」。実装は carequest-worker(Sonnet/Opus)へ委任する運用(`.claude/skills/carequest-delegate/SKILL.md`)
 - 人間の作業は [human-todo.md](human-todo.md) に分離
 
-## 次のおすすめ5タスク(2026-07-09)
+## 第2バッチ(2026-07-09)— T6〜T9 完了、T10 は人間待ち
 
-### T6. AWS インフラのハードニング(US-501 残り)| P1
+実行体制: Fable(プランナー)がオーケストレーションし、Sonnet ワーカー(T6/T7/T8)と Opus ワーカー(T9)が実装。各タスクはプランナーが再検証して個別コミット。
 
-- [ ] Cognito / DynamoDB の RemovalPolicy を本番安全(RETAIN)にする
-- [ ] CORS を `https://veai.jp` に絞る
-- [ ] Lambda のログ保持期間を明示する
-- 委任: worker(**sonnet**)。`cd infra && npm run build && npm run synth` まで。**deploy は人間**
-- 完了条件: synth が通り、人間が差分を確認して deploy
+### T6. AWS インフラのハードニング(US-501 残り)| P1 — **コード完了・デプロイ待ち**
 
-### T7. 休息モードの UI(US-302)| P2
+- [x] Cognito / DynamoDB の RemovalPolicy を RETAIN に(commit `5c61550`)
+- [x] CORS を `https://veai.jp` + `http://localhost:3000` に限定(`Vary: Origin` 付き)
+- [x] Lambda ロググループの保持 90 日を明示
+- [ ] **人間: synth 差分を確認して deploy**(注意点は human-todo.md。特に既存ロググループとの衝突)
 
-- [ ] ホームから `restMode` を切り替えられる
-- [ ] 休息モード中は記録を促さない、やさしい画面になる(ストリークは導入しない)
-- 委任: worker(**sonnet**)
-- 完了条件: lint / build green、トーンガイド準拠
+### T7. 休息モードの UI(US-302)| P2 — **完了**
 
-### T8. カスタムタスクの追加(US-104)| P2
+- [x] ホームに「今日は無理しない」→ おやすみモードの静かな画面(commit `4e463f2`)
+- [x] 復帰時は「おかえりなさい」のみ。休んだ日数・ストリークは一切出さない
+- [x] プランナー修正: クエスト画面が休息モード中にタスクを disabled にしていた既存挙動を撤廃(記録はブロックしない方針に統一)
 
-- [ ] リストにないケアをユーザーが追加できる(タイトルのみ、ポイント付与)
-- [ ] localStorage に永続化され、クエスト画面に並ぶ
-- 委任: worker(**sonnet**)
-- 完了条件: lint / build green
+### T8. カスタムタスクの追加(US-104)| P2 — **完了**
 
-### T9. Service Worker オフライン対応(US-301 残り)| P2
+- [x] クエスト画面に1フィールド+追加ボタン。+10pt、やさしいデフォルト文言(commit `c01f315`)
+- [x] localStorage 後方互換(customTasks が無い既存データでも壊れない)
+- 次スプリント候補(ワーカー提案): カスタムタスクの削除手段、件数上限
 
-- [ ] `/carequest/` 配下でアプリシェルがオフライン動作する
-- [ ] デプロイ後に古い HTML を配り続けない(キャッシュのバージョニング)
-- 委任: worker(**opus**)— basePath + 静的エクスポートの難所のため
-- 完了条件: lint / build green、`out/` 検証
+### T9. Service Worker オフライン対応(US-301 残り)| P2 — **完了**
 
-### T10. サインイン時のローカル→AWS 同期(US-103)| P1
+- [x] HTML は network-first、静的アセットは cache-first、バージョン付きキャッシュ(commit `24b46f3`)
+- [x] 本番のみ登録(scope `/carequest/`)、非対応ブラウザで無害
+- **運用ルール: デプロイのたびに `public/sw.js` の `VERSION` を上げる**
+
+### T10. サインイン時のローカル→AWS 同期(US-103)| P1 — **着手ブロック中**
 
 - [ ] サインイン時にローカル記録を重複なくマージ
 - [ ] 失敗してもローカルに残り、穏やかなメッセージを表示
-- 委任: worker(**opus**)
-- **前提(人間)**: ローカルファースト方針の確定 + Cognito 実メールスモーク(human-todo.md 参照)
-- 完了条件: lint / build / smoke:backend green
+- 委任予定: worker(**opus**)
+- **前提(人間)**: ローカルファースト方針の確定 + Cognito 実メールスモーク(human-todo.md 参照)。確定したら「T10 を進めて」で着手可能
 
 ### T11. セルフケア・効率化タスクの追加 — **完了(2026-07-09)**
 
