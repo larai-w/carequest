@@ -10,7 +10,7 @@ description: Care Quest の「プランナーが立案し、ワーカー(Sonnet/
 ## プランナーの手順
 
 1. **立案**: `docs/strategy.md` のユーザーストーリーから次のタスクを選び、`docs/task-list.md` に受け入れ条件つきで記載する(GitHub Issue があれば番号を対応づける)
-2. **委任**: Agent ツールで `subagent_type: "carequest-worker"` を spawn する。プロンプトには次を必ず含める:
+2. **委任**: Agent ツールで `subagent_type: "carequest-worker"` を spawn する。エージェント定義はセッション開始時に読み込まれるため、`carequest-worker` が未登録の場合は `general-purpose` + `model` 指定で代替し、`.claude/agents/carequest-worker.md` の本文ルールをプロンプトに含める。プロンプトには次を必ず含める:
    - タスク1件の内容と受け入れ条件(コピーして渡す。参照だけにしない)
    - 対象ファイルのヒント(わかる範囲で)
    - 「コミットしない」ことの念押し

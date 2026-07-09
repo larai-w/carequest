@@ -45,6 +45,12 @@ Last updated: 2026-07-09 JST
 - **前提(人間)**: ローカルファースト方針の確定 + Cognito 実メールスモーク(human-todo.md 参照)
 - 完了条件: lint / build / smoke:backend green
 
+### T11. セルフケア・効率化タスクの追加 — **完了(2026-07-09)**
+
+- [x] `lib/tasks.ts` に「楽しい時間をすごした」「趣味の時間をつくった」「介護がラクになる工夫をした」(各+15pt)を追加
+- 背景: オーナー方針「プレッシャーになる機構は避け、効率化・楽しみ・趣味をプラスにカウントする」→ 知見は [design-principles.md](design-principles.md)
+- 実行: carequest-worker 体制(Sonnet)で初委任。lint / build green、プランナー再検証済み
+
 ## 第1バッチ(2026-07-08)— 完了
 
 Status: **全5タスク完了**(2026-07-08、`npm run lint` / `npm run build` グリーン、`out/` 出力検証済み)
