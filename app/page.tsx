@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import Layout from "@/components/Layout";
 import AuthPanel from "@/components/AuthPanel";
 import EnergySelector from "@/components/EnergySelector";
 import EncouragementCard from "@/components/EncouragementCard";
 import StatCard from "@/components/StatCard";
+import RestModeCard from "@/components/RestModeCard";
 import { getEncouragementMessage } from "@/lib/messages";
 import { getTodayDate, loadCareState, saveCareState } from "@/lib/storage";
 import type { CareLog, EnergyLevel } from "@/lib/types";
@@ -19,6 +20,7 @@ interface HomeViewState {
   latestTaskTitle: string;
   restMode: boolean;
   todayLogs: CareLog[];
+  justExitedRestMode: boolean;
 }
 
 function loadHomeViewState(): HomeViewState {
@@ -33,34 +35,47 @@ function loadHomeViewState(): HomeViewState {
     latestTaskTitle: todayLogs.at(-1)?.title ?? "",
     restMode: state.user.restMode ?? false,
     todayLogs,
+    justExitedRestMode: false,
   };
 }
 
 export default function HomePage() {
   const [viewState, setViewState] = useState<HomeViewState>(() => loadHomeViewState());
-  const { energyLevel, todayPoints, completedCount, profileName, latestTaskTitle, restMode, todayLogs } = viewState;
+  const {
+    energyLevel,
+    todayPoints,
+    completedCount,
+    profileName,
+    latestTaskTitle,
+    restMode,
+    todayLogs,
+    justExitedRestMode,
+  } = viewState;
 
   const message = useMemo(
     () => getEncouragementMessage(energyLevel, todayPoints, completedCount, latestTaskTitle),
     [energyLevel, todayPoints, completedCount, latestTaskTitle],
   );
 
-  const handleEnergyChange = (value: EnergyLevel) => {
-    const state = loadCareState();
-    setViewState((current) => ({ ...current, energyLevel: value }));
-    saveCareState({
-      user: {
-        ...state.user,
-        energyLevel: value,
-        todayPoints,
-        lastActiveDate: getTodayDate(),
-      },
-      logs: state.logs,
-      note: state.note,
-    });
-  };
+  const handleEnergyChange = useCallback(
+    (value: EnergyLevel) => {
+      const state = loadCareState();
+      setViewState((current) => ({ ...current, energyLevel: value }));
+      saveCareState({
+        user: {
+          ...state.user,
+          energyLevel: value,
+          todayPoints,
+          lastActiveDate: getTodayDate(),
+        },
+        logs: state.logs,
+        note: state.note,
+      });
+    },
+    [todayPoints],
+  );
 
-  const handleProfileNameChange = (value: string) => {
+  const handleProfileNameChange = useCallback((value: string) => {
     setViewState((current) => ({ ...current, profileName: value }));
     const state = loadCareState();
     saveCareState({
@@ -71,25 +86,57 @@ export default function HomePage() {
       logs: state.logs,
       note: state.note,
     });
-  };
+  }, []);
 
-  const handleRestModeToggle = () => {
-    const nextRestMode = !restMode;
-    setViewState((current) => ({ ...current, restMode: nextRestMode }));
+  const handleEnterRestMode = useCallback(() => {
+    setViewState((current) => ({
+      ...current,
+      restMode: true,
+      justExitedRestMode: false,
+    }));
     const state = loadCareState();
     saveCareState({
-      user: {
-        ...state.user,
-        restMode: nextRestMode,
-      },
+      user: { ...state.user, restMode: true },
       logs: state.logs,
       note: state.note,
     });
-  };
+  }, []);
+
+  const handleExitRestMode = useCallback(() => {
+    setViewState((current) => ({
+      ...current,
+      restMode: false,
+      justExitedRestMode: true,
+    }));
+    const state = loadCareState();
+    saveCareState({
+      user: { ...state.user, restMode: false },
+      logs: state.logs,
+      note: state.note,
+    });
+  }, []);
+
+  if (restMode) {
+    return (
+      <Layout>
+        <div className="space-y-4">
+          <RestModeCard onExit={handleExitRestMode} />
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
       <div className="space-y-4">
+        {justExitedRestMode && (
+          <section className="rounded-[28px] border border-amber-100 bg-amber-50/80 p-4 shadow-sm">
+            <p className="text-sm leading-6 text-amber-700">
+              おかえりなさい。今日もここにいてくれてありがとう。
+            </p>
+          </section>
+        )}
+
         <section className="rounded-[28px] border border-amber-100 bg-white/80 p-4 shadow-sm">
           <p className="text-sm text-stone-500">今日の自分のポイント</p>
           <p className="mt-2 text-4xl font-semibold text-amber-700">{todayPoints}pt</p>
@@ -106,20 +153,14 @@ export default function HomePage() {
             </div>
             <button
               type="button"
-              onClick={handleRestModeToggle}
-              className={`rounded-full px-3 py-2 text-sm font-semibold ${
-                restMode ? "bg-amber-100 text-amber-700" : "bg-stone-100 text-stone-700"
-              }`}
+              onClick={handleEnterRestMode}
+              className="rounded-full bg-stone-100 px-3 py-2 text-sm font-semibold text-stone-600"
             >
-              {restMode ? "休憩モード中" : "今日はここまででOK"}
+              今日は無理しない
             </button>
           </div>
 
-          {restMode ? (
-            <p className="mt-3 rounded-2xl bg-amber-50 p-3 text-sm text-amber-700">
-              今日は無理をしなくても大丈夫です。呼吸を整えて、今日できたことだけを残しましょう。
-            </p>
-          ) : todayLogs.length === 0 ? (
+          {todayLogs.length === 0 ? (
             <p className="mt-3 text-sm text-stone-600">まだ記録はありません。小さな一歩でも大丈夫です。</p>
           ) : (
             <div className="mt-3 space-y-2">
