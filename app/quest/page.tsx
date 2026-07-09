@@ -42,8 +42,6 @@ export default function QuestPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const { logs, energyLevel, todayPoints, restMode, customTasks } = viewState;
 
-  const allTasks = useMemo(() => [...careTasks, ...customTasks], [customTasks]);
-
   const completedCount = useMemo(() => logs.filter((log) => log.date === getTodayDate()).length, [logs]);
 
   const handleRestModeToggle = () => {
@@ -129,6 +127,17 @@ export default function QuestPage() {
     }
   };
 
+  const handleDeleteCustomTask = (task: CareTask) => {
+    const nextCustomTasks = customTasks.filter((t) => t.id !== task.id);
+    setViewState((current) => ({ ...current, customTasks: nextCustomTasks }));
+
+    const state = loadCareState();
+    saveCareState({
+      ...state,
+      customTasks: nextCustomTasks,
+    });
+  };
+
   return (
     <Layout>
       <div className="space-y-4">
@@ -169,8 +178,11 @@ export default function QuestPage() {
               : "タップすると今日の記録に追加されます。"}
           </p>
           <div className="mt-4 space-y-3">
-            {allTasks.map((task) => (
+            {careTasks.map((task) => (
               <TaskCard key={task.id} task={task} onSelect={handleSelectTask} />
+            ))}
+            {customTasks.map((task) => (
+              <TaskCard key={task.id} task={task} onSelect={handleSelectTask} onDelete={handleDeleteCustomTask} />
             ))}
           </div>
 
