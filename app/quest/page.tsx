@@ -54,11 +54,6 @@ export default function QuestPage() {
   const [syncStatus, setSyncStatus] = useState("");
 
   const handleSelectTask = async (task: CareTask) => {
-    if (restMode) {
-      setMessage("今日はここまでで十分です。呼吸を整えて、今日できたことだけを残しましょう。");
-      return;
-    }
-
     const today = getTodayDate();
     const nextLog: CareLog = {
       id: `${task.id}-${Date.now()}`,
@@ -105,7 +100,7 @@ export default function QuestPage() {
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-stone-800">休憩モード</h2>
+              <h2 className="text-lg font-semibold text-stone-800">おやすみモード</h2>
               <p className="mt-1 text-sm text-stone-600">今日は無理をしなくても大丈夫です。</p>
             </div>
             <button
@@ -127,10 +122,14 @@ export default function QuestPage() {
 
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h2 className="text-lg font-semibold text-stone-800">今日のクエスト</h2>
-          <p className="mt-1 text-sm text-stone-600">タップすると今日の記録に追加されます。</p>
+          <p className="mt-1 text-sm text-stone-600">
+            {restMode
+              ? "おやすみモード中です。記録してもしなくても、どちらでも大丈夫です。"
+              : "タップすると今日の記録に追加されます。"}
+          </p>
           <div className="mt-4 space-y-3">
             {careTasks.map((task) => (
-              <TaskCard key={task.id} task={task} onSelect={handleSelectTask} disabled={restMode} />
+              <TaskCard key={task.id} task={task} onSelect={handleSelectTask} />
             ))}
           </div>
         </section>
