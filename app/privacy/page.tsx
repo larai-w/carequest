@@ -37,6 +37,9 @@ export default function PrivacyPage() {
           <p className="mt-3 text-sm leading-7 text-stone-700">
             端末内のデータは、ブラウザのサイトデータ削除でいつでも消せます。アカウントに保存されたデータの削除をご希望の場合は、About ページ記載の運営元までご連絡ください。
           </p>
+          <p className="mt-2 text-sm leading-7 text-stone-700">
+            また、削除の前にふりかえり画面から記録を JSON ファイルとして手元に持ち出すこともできます。
+          </p>
         </section>
 
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
