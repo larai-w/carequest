@@ -1,6 +1,52 @@
-# Care Quest タスクリスト(今できること5つ)
+# Care Quest タスクリスト
 
-Last updated: 2026-07-08 JST
+Last updated: 2026-07-09 JST
+
+- 第1バッチ(2026-07-08): **全5タスク完了**
+- 第2バッチ(2026-07-09): 下記「次のおすすめ5タスク」。実装は carequest-worker(Sonnet/Opus)へ委任する運用(`.claude/skills/carequest-delegate/SKILL.md`)
+- 人間の作業は [human-todo.md](human-todo.md) に分離
+
+## 次のおすすめ5タスク(2026-07-09)
+
+### T6. AWS インフラのハードニング(US-501 残り)| P1
+
+- [ ] Cognito / DynamoDB の RemovalPolicy を本番安全(RETAIN)にする
+- [ ] CORS を `https://veai.jp` に絞る
+- [ ] Lambda のログ保持期間を明示する
+- 委任: worker(**sonnet**)。`cd infra && npm run build && npm run synth` まで。**deploy は人間**
+- 完了条件: synth が通り、人間が差分を確認して deploy
+
+### T7. 休息モードの UI(US-302)| P2
+
+- [ ] ホームから `restMode` を切り替えられる
+- [ ] 休息モード中は記録を促さない、やさしい画面になる(ストリークは導入しない)
+- 委任: worker(**sonnet**)
+- 完了条件: lint / build green、トーンガイド準拠
+
+### T8. カスタムタスクの追加(US-104)| P2
+
+- [ ] リストにないケアをユーザーが追加できる(タイトルのみ、ポイント付与)
+- [ ] localStorage に永続化され、クエスト画面に並ぶ
+- 委任: worker(**sonnet**)
+- 完了条件: lint / build green
+
+### T9. Service Worker オフライン対応(US-301 残り)| P2
+
+- [ ] `/carequest/` 配下でアプリシェルがオフライン動作する
+- [ ] デプロイ後に古い HTML を配り続けない(キャッシュのバージョニング)
+- 委任: worker(**opus**)— basePath + 静的エクスポートの難所のため
+- 完了条件: lint / build green、`out/` 検証
+
+### T10. サインイン時のローカル→AWS 同期(US-103)| P1
+
+- [ ] サインイン時にローカル記録を重複なくマージ
+- [ ] 失敗してもローカルに残り、穏やかなメッセージを表示
+- 委任: worker(**opus**)
+- **前提(人間)**: ローカルファースト方針の確定 + Cognito 実メールスモーク(human-todo.md 参照)
+- 完了条件: lint / build / smoke:backend green
+
+## 第1バッチ(2026-07-08)— 完了
+
 Status: **全5タスク完了**(2026-07-08、`npm run lint` / `npm run build` グリーン、`out/` 出力検証済み)
 
 [strategy.md](strategy.md) のユーザーストーリーから「本番インフラに触れず、今すぐ完了・検証できるもの」を5つ選んで実行するリストです。GitHub Issues に転記する場合は `docs/project-management.md` のフィールド(Priority / Area / Owner / Estimate)を使ってください。
