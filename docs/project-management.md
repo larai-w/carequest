@@ -1,8 +1,43 @@
 # Care Quest project management
 
-Last updated: 2026-07-06 JST
+Last updated: 2026-07-10 JST
 
 This document defines how to manage Care Quest with GitHub Issues and GitHub Projects.
+
+## ITIL / PMP の観点(2026-07-10 導入・以後の全バッチに適用)
+
+オーナー方針により、タスク立案・実行・リリースには ITIL 4 と PMP の観点を明示的に取り込む。プランナー(Fable)はバッチ立案時に次のレンズで点検する。
+
+### ITIL(サービスマネジメント)
+
+| プラクティス | Care Quest での適用 |
+| --- | --- |
+| 価値の共創(Focus on value) | 価値 =「介護者が今日を認められること」。頑張り量の最大化ではない(docs/design-principles.md) |
+| 変更有効化(Change enablement) | 標準変更(文言・タスクデータ)= プランナー承認で完結 / 通常変更(機能・インフラ)= 人間承認 / 緊急変更 = 手順書に従う。詳細は T15 で `docs/release-checklist.md` に文書化 |
+| リリース管理 | development→main のチェックリスト運用。SW の `VERSION` 上げを含む |
+| インシデント・問題管理 | CloudWatch アラーム + `docs/runbook.md`(T14)。検知 → runbook → 恒久対策を Issue 化 |
+| 継続的改善 | 各バッチの「実行結果メモ」= 教訓ログ。得た知見は `.claude/skills/` に還元して再発を仕組みで防ぐ |
+| ナレッジ管理 | docs/ と `.claude/skills/` が SSOT。口頭・チャット限りの決定を作らない |
+
+### PMP(プロジェクトマネジメント)
+
+| 知識エリア | Care Quest での適用 |
+| --- | --- |
+| スコープ | strategy.md(エピック→ストーリー)→ task-list.md(バッチ)→ Issue。バッチは5件まで、スコープクリープはワーカーの「提案」欄で受けて次バッチで判断 |
+| リスク | `docs/risk-register.md`(T16)。バッチ立案時に登録簿を見直し、新リスクを追記 |
+| 品質 | DoD: lint/build green + トーンガイド準拠 + docs 更新 + 人間作業の human-todo 記録。受け入れ条件のないタスクは着手しない |
+| 資源・調達 | プランナー(Fable)/ ワーカー(Sonnet=定型、Opus=難所)/ 人間(承認・秘匿情報・実機)。モデル選択基準は carequest-delegate スキル |
+| ステークホルダー | 一次: 家族介護者(ペルソナ)。二次: ケアマネ・支援団体(Phase 3)。人間オーナー = スポンサー(承認権限者) |
+| コミュニケーション | 人間への引き継ぎは human-todo.md に一元化。コミットは1タスク1コミット |
+| スケジュール | フェーズの Exit 条件(strategy.md)で判断。日付ノルマは作らない(プロダクト原則と整合) |
+
+### バッチ立案時のチェックリスト(プランナー用)
+
+1. 価値: このバッチはユーザーの「今日を認める」体験か、それを支える運用品質に寄与するか
+2. リスク: risk-register に照らして、新しいリスクを生む/軽減するタスクはどれか
+3. 変更タイプ: 各タスクは標準変更か通常変更か。人間承認ポイントを human-todo に書いたか
+4. 品質: 全タスクに受け入れ条件と DoD があるか
+5. 教訓: 前バッチの実行結果メモから、今回の進め方を変える点はあるか
 
 ## Current Recommendation
 
