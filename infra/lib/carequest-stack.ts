@@ -3,7 +3,11 @@ import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
+
+// 本番許可オリジン（開発環境は localhost:3000 も含む）
+const ALLOWED_ORIGINS = ['https://veai.jp', 'http://localhost:3000'];
 
 export class CareQuestStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -24,7 +28,7 @@ export class CareQuestStack extends cdk.Stack {
         requireDigits: true,
         requireSymbols: false,
       },
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     const userPoolClient = new cognito.UserPoolClient(this, 'CareQuestUserPoolClient', {
@@ -40,7 +44,7 @@ export class CareQuestStack extends cdk.Stack {
       partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'sk', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     const apiHandler = new lambda.Function(this, 'CareQuestApiHandler', {
@@ -99,20 +103,28 @@ function fromItem(item) {
   );
 }
 
-const corsHeaders = {
-  'Content-Type': 'application/json',
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-};
+const ALLOWED_ORIGINS = ['https://veai.jp', 'http://localhost:3000'];
+
+function getCorsHeaders(event) {
+  const origin = (event.headers && (event.headers['origin'] || event.headers['Origin'])) || '';
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Vary': 'Origin'
+  };
+}
 
 exports.handler = async (event) => {
   console.log('Event:', JSON.stringify(event, null, 2));
+  const corsHeaders = getCorsHeaders(event);
 
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
-    return { 
-      statusCode: 200, 
+    return {
+      statusCode: 200,
       headers: corsHeaders,
       body: ''
     };
@@ -193,14 +205,21 @@ exports.handler = async (event) => {
 
     entriesTable.grantReadWriteData(apiHandler);
 
+    // Lambda のロググループ保持期間を明示（3ヶ月 = 90日）
+    new logs.LogGroup(this, 'CareQuestApiHandlerLogGroup', {
+      logGroupName: `/aws/lambda/${apiHandler.functionName}`,
+      retention: logs.RetentionDays.THREE_MONTHS,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
     const api = new apigateway.RestApi(this, 'CareQuestApi', {
       restApiName: 'CareQuest API',
       deployOptions: {
         stageName: 'dev',
       },
       defaultCorsPreflightOptions: {
-        allowOrigins: apigateway.Cors.ALL_ORIGINS,
-        allowMethods: apigateway.Cors.ALL_METHODS,
+        allowOrigins: ALLOWED_ORIGINS,
+        allowMethods: ['GET', 'POST', 'OPTIONS'],
         allowHeaders: ['Content-Type', 'Authorization'],
       },
     });
