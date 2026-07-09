@@ -2,7 +2,17 @@
 
 Last updated: 2026-07-10 JST
 
-## 第3バッチ(2026-07-10)— 推奨・未着手
+## 第3バッチ(2026-07-10)— **全5タスク完了**(T14 のデプロイのみ人間待ち)
+
+実行体制: Fable(プランナー)+ Sonnet ワーカー×5(2波に分けて並列実行)。全タスク DoD 充足、1タスク1コミット(T12 `fac4dca` / T14 `c9f2904` / T15 `048065b` / T13 `444734c` / T16 `95ce781`)。
+
+実行結果メモ:
+- T12: 「今日のまとめ」は lib/messages.ts の純関数 getTodaySummaryBody に(将来のテスト容易性)。カスタムタスク削除は logs を消さない設計を維持
+- T14: 通知メールはハードコードせず `cdk deploy -c alertEmail=...` で注入する設計。**デプロイと SNS 購読確認は human-todo 参照**
+- T15/T16: release-checklist.md(変更タイプ+承認マトリクス)、risk-register.md(9リスク)、DoD が project-management.md に揃い、ITIL/PMP 運用の土台が完成
+- ワーカー提案(次バッチ候補): JSON インポート(復元)機能、sw.js VERSION の自動インクリメント、Budgets 100% 閾値の追加
+
+### 元の計画(記録用)
 
 方針: 機能追加(第1・2バッチ)で MVP は充実したため、このバッチは「実ユーザーを迎える運用品質」に軸足を移す。ITIL(変更・リリース・インシデント管理)と PMP(リスク・品質)の観点を明示的に取り込む(→ [project-management.md](project-management.md) の「ITIL / PMP の観点」)。
 
