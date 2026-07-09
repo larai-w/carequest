@@ -62,14 +62,13 @@ export default function HomePage() {
       const state = loadCareState();
       setViewState((current) => ({ ...current, energyLevel: value }));
       saveCareState({
+        ...state,
         user: {
           ...state.user,
           energyLevel: value,
           todayPoints,
           lastActiveDate: getTodayDate(),
         },
-        logs: state.logs,
-        note: state.note,
       });
     },
     [todayPoints],
@@ -79,12 +78,11 @@ export default function HomePage() {
     setViewState((current) => ({ ...current, profileName: value }));
     const state = loadCareState();
     saveCareState({
+      ...state,
       user: {
         ...state.user,
         name: value || "あなた",
       },
-      logs: state.logs,
-      note: state.note,
     });
   }, []);
 
@@ -96,9 +94,8 @@ export default function HomePage() {
     }));
     const state = loadCareState();
     saveCareState({
+      ...state,
       user: { ...state.user, restMode: true },
-      logs: state.logs,
-      note: state.note,
     });
   }, []);
 
@@ -110,9 +107,8 @@ export default function HomePage() {
     }));
     const state = loadCareState();
     saveCareState({
+      ...state,
       user: { ...state.user, restMode: false },
-      logs: state.logs,
-      note: state.note,
     });
   }, []);
 
