@@ -39,6 +39,36 @@ This document defines how to manage Care Quest with GitHub Issues and GitHub Pro
 4. 品質: 全タスクに受け入れ条件と DoD があるか
 5. 教訓: 前バッチの実行結果メモから、今回の進め方を変える点はあるか
 
+## Definition of Done (DoD)
+
+PMP「品質」知識エリアの適用として、**全タスクに共通の完了基準**を定義します。タスクが DoD を満たさない限り「Done」にしません。受け入れ条件のないタスクは着手しません。
+
+### 全タスク共通
+
+| 項目 | 確認内容 |
+| --- | --- |
+| 受け入れ条件 | タスクに定義された受け入れ条件を全て満たしている |
+| lint・build green | コードを変更するタスクは `npm run lint` と `npm run build` が成功している |
+| トーンガイド準拠 | ユーザー向け文言を変更するタスクは `docs/design-principles.md` のプレッシャー源チェックリストに抵触しない |
+| 関連 docs 更新 | 仕様・設計・運用に影響する変更は `docs/` の該当ドキュメントを同一コミットまたはタスク内で更新している |
+| human-todo 記録 | 人間作業(承認・実機確認・秘匿情報の設定など)が発生する場合は `docs/human-todo.md` に記載している |
+| 1タスク1コミット | 標準変更はプランナー承認で完結。通常変更・緊急変更は `docs/release-checklist.md` の承認マトリクスに従う |
+
+### コード変更タスク(追加条件)
+
+- CDK を変更するタスクは `npm run synth`(または `npx cdk synth`)が成功している
+- バックエンドを変更するタスクは `npm run smoke:backend` が成功している
+- 本番リリース(development → main)は `docs/release-checklist.md` の全項目 ✅
+
+### セキュリティ・プライバシーに関わるタスク(追加条件)
+
+- Cognito / DynamoDB / IAM / CORS を変更するタスクは `/security-review` を実施し、人間オーナーが承認している
+- `docs/risk-register.md` の該当リスクの状態を更新している
+
+> **既存の「品質」行との整合**: PMP テーブルの品質行「DoD: lint/build green + トーンガイド準拠 + docs 更新 + 人間作業の human-todo 記録。受け入れ条件のないタスクは着手しない」はこのセクションの要約です。詳細はこのセクションを参照してください。
+
+---
+
 ## Current Recommendation
 
 Use GitHub Issues as durable task records and GitHub Projects as the board/roadmap view.
