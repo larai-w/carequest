@@ -26,7 +26,19 @@ AI エージェントでは代行できない、あなたにしかできない�
 ## プロダクト判断(AI がブロックされているもの)
 
 - [ ] **ローカルファースト方針の最終確定**(5分): 推奨は local-first。決定を Issue「Decide local-first vs AWS-first saving」にコメントで記録 → T10(AWS 同期)の着手条件が外れる
-- [ ] **T6(インフラハードニング)のデプロイ承認**: ワーカーが CDK 変更を用意したら、synth 差分を見て `cdk deploy` を実行(AWS への書き込みは人間のみ)
+
+## T6 デプロイ(コードは準備済み・2026-07-09)
+
+- [ ] **CDK 差分確認 → deploy**(15–30分): `cd infra && npx cdk diff` を見てから `npx cdk deploy`
+  - RemovalPolicy 変更はダウンタイムなし
+  - CORS が `https://veai.jp` + `http://localhost:3000` に絞られる。他オリジンのテストツールは以後ブロックされる
+  - **注意**: ロググループ `/aws/lambda/CareQuestStack-...` が既に存在すると作成エラーになる可能性。`aws logs describe-log-groups --log-group-name-prefix /aws/lambda/CareQuestStack` で事前確認し、あれば手動削除してから deploy
+  - deploy 後 `npm run smoke:backend` で green を確認
+
+## 次回リリース時の新ルール(T9 Service Worker 導入により)
+
+- [ ] デプロイ前に `public/sw.js` の `VERSION`(現在 v1)を上げる(旧キャッシュ破棄のため)
+- [ ] デプロイ後の確認: `https://veai.jp/carequest/sw.js` が 200 / DevTools → Application → Service Workers で activated / オフラインにしてリロードしてもアプリシェルが表示される
 
 ## 運用メモ
 
