@@ -5,6 +5,7 @@ import Layout from "@/components/Layout";
 import EncouragementCard from "@/components/EncouragementCard";
 import { loadCareState, saveCareState, getTodayDate } from "@/lib/storage";
 import { getRecentDaySummaries, type RecentDaySummary } from "@/lib/stats";
+import { getTodaySummaryBody } from "@/lib/messages";
 import type { CareLog } from "@/lib/types";
 
 interface ReflectionViewState {
@@ -88,7 +89,7 @@ export default function ReflectionPage() {
 
         <EncouragementCard
           title="今日のまとめ"
-          body="今日は薬のサポート、食事の準備、声かけができました。小さく見えても、大切な介護です。"
+          body={getTodaySummaryBody(logs)}
         />
 
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
