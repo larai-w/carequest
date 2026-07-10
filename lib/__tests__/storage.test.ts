@@ -335,6 +335,51 @@ describe("loadCareState (window モックあり)", () => {
   });
 
   // -------------------------------------------------------------------------
+  // T31: saveCareState の成否フラグ
+  // -------------------------------------------------------------------------
+
+  it("saveCareState は保存に成功したとき true を返す", async () => {
+    const { saveCareState, loadCareState } = await import("@/lib/storage");
+    const state = loadCareState();
+    const result = saveCareState(state);
+    expect(result).toBe(true);
+  });
+
+  it("saveCareState は localStorage.setItem が throw するとき false を返す", async () => {
+    // setItem を throw するモックに差し替える
+    const throwingSetItem = () => {
+      throw new DOMException("QuotaExceededError", "QuotaExceededError");
+    };
+    (globalThis as Record<string, unknown>)["window"] = {
+      localStorage: {
+        ...mockLocalStorage,
+        setItem: throwingSetItem,
+      },
+    };
+
+    const { saveCareState, loadCareState } = await import("@/lib/storage");
+    const state = loadCareState();
+    const result = saveCareState(state);
+    expect(result).toBe(false);
+  });
+
+  it("saveCareState が false を返しても画面の継続が可能(例外を外に出さない)", async () => {
+    const throwingSetItem = () => {
+      throw new Error("storage full");
+    };
+    (globalThis as Record<string, unknown>)["window"] = {
+      localStorage: {
+        ...mockLocalStorage,
+        setItem: throwingSetItem,
+      },
+    };
+
+    const { saveCareState, loadCareState } = await import("@/lib/storage");
+    const state = loadCareState();
+    expect(() => saveCareState(state)).not.toThrow();
+  });
+
+  // -------------------------------------------------------------------------
   // T23: スキーマ v3(エネルギー履歴 + 相談窓口カードの表示履歴)
   // -------------------------------------------------------------------------
 

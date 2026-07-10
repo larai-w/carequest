@@ -164,7 +164,7 @@ function sanitizeUser(value: unknown, report: { recovered: boolean }): User {
   return user;
 }
 
-function sanitizeLog(value: unknown): CareLog | null {
+export function sanitizeLog(value: unknown): CareLog | null {
   if (!isRecord(value)) return null;
 
   // points と date は「意味が壊れると記録が誤って見える」ため必須で厳格に検証する。
@@ -359,9 +359,14 @@ export function sanitizeRawState(raw: unknown): CareStorageState {
 // 保存
 // ---------------------------------------------------------------------------
 
-export function saveCareState(state: CareStorageState): void {
+/**
+ * 状態を localStorage に保存する。
+ * 戻り値: 保存に成功したら true、失敗(容量超過・プライベートモード等)なら false。
+ * 既存の呼び出し箇所が戻り値を無視しても動作は変わらない(後方互換)。
+ */
+export function saveCareState(state: CareStorageState): boolean {
   if (typeof window === "undefined") {
-    return;
+    return false;
   }
 
   try {
@@ -369,7 +374,9 @@ export function saveCareState(state: CareStorageState): void {
     // TODO: AWS へ移行する際は、この保存処理を API Gateway + Lambda + DynamoDB へ置き換えます。
     const persisted: PersistedState = { version: CURRENT_SCHEMA_VERSION, ...state };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
+    return true;
   } catch {
     // 保存に失敗しても画面は継続できるようにします。
+    return false;
   }
 }
