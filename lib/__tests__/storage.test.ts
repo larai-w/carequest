@@ -163,4 +163,165 @@ describe("loadCareState (window モックあり)", () => {
     const state = loadCareState();
     expect(state.logs).toEqual([]);
   });
+
+  // -------------------------------------------------------------------------
+  // T19: スキーマバージョン + マイグレーション + フィールド単位の救済
+  // -------------------------------------------------------------------------
+
+  function validLog(overrides: Record<string, unknown> = {}) {
+    return {
+      id: "log-1",
+      taskId: "medicine",
+      title: "薬を渡した",
+      points: 5,
+      completedAt: "2024-03-15T10:00:00",
+      date: "2024-03-15",
+      energyLevel: "normal",
+      ...overrides,
+    };
+  }
+
+  it("version なしの旧データを v2 へ移行し、保存で version が付与される", async () => {
+    const oldFormat = {
+      user: { name: "旧ユーザー" },
+      logs: [validLog()],
+      note: "メモ",
+      // version なし・customTasks なし
+    };
+    mockLocalStorage.setItem("carequest-state-v1", JSON.stringify(oldFormat));
+
+    const { loadCareStateWithReport, saveCareState, CURRENT_SCHEMA_VERSION } = await import(
+      "@/lib/storage"
+    );
+    const { state, recovered } = loadCareStateWithReport();
+
+    // 移行しても健全なフィールドは残る。version 付与だけの移行は救済ではない。
+    expect(recovered).toBe(false);
+    expect(state.user.name).toBe("旧ユーザー");
+    expect(state.logs.length).toBe(1);
+    expect(state.note).toBe("メモ");
+
+    // 保存すると最新バージョンが書き込まれる。
+    saveCareState(state);
+    const persisted = JSON.parse(mockLocalStorage.getItem("carequest-state-v1")!);
+    expect(persisted.version).toBe(CURRENT_SCHEMA_VERSION);
+  });
+
+  it("logs 内の不正要素だけ除外し、健全な要素は温存する", async () => {
+    const data = {
+      version: 2,
+      user: { name: "太郎" },
+      logs: [
+        validLog({ id: "ok-1" }),
+        validLog({ id: "bad-points", points: "5" }), // points が文字列 → 除外
+        validLog({ id: "bad-date", date: "2024/03/15" }), // date 形式不正 → 除外
+        validLog({ id: "ok-2", points: 20 }),
+        "not-an-object", // → 除外
+      ],
+      note: "",
+      customTasks: [],
+    };
+    mockLocalStorage.setItem("carequest-state-v1", JSON.stringify(data));
+
+    const { loadCareStateWithReport } = await import("@/lib/storage");
+    const { state, recovered } = loadCareStateWithReport();
+
+    expect(recovered).toBe(true);
+    expect(state.logs.map((l) => l.id)).toEqual(["ok-1", "ok-2"]);
+    // 健全要素の内容は保持される
+    expect(state.logs[1].points).toBe(20);
+    // 健全なユーザーフィールドも残る
+    expect(state.user.name).toBe("太郎");
+  });
+
+  it("型不正フィールド(note・logs が非配列)はデフォルトに置換し、他は残す", async () => {
+    const data = {
+      version: 2,
+      user: { name: "花子", energyLevel: "energetic" },
+      logs: "壊れた文字列", // 配列でない → [] に置換
+      note: 12345, // 文字列でない → "" に置換
+      customTasks: [{ id: "c1", title: "自作", points: 10, description: "x" }],
+    };
+    mockLocalStorage.setItem("carequest-state-v1", JSON.stringify(data));
+
+    const { loadCareStateWithReport } = await import("@/lib/storage");
+    const { state, recovered } = loadCareStateWithReport();
+
+    expect(recovered).toBe(true);
+    expect(state.logs).toEqual([]);
+    expect(state.note).toBe("");
+    // 健全なフィールドは温存
+    expect(state.user.name).toBe("花子");
+    expect(state.user.energyLevel).toBe("energetic");
+    expect(state.customTasks.length).toBe(1);
+  });
+
+  it("user の個別フィールドが型不正でもデフォルトで補完し、健全フィールドは残す", async () => {
+    const data = {
+      version: 2,
+      user: {
+        name: "健一",
+        energyLevel: "invalid-level", // → normal
+        todayPoints: "多い", // → 0
+        restMode: "yes", // → false
+        goodThings: ["散歩", 42, "読書"], // 数値要素は除外
+      },
+      logs: [],
+      note: "",
+      customTasks: [],
+    };
+    mockLocalStorage.setItem("carequest-state-v1", JSON.stringify(data));
+
+    const { loadCareStateWithReport } = await import("@/lib/storage");
+    const { state } = loadCareStateWithReport();
+
+    expect(state.user.name).toBe("健一");
+    expect(state.user.energyLevel).toBe("normal");
+    expect(state.user.todayPoints).toBe(0);
+    expect(state.user.restMode).toBe(false);
+    expect(state.user.goodThings).toEqual(["散歩", "読書"]);
+  });
+
+  it("往復(save → load)で健全データが完全に一致する", async () => {
+    const { saveCareState, loadCareState, createInitialUser } = await import("@/lib/storage");
+    const original = {
+      user: {
+        ...createInitialUser(),
+        name: "往復太郎",
+        todayPoints: 40,
+        goodThings: ["よく眠れた"],
+      },
+      logs: [validLog({ id: "rt-1" })],
+      note: "往復メモ",
+      customTasks: [{ id: "ct-1", title: "自作タスク", points: 12, description: "説明" }],
+    };
+
+    saveCareState(original);
+    const loaded = loadCareState();
+    expect(loaded).toEqual(original);
+  });
+
+  it("JSON 全体が壊れているときは recovered=true でデフォルトに落ちる", async () => {
+    mockLocalStorage.setItem("carequest-state-v1", "{ broken !!!");
+
+    const { loadCareStateWithReport } = await import("@/lib/storage");
+    const { state, recovered } = loadCareStateWithReport();
+    expect(recovered).toBe(true);
+    expect(state.logs).toEqual([]);
+  });
+
+  it("完全に健全なデータでは recovered=false", async () => {
+    const data = {
+      version: 2,
+      user: { name: "健全", energyLevel: "normal" },
+      logs: [validLog()],
+      note: "ok",
+      customTasks: [],
+    };
+    mockLocalStorage.setItem("carequest-state-v1", JSON.stringify(data));
+
+    const { loadCareStateWithReport } = await import("@/lib/storage");
+    const { recovered } = loadCareStateWithReport();
+    expect(recovered).toBe(false);
+  });
 });

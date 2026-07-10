@@ -9,7 +9,7 @@ import EncouragementCard from "@/components/EncouragementCard";
 import StatCard from "@/components/StatCard";
 import RestModeCard from "@/components/RestModeCard";
 import { getEncouragementMessage } from "@/lib/messages";
-import { loadCareState, saveCareState } from "@/lib/storage";
+import { loadCareState, loadCareStateWithReport, saveCareState } from "@/lib/storage";
 import { getTodayDate } from "@/lib/date";
 import type { CareLog, EnergyLevel } from "@/lib/types";
 
@@ -22,10 +22,11 @@ interface HomeViewState {
   restMode: boolean;
   todayLogs: CareLog[];
   justExitedRestMode: boolean;
+  dataRecovered: boolean;
 }
 
 function loadHomeViewState(): HomeViewState {
-  const state = loadCareState();
+  const { state, recovered } = loadCareStateWithReport();
   const todayLogs = state.logs.filter((log) => log.date === getTodayDate());
 
   return {
@@ -37,6 +38,7 @@ function loadHomeViewState(): HomeViewState {
     restMode: state.user.restMode ?? false,
     todayLogs,
     justExitedRestMode: false,
+    dataRecovered: recovered,
   };
 }
 
@@ -51,7 +53,12 @@ export default function HomePage() {
     restMode,
     todayLogs,
     justExitedRestMode,
+    dataRecovered,
   } = viewState;
+
+  const dismissRecoveryNotice = useCallback(() => {
+    setViewState((current) => ({ ...current, dataRecovered: false }));
+  }, []);
 
   const message = useMemo(
     () => getEncouragementMessage(energyLevel, todayPoints, completedCount, latestTaskTitle),
@@ -126,6 +133,21 @@ export default function HomePage() {
   return (
     <Layout>
       <div className="space-y-4">
+        {dataRecovered && (
+          <section className="rounded-[28px] border border-stone-200 bg-stone-50/80 p-4 shadow-sm">
+            <p className="text-sm leading-6 text-stone-600">
+              一部のデータを読み込めなかったため、整えて復元しました。これまでの記録はちゃんと残っています。
+            </p>
+            <button
+              type="button"
+              onClick={dismissRecoveryNotice}
+              className="mt-3 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-600"
+            >
+              わかりました
+            </button>
+          </section>
+        )}
+
         {justExitedRestMode && (
           <section className="rounded-[28px] border border-amber-100 bg-amber-50/80 p-4 shadow-sm">
             <p className="text-sm leading-6 text-amber-700">
