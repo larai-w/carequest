@@ -16,7 +16,7 @@ export default function TaskCard({ task, onSelect, onDelete, disabled = false }:
         type="button"
         onClick={() => onSelect(task)}
         disabled={disabled}
-        className={`w-full rounded-[24px] border border-amber-100 bg-white/90 p-4 text-left shadow-sm transition ${
+        className={`w-full rounded-[24px] border border-amber-100 bg-white/90 p-4 text-left shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 ${
           disabled ? "cursor-not-allowed opacity-60" : "active:scale-[0.98]"
         }`}
       >
@@ -35,7 +35,7 @@ export default function TaskCard({ task, onSelect, onDelete, disabled = false }:
           type="button"
           onClick={() => onDelete(task)}
           aria-label={`${task.title}を削除`}
-          className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full text-stone-400 hover:text-stone-600"
+          className="absolute right-1 top-1 flex h-11 w-11 items-center justify-center rounded-full text-stone-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 hover:text-stone-600"
         >
           ×
         </button>
