@@ -6,7 +6,8 @@ import TaskCard from "@/components/TaskCard";
 import EncouragementCard from "@/components/EncouragementCard";
 import { careTasks } from "@/lib/tasks";
 import { getEncouragementMessage } from "@/lib/messages";
-import { getTodayDate, loadCareState, saveCareState } from "@/lib/storage";
+import { loadCareState, saveCareState } from "@/lib/storage";
+import { getTodayDate } from "@/lib/date";
 import { syncCareLog } from "@/lib/api";
 import type { CareLog, CareTask, EnergyLevel } from "@/lib/types";
 

@@ -1,6 +1,6 @@
 import { careTasks } from "@/lib/tasks";
 import type { CareLog, DailyStats } from "@/lib/types";
-import { getTodayDate } from "@/lib/storage";
+import { getTodayDate, getDateStringDaysAgo } from "@/lib/date";
 
 export function getTodayStats(logs: CareLog[], today: string = getTodayDate()): DailyStats {
   const todayLogs = logs.filter((log) => log.date === today);
@@ -37,20 +37,20 @@ export function getRecentDaySummaries(
   today: string = getTodayDate(),
 ): RecentDaySummary[] {
   const summaries: RecentDaySummary[] = [];
-  const base = new Date(`${today}T00:00:00Z`);
 
   for (let offset = 1; offset <= days; offset += 1) {
-    const day = new Date(base);
-    day.setUTCDate(base.getUTCDate() - offset);
-    const date = day.toISOString().slice(0, 10);
+    const date = getDateStringDaysAgo(today, offset);
     const dayLogs = logs.filter((log) => log.date === date);
 
     if (dayLogs.length === 0) {
       continue;
     }
 
+    // ラベル用に Date を再構成（getMonth/getDate でローカル値を取得）
+    const [yearStr, monthStr, dayStr] = date.split("-");
+    const day = new Date(Number(yearStr), Number(monthStr) - 1, Number(dayStr));
     const label =
-      offset === 1 ? "昨日" : `${day.getUTCMonth() + 1}月${day.getUTCDate()}日`;
+      offset === 1 ? "昨日" : `${day.getMonth() + 1}月${day.getDate()}日`;
 
     summaries.push({
       date,

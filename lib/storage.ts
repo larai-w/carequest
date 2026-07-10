@@ -1,4 +1,8 @@
 import type { CareLog, CareTask, User } from "@/lib/types";
+import { getTodayDate } from "@/lib/date";
+
+// 後方互換のため再エクスポート。新しい参照は lib/date.ts を直接使う。
+export { getTodayDate };
 
 const STORAGE_KEY = "carequest-state-v1";
 
@@ -20,10 +24,6 @@ export function createInitialUser(): User {
     restMode: false,
     goodThings: [],
   };
-}
-
-export function getTodayDate(): string {
-  return new Date().toISOString().slice(0, 10);
 }
 
 export function loadCareState(): CareStorageState {

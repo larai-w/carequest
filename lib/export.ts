@@ -1,4 +1,5 @@
-import { loadCareState, getTodayDate } from "@/lib/storage";
+import { loadCareState } from "@/lib/storage";
+import { getTodayDate } from "@/lib/date";
 
 export interface CareQuestExport {
   exportedAt: string;
