@@ -203,7 +203,7 @@ export default function HomePage() {
             <button
               type="button"
               onClick={dismissRecoveryNotice}
-              className="mt-3 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-600"
+              className="mt-3 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
             >
               わかりました
             </button>
@@ -237,7 +237,7 @@ export default function HomePage() {
             <button
               type="button"
               onClick={handleEnterRestMode}
-              className="rounded-full bg-stone-100 px-3 py-2 text-sm font-semibold text-stone-600"
+              className="min-h-[44px] rounded-full bg-stone-100 px-3 py-2 text-sm font-semibold text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
             >
               今日は無理しない
             </button>
@@ -259,12 +259,15 @@ export default function HomePage() {
         <AuthPanel />
 
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
-          <h2 className="text-lg font-semibold text-stone-800">プロフィール</h2>
+          <label htmlFor="profile-name" className="text-lg font-semibold text-stone-800">
+            プロフィール
+          </label>
           <p className="mt-1 text-sm text-stone-600">名前を入れて、今日の記録にひとつの安心を添えましょう。</p>
           <input
+            id="profile-name"
             value={profileName}
             onChange={(event) => handleProfileNameChange(event.target.value)}
-            className="mt-3 w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-sm text-stone-700 outline-none"
+            className="mt-3 w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-sm text-stone-700 outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
             placeholder="あなたの名前"
           />
         </section>

@@ -27,7 +27,7 @@ export default function SupportNudgeCard({ onDismiss }: SupportNudgeCardProps) {
         <button
           type="button"
           onClick={onDismiss}
-          className="rounded-full px-4 py-2 text-sm text-stone-500"
+          className="min-h-[44px] rounded-full px-4 py-2 text-sm text-stone-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
         >
           とじる
         </button>

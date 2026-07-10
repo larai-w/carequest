@@ -35,7 +35,7 @@ export default function RestModeCard({ onExit }: RestModeCardProps) {
           <button
             type="button"
             onClick={onExit}
-            className="rounded-[20px] bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700"
+            className="min-h-[44px] rounded-[20px] bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
           >
             通常モードにもどる
           </button>
