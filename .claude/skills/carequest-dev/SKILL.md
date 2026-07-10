@@ -29,10 +29,12 @@ cd infra && npm run build && npm run synth
 
 ビルド後は `out/` の実出力を grep して、URL が `/carequest/` プレフィックス付きで出ているか確認する。
 
-## Service Worker(2026-07-09 導入)
+## Service Worker(2026-07-09 導入・T24 で VERSION 自動化)
 
 - `public/sw.js`(scope `/carequest/`)+ `components/ServiceWorkerRegister.tsx`(本番のみ登録)
-- **デプロイのたびに `public/sw.js` の `VERSION` を上げる**(旧キャッシュは activate 時に削除される設計)
+- **VERSION は `npm run build` の postbuild(`scripts/inject-sw-version.mjs`)で自動スタンプされる**
+  - `out/sw.js` の `const VERSION = "..."` を `YYYYMMDD-<git short SHA>` に書き換える
+  - ソースの `public/sw.js` は変更しない。手動で VERSION を上げる必要はない
 - HTML は network-first、静的アセットは cache-first。SW 内の URL は basePath が効かないため `/carequest/` を明示
 
 ## 本番・AWS の制約
