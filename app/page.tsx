@@ -9,7 +9,8 @@ import EncouragementCard from "@/components/EncouragementCard";
 import StatCard from "@/components/StatCard";
 import RestModeCard from "@/components/RestModeCard";
 import { getEncouragementMessage } from "@/lib/messages";
-import { getTodayDate, loadCareState, saveCareState } from "@/lib/storage";
+import { loadCareState, saveCareState } from "@/lib/storage";
+import { getTodayDate } from "@/lib/date";
 import type { CareLog, EnergyLevel } from "@/lib/types";
 
 interface HomeViewState {

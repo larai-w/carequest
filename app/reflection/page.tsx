@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import Layout from "@/components/Layout";
 import EncouragementCard from "@/components/EncouragementCard";
-import { loadCareState, saveCareState, getTodayDate } from "@/lib/storage";
+import { loadCareState, saveCareState } from "@/lib/storage";
+import { getTodayDate } from "@/lib/date";
 import { getRecentDaySummaries, type RecentDaySummary } from "@/lib/stats";
 import { getTodaySummaryBody } from "@/lib/messages";
 import { buildExportPayload, downloadAsJson } from "@/lib/export";
