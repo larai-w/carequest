@@ -14,6 +14,7 @@ AI エージェントでは代行できない、あなたにしかできない�
   - `! bash scripts/github-project-bootstrap.sh`
   - 「Care Quest MVP」プロジェクト、ラベル、既存6 Issue + 新タスク5 Issue が作成され、プロジェクトに追加されます
   - 別ユーザー/別リポジトリで使う場合: `GITHUB_OWNER=<owner> GITHUB_REPO=<owner>/<repo> bash scripts/github-project-bootstrap.sh`
+- [ ] **`synthetic-check` ラベルの作成**(1分・T34 の前提): 定期ヘルスチェックの自動 Issue 起票に必要。`gh label create synthetic-check --description "定期ヘルスチェックの自動起票" --color D93F0B`(または GitHub の Labels ページから)
 
 ## リリース前に必須(P1)
 
@@ -25,7 +26,8 @@ AI エージェントでは代行できない、あなたにしかできない�
 
 ## プロダクト判断(AI がブロックされているもの)
 
-- [ ] **ローカルファースト方針の最終確定**(5分): 推奨は local-first。決定を Issue「Decide local-first vs AWS-first saving」にコメントで記録 → T10(AWS 同期)の着手条件が外れる
+- [ ] **design-sync.md を読んで同期方針を決定する**(10–15分): `docs/design-sync.md` 末尾の「決定シート」(D-1〜D-6)を確認。**D-1(ローカルファーストで進めるか)を承認すれば T10 のブロックが外れます**(D-2〜D-6 は Phase A 実装をブロックしません)。決定は下の Issue コメントに記録。推奨はいずれも ★★★ の選択肢。
+- [ ] **ローカルファースト方針の最終確定**(5分): 推奨は local-first(design-sync.md D-1 の選択肢 A / ★★★)。決定を Issue「Decide local-first vs AWS-first saving」にコメントで記録 → T10(AWS 同期)の着手条件が外れる
 
 ## T14 監視のデプロイ(コードは準備済み・2026-07-10)
 
@@ -41,9 +43,16 @@ AI エージェントでは代行できない、あなたにしかできない�
   - **注意**: ロググループ `/aws/lambda/CareQuestStack-...` が既に存在すると作成エラーになる可能性。`aws logs describe-log-groups --log-group-name-prefix /aws/lambda/CareQuestStack` で事前確認し、あれば手動削除してから deploy
   - deploy 後 `npm run smoke:backend` で green を確認
 
-## 次回リリース時の新ルール(T9 Service Worker 導入により)
+## T27 デプロイ(セキュリティ修正・コードは準備済み・2026-07-11)
 
-- [ ] デプロイ前に `public/sw.js` の `VERSION`(現在 v1)を上げる(旧キャッシュ破棄のため)
+- [ ] **Lambda のセキュリティ修正をデプロイ**(T29 のスロットリング変更とまとめて1回で可): `cd infra && npx cdk diff` → `npx cdk deploy`
+  - 修正内容: クロステナント書き込み脆弱性(ボディの pk でパーティション指定が可能だった)+ ID トークンの CloudWatch Logs 平文出力
+  - デプロイまで本番の脆弱性は残ったままなので、**T6/T14 のデプロイと同時に早めの実施を推奨**
+  - デプロイ後 `npm run smoke:backend` で green を確認
+
+## 次回リリース時の確認(Service Worker)
+
+- SW の `VERSION` は T24 で自動化済み(`npm run build` の postbuild が out/sw.js に git SHA + 日付を自動スタンプ)。**手動で上げる必要はなくなりました**
 - [ ] デプロイ後の確認: `https://veai.jp/carequest/sw.js` が 200 / DevTools → Application → Service Workers で activated / オフラインにしてリロードしてもアプリシェルが表示される
 
 ## 運用メモ
