@@ -18,6 +18,13 @@ export interface CareTask {
   description: string;
 }
 
+// エネルギーレベルの日別記録。記録がない日は low が続いた介護者に
+// 相談窓口をそっと示すため(US-502)に使う。
+export interface DailyEnergy {
+  date: string; // YYYY-MM-DD
+  energyLevel: EnergyLevel;
+}
+
 export interface CareLog {
   id: string;
   taskId: string;

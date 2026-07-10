@@ -47,8 +47,16 @@ function mergeStates(
   );
   const user = { ...existing.user, goodThings };
 
+  // energyHistory: 日付で重複排除して統合。既存の端末の記録を優先して残す。
+  const existingEnergyDates = new Set(existing.energyHistory.map((e) => e.date));
+  const newEnergy = imported.energyHistory.filter((e) => !existingEnergyDates.has(e.date));
+  const energyHistory = [...existing.energyHistory, ...newEnergy];
+
+  // supportNudgeLastShown はこの端末の表示履歴を維持する(インポートで乱さない)。
+  const supportNudgeLastShown = existing.supportNudgeLastShown;
+
   return {
-    state: { user, logs, note, customTasks },
+    state: { user, logs, note, customTasks, energyHistory, supportNudgeLastShown },
     importedLogCount: newLogs.length,
   };
 }

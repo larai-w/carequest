@@ -22,6 +22,8 @@ function makeState(overrides: Partial<CareStorageState> = {}): CareStorageState 
     logs: [],
     note: "",
     customTasks: [],
+    energyHistory: [],
+    supportNudgeLastShown: "",
     ...overrides,
   };
 }
