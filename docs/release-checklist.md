@@ -40,7 +40,7 @@ ITIL 4「変更有効化(Change enablement)」を 1 人+AI 体制に合わせて
       npm run smoke:prod
 [ ] human-todo.md の未完了 P1 項目がないこと
       （特に: Secrets 確認・実メール Cognito テスト・相談窓口の電話番号確認）
-[ ] public/sw.js の VERSION を 1 つ上げた（旧キャッシュ破棄のため必須）
+[ ] Service Worker VERSION が自動スタンプされていることを確認（`npm run build` の postbuild で out/sw.js に git SHA + 日付が注入される。手動変更は不要）
 [ ] 掲載している外部情報が最新であること
       - 「認知症の人と家族の会」0120-294-456（公式サイトで要確認）
       - 「よりそいホットライン」0120-279-338（公式サイトで要確認）
@@ -77,8 +77,8 @@ ITIL 4「変更有効化(Change enablement)」を 1 人+AI 体制に合わせて
 
 1. **main に revert コミットを作成**（force push ではなく `git revert` を使う）
    - GitHub 上で「Revert」ボタンを使うか、ローカルで `git revert <merge-commit-SHA>` してから PR を作成
-2. **SW VERSION をさらに 1 つ上げる**
-   - revert コミットにより `public/sw.js` が古い内容に戻るが、VERSION が元に戻ると既存ユーザーの SW が更新されない。ロールバック時は **VERSION を前回より大きい値に必ず上げる**
+2. **revert コミット後に本番ビルドが走ることを確認**
+   - `npm run build` の postbuild で out/sw.js に新しい VERSION（git SHA + 日付）が自動スタンプされるため、ロールバック後のデプロイでも旧キャッシュは確実に破棄される。手動変更は不要
 3. **CI → main 自動デプロイを待つ**（`docs/deploy.md` の手順どおり）
 4. **`npm run smoke:prod` で正常を確認**
 5. **事後 Issue 化**: 障害原因・恒久対策を GitHub Issue に記録し、次バッチで対応する（ITIL「問題管理」）
