@@ -274,6 +274,20 @@ export function loadCareState(): CareStorageState {
   return loadCareStateWithReport().state;
 }
 
+/**
+ * localStorage ではなく、外部から渡された生データ(インポートした JSON の
+ * data 部分など)を、ロード時と同じ migration + sanitize パイプラインに通す。
+ * 生 JSON を直接 saveCareState に渡すのを避け、壊れた・悪意ある要素の混入を
+ * ここで必ず取り除くための入口。
+ */
+export function sanitizeRawState(raw: unknown): CareStorageState {
+  if (!isRecord(raw)) {
+    return createInitialState();
+  }
+  const migrated = runMigrations(raw);
+  return sanitizeState(migrated).state;
+}
+
 // ---------------------------------------------------------------------------
 // 保存
 // ---------------------------------------------------------------------------
