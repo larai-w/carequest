@@ -1,0 +1,105 @@
+name: Synthetic health check
+
+on:
+  schedule:
+    # 6 時間ごと (UTC 0:00 / 6:00 / 12:00 / 18:00)
+    - cron: '0 0,6,12,18 * * *'
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+concurrency:
+  group: synthetic-check
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: Run smoke:prod
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run smoke:prod
+        id: smoke
+        # 失敗しても後続の Issue 起票ステップを実行するため continue-on-error を使う
+        continue-on-error: true
+        run: npm run smoke:prod
+
+      - name: File GitHub Issue on failure (skip if duplicate)
+        if: steps.smoke.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const label = 'synthetic-check';
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: label,
+              per_page: 1,
+            });
+
+            if (issues.length > 0) {
+              console.log(`Open issue already exists: #${issues[0].number} — skipping.`);
+              return;
+            }
+
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const runbookUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/blob/main/docs/runbook.md`;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '[合成監視] smoke:prod が失敗しました',
+              labels: [label],
+              body: `## 概要
+
+            定期合成監視ジョブ \`smoke:prod\` が失敗しました。
+            サイト (\`https://veai.jp/carequest/\`) が「静かに落ちている」可能性があります。
+
+            ## 失敗したジョブ
+
+            ${runUrl}
+
+            ## まず確認すること
+
+            1. **ブラウザで本番 URL を直接開く** — [https://veai.jp/carequest/](https://veai.jp/carequest/)
+            2. **smoke:prod をローカルで手動実行** して失敗 URL を特定する
+               \`\`\`bash
+               npm run smoke:prod
+               \`\`\`
+            3. よくある原因と詳細な初動手順は **[runbook.md の「2. スモークテストの使い方」](${runbookUrl}#2-スモークテストの使い方)** を参照
+
+            ## よくある原因
+
+            | 原因 | 確認箇所 |
+            |---|---|
+            | CloudFront 設定ミス | AWS コンソール > CloudFront > Distribution \`E32Z6UIZTZD6DE\` |
+            | S3 バケット / オブジェクト削除 | S3 バケット \`veai-jp-toc-web\` > プレフィックス \`carequest/\` |
+            | SSL 証明書切れ | ブラウザの証明書エラー確認 |
+            | デプロイ失敗による静的ファイル欠損 | 直前の [Deploy production](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/workflows/deploy-prod.yml) の実行ログを確認 |
+
+            ## 解決後
+
+            このイシューをクローズしてください。次回の失敗時に新しいイシューが自動起票されます。
+            `,
+            });
+
+            console.log('Issue created.');
+
+      # smoke ジョブ自体を失敗させてワークフロー全体を赤にする
+      - name: Fail workflow if smoke failed
+        if: steps.smoke.outcome == 'failure'
+        run: exit 1
