@@ -10,6 +10,7 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as sns_subscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
 import { Construct } from 'constructs';
+import * as path from 'path';
 
 // 本番許可オリジン（開発環境は localhost:3000 も含む）
 const ALLOWED_ORIGINS = ['https://veai.jp', 'http://localhost:3000'];
@@ -52,156 +53,17 @@ export class CareQuestStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
+    // Lambda コードは infra/lambda/entries/ に切り出し済み。
+    // synth は cdk.json により ts-node で lib/ を実行するため __dirname は infra/lib。
+    // ただしコンパイル後(dist/lib)からの実行にも耐えるよう、__dirname 内の
+    // '/dist' セグメントを取り除いてから infra ルート基準で解決する。
+    const infraRoot = __dirname.replace(`${path.sep}dist`, '').replace(`${path.sep}lib`, '');
+    const lambdaEntriesPath = path.join(infraRoot, 'lambda', 'entries');
+
     const apiHandler = new lambda.Function(this, 'CareQuestApiHandler', {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'index.handler',
-      code: lambda.Code.fromInline(`
-const { DynamoDBClient, PutItemCommand, QueryCommand } = require('@aws-sdk/client-dynamodb');
-const dynamodb = new DynamoDBClient({});
-
-function toAttributeValue(value) {
-  if (value === null || value === undefined) {
-    return { NULL: true };
-  }
-  if (Array.isArray(value)) {
-    return { L: value.map(toAttributeValue) };
-  }
-  if (typeof value === 'object') {
-    return {
-      M: Object.fromEntries(
-        Object.entries(value).map(([key, childValue]) => [key, toAttributeValue(childValue)])
-      ),
-    };
-  }
-  if (typeof value === 'number') {
-    return { N: String(value) };
-  }
-  if (typeof value === 'boolean') {
-    return { BOOL: value };
-  }
-  return { S: String(value) };
-}
-
-function fromAttributeValue(attributeValue) {
-  if ('S' in attributeValue) return attributeValue.S;
-  if ('N' in attributeValue) return Number(attributeValue.N);
-  if ('BOOL' in attributeValue) return attributeValue.BOOL;
-  if ('NULL' in attributeValue) return null;
-  if ('L' in attributeValue) return attributeValue.L.map(fromAttributeValue);
-  if ('M' in attributeValue) {
-    return Object.fromEntries(
-      Object.entries(attributeValue.M).map(([key, childValue]) => [key, fromAttributeValue(childValue)])
-    );
-  }
-  return undefined;
-}
-
-function toItem(record) {
-  return Object.fromEntries(
-    Object.entries(record).map(([key, value]) => [key, toAttributeValue(value)])
-  );
-}
-
-function fromItem(item) {
-  return Object.fromEntries(
-    Object.entries(item).map(([key, value]) => [key, fromAttributeValue(value)])
-  );
-}
-
-const ALLOWED_ORIGINS = ['https://veai.jp', 'http://localhost:3000'];
-
-function getCorsHeaders(event) {
-  const origin = (event.headers && (event.headers['origin'] || event.headers['Origin'])) || '';
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Vary': 'Origin'
-  };
-}
-
-exports.handler = async (event) => {
-  console.log('Event:', JSON.stringify(event, null, 2));
-  const corsHeaders = getCorsHeaders(event);
-
-  // Handle CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: ''
-    };
-  }
-
-  // Extract user ID from Cognito authorizer
-  const authorizer = event.requestContext?.authorizer;
-  const userId = authorizer?.claims?.['cognito:username'] || authorizer?.claims?.sub || 'anonymous';
-
-  if (event.httpMethod === 'GET' && event.resource === '/health') {
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: JSON.stringify({ status: 'ok' })
-    };
-  }
-
-  if (event.httpMethod === 'GET' && event.resource === '/entries') {
-    try {
-      const params = {
-        TableName: process.env.TABLE_NAME,
-        KeyConditionExpression: 'pk = :userId',
-        ExpressionAttributeValues: { ':userId': { S: userId } }
-      };
-      const result = await dynamodb.send(new QueryCommand(params));
-      return {
-        statusCode: 200,
-        headers: corsHeaders,
-        body: JSON.stringify((result.Items || []).map(fromItem))
-      };
-    } catch (error) {
-      console.error('Query error:', error);
-      return {
-        statusCode: 500,
-        headers: corsHeaders,
-        body: JSON.stringify({ message: 'Error fetching entries' })
-      };
-    }
-  }
-
-  if (event.httpMethod === 'POST' && event.resource === '/entries') {
-    try {
-      const body = event.body ? JSON.parse(event.body) : {};
-      const item = {
-        pk: userId,
-        sk: new Date().toISOString(),
-        ...body,
-        userId: userId,
-      };
-      await dynamodb.send(new PutItemCommand({ TableName: process.env.TABLE_NAME, Item: toItem(item) }));
-      return {
-        statusCode: 201,
-        headers: corsHeaders,
-        body: JSON.stringify({ ok: true, item })
-      };
-    } catch (error) {
-      console.error('Put error:', error);
-      return {
-        statusCode: 500,
-        headers: corsHeaders,
-        body: JSON.stringify({ message: 'Error saving entry' })
-      };
-    }
-  }
-
-  return {
-    statusCode: 404,
-    headers: corsHeaders,
-    body: JSON.stringify({ message: 'Not found' })
-  };
-};
-      `),
+      code: lambda.Code.fromAsset(lambdaEntriesPath),
       environment: {
         TABLE_NAME: entriesTable.tableName,
         CORS_ENABLED: 'true',
