@@ -20,6 +20,8 @@ interface QuestViewState {
   todayPoints: number;
   restMode: boolean;
   customTasks: CareTask[];
+  // 保存失敗の通知を表示するかどうか。
+  saveFailed: boolean;
 }
 
 function loadQuestViewState(): QuestViewState {
@@ -33,6 +35,7 @@ function loadQuestViewState(): QuestViewState {
       .filter((log) => log.date === getTodayDate())
       .reduce((sum, log) => sum + log.points, 0),
     customTasks: state.customTasks ?? [],
+    saveFailed: false,
   };
 }
 
@@ -49,16 +52,25 @@ export default function QuestPage() {
     const nextRestMode = !restMode;
     setViewState((current) => ({ ...current, restMode: nextRestMode }));
     const state = loadCareState();
-    saveCareState({
+    const ok = saveCareState({
       ...state,
       user: {
         ...state.user,
         restMode: nextRestMode,
       },
     });
+    if (!ok) {
+      setViewState((current) => ({ ...current, saveFailed: true }));
+    }
   };
 
   const [syncStatus, setSyncStatus] = useState("");
+
+  const { saveFailed } = viewState;
+
+  const dismissSaveFailedNotice = () => {
+    setViewState((current) => ({ ...current, saveFailed: false }));
+  };
 
   const handleSelectTask = async (task: CareTask) => {
     const today = getTodayDate();
@@ -80,7 +92,7 @@ export default function QuestPage() {
     setSyncStatus("クラウド同期中...");
 
     const state = loadCareState();
-    saveCareState({
+    const saveOk = saveCareState({
       ...state,
       user: {
         ...state.user,
@@ -90,6 +102,9 @@ export default function QuestPage() {
       },
       logs: nextLogs,
     });
+    if (!saveOk) {
+      setViewState((current) => ({ ...current, saveFailed: true }));
+    }
 
     const synced = await syncCareLog(nextLog);
     setSyncStatus(synced ? "クラウド同期に成功しました。" : "クラウド同期に失敗しました。オフラインか認証が必要かもしれません。");
@@ -116,10 +131,13 @@ export default function QuestPage() {
     inputRef.current?.blur();
 
     const state = loadCareState();
-    saveCareState({
+    const ok = saveCareState({
       ...state,
       customTasks: nextCustomTasks,
     });
+    if (!ok) {
+      setViewState((current) => ({ ...current, saveFailed: true }));
+    }
   };
 
   const handleCustomTaskKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -133,10 +151,13 @@ export default function QuestPage() {
     setViewState((current) => ({ ...current, customTasks: nextCustomTasks }));
 
     const state = loadCareState();
-    saveCareState({
+    const ok = saveCareState({
       ...state,
       customTasks: nextCustomTasks,
     });
+    if (!ok) {
+      setViewState((current) => ({ ...current, saveFailed: true }));
+    }
   };
 
   return (
@@ -216,6 +237,21 @@ export default function QuestPage() {
           <p className="mt-1 text-sm text-stone-600">{completedCount}件の介護を記録しました。</p>
           {syncStatus ? <p className="mt-2 text-sm text-stone-500">{syncStatus}</p> : null}
         </section>
+
+        {saveFailed && (
+          <section className="rounded-[28px] border border-stone-200 bg-stone-50/80 p-4 shadow-sm">
+            <p className="text-sm leading-6 text-stone-600">
+              記録を保存できませんでした。端末の空き容量をご確認ください。今日の記録はこのままご利用いただけます。
+            </p>
+            <button
+              type="button"
+              onClick={dismissSaveFailedNotice}
+              className="mt-3 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+            >
+              わかりました
+            </button>
+          </section>
+        )}
       </div>
     </Layout>
   );

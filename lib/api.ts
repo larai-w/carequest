@@ -1,6 +1,7 @@
 import "@/lib/amplify";
 import { fetchAuthSession, getCurrentUser } from "@aws-amplify/auth";
 import type { CareLog } from "@/lib/types";
+import { sanitizeLog } from "@/lib/storage";
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
 const entriesEndpoint = apiBase ? `${apiBase}/entries` : "";
@@ -65,7 +66,19 @@ export async function fetchCareEntries(): Promise<CareLog[]> {
     if (!response.ok) {
       return [];
     }
-    const items = (await response.json()) as CareLog[];
+    const raw: unknown = await response.json();
+    // 生 JSON を信用しない: 配列でなければ空配列に落とし、
+    // 各要素を sanitizeLog で検証して不正な要素は静かに除外する。
+    if (!Array.isArray(raw)) {
+      return [];
+    }
+    const items: CareLog[] = [];
+    for (const entry of raw) {
+      const log = sanitizeLog(entry);
+      if (log) {
+        items.push(log);
+      }
+    }
     return items;
   } catch {
     return [];

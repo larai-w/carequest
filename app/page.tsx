@@ -26,6 +26,8 @@ interface HomeViewState {
   todayLogs: CareLog[];
   justExitedRestMode: boolean;
   dataRecovered: boolean;
+  // 保存失敗の通知を表示するかどうか。
+  saveFailed: boolean;
   energyHistory: DailyEnergy[];
   // 相談窓口カードの throttle 判定に使う「読み込み時点の」最終表示日。
   // セッション中は更新しない。表示中に今日へ書き換えるとカードが即座に
@@ -49,6 +51,7 @@ function loadHomeViewState(): HomeViewState {
     todayLogs,
     justExitedRestMode: false,
     dataRecovered: recovered,
+    saveFailed: false,
     energyHistory: state.energyHistory,
     supportNudgeLastShownAtLoad: state.supportNudgeLastShown,
     supportNudgeDismissed: false,
@@ -68,6 +71,7 @@ export default function HomePage() {
     todayLogs,
     justExitedRestMode,
     dataRecovered,
+    saveFailed,
     energyHistory,
     supportNudgeLastShownAtLoad,
     supportNudgeDismissed,
@@ -76,6 +80,10 @@ export default function HomePage() {
 
   const dismissRecoveryNotice = useCallback(() => {
     setViewState((current) => ({ ...current, dataRecovered: false }));
+  }, []);
+
+  const dismissSaveFailedNotice = useCallback(() => {
+    setViewState((current) => ({ ...current, saveFailed: false }));
   }, []);
 
   // 連続 low + throttle を満たすときだけ相談窓口カードを出す。
@@ -92,6 +100,7 @@ export default function HomePage() {
   // カードを表示したら「最終表示日=今日」を保存し、数日は再表示しない。
   // 保存しても supportNudgeLastShownAtLoad(スナップショット)は変えないので、
   // このセッションの表示は消えない。1度だけ保存する。
+  // 保存失敗は throttle 用の副作用なので、失敗通知は出さない(記録操作ではない)。
   const nudgePersistedRef = useRef(false);
   useEffect(() => {
     if (showSupportNudge && !nudgePersistedRef.current) {
@@ -108,7 +117,10 @@ export default function HomePage() {
   const handleOnboardingStart = useCallback(() => {
     setViewState((current) => ({ ...current, onboardingShown: true }));
     const state = loadCareState();
-    saveCareState({ ...state, onboardingShown: true });
+    const ok = saveCareState({ ...state, onboardingShown: true });
+    if (!ok) {
+      setViewState((current) => ({ ...current, saveFailed: true }));
+    }
   }, []);
 
   const message = useMemo(
@@ -128,7 +140,7 @@ export default function HomePage() {
         energyLevel: value,
         energyHistory: nextEnergyHistory,
       }));
-      saveCareState({
+      const ok = saveCareState({
         ...state,
         user: {
           ...state.user,
@@ -138,6 +150,9 @@ export default function HomePage() {
         },
         energyHistory: nextEnergyHistory,
       });
+      if (!ok) {
+        setViewState((current) => ({ ...current, saveFailed: true }));
+      }
     },
     [todayPoints],
   );
@@ -145,13 +160,16 @@ export default function HomePage() {
   const handleProfileNameChange = useCallback((value: string) => {
     setViewState((current) => ({ ...current, profileName: value }));
     const state = loadCareState();
-    saveCareState({
+    const ok = saveCareState({
       ...state,
       user: {
         ...state.user,
         name: value || "あなた",
       },
     });
+    if (!ok) {
+      setViewState((current) => ({ ...current, saveFailed: true }));
+    }
   }, []);
 
   const handleEnterRestMode = useCallback(() => {
@@ -161,10 +179,13 @@ export default function HomePage() {
       justExitedRestMode: false,
     }));
     const state = loadCareState();
-    saveCareState({
+    const ok = saveCareState({
       ...state,
       user: { ...state.user, restMode: true },
     });
+    if (!ok) {
+      setViewState((current) => ({ ...current, saveFailed: true }));
+    }
   }, []);
 
   const handleExitRestMode = useCallback(() => {
@@ -174,10 +195,13 @@ export default function HomePage() {
       justExitedRestMode: true,
     }));
     const state = loadCareState();
-    saveCareState({
+    const ok = saveCareState({
       ...state,
       user: { ...state.user, restMode: false },
     });
+    if (!ok) {
+      setViewState((current) => ({ ...current, saveFailed: true }));
+    }
   }, []);
 
   if (restMode) {
@@ -203,6 +227,21 @@ export default function HomePage() {
             <button
               type="button"
               onClick={dismissRecoveryNotice}
+              className="mt-3 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+            >
+              わかりました
+            </button>
+          </section>
+        )}
+
+        {saveFailed && (
+          <section className="rounded-[28px] border border-stone-200 bg-stone-50/80 p-4 shadow-sm">
+            <p className="text-sm leading-6 text-stone-600">
+              記録を保存できませんでした。端末の空き容量をご確認ください。今日の記録はこのままご利用いただけます。
+            </p>
+            <button
+              type="button"
+              onClick={dismissSaveFailedNotice}
               className="mt-3 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
             >
               わかりました
