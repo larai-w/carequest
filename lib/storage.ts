@@ -9,7 +9,7 @@ const STORAGE_KEY = "carequest-state-v1";
 // スキーマバージョン。保存データの構造を変えたら上げ、migration を追加する。
 // このアプリでは localStorage が唯一の保存先なので、破損・旧構造でも
 // 「健全なフィールドは必ず残す」ことを最優先にする。
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
 
 export interface CareStorageState {
   user: User;
@@ -21,6 +21,9 @@ export interface CareStorageState {
   // v3: 相談窓口カードを最後に表示した日(YYYY-MM-DD)。空文字は未表示。
   //     表示を数日に1回までに絞るための throttle。
   supportNudgeLastShown: string;
+  // v4: 初回オンボーディングカードを表示済みかどうか。
+  //     localStorage の性質(端末内保存・アカウント不要・書き出し可能)を最初に一度だけ伝える。
+  onboardingShown: boolean;
 }
 
 // 保存フォーマット。version を持つ以外は CareStorageState と同じ。
@@ -49,6 +52,7 @@ function createInitialState(): CareStorageState {
     customTasks: [],
     energyHistory: [],
     supportNudgeLastShown: "",
+    onboardingShown: false,
   };
 }
 
@@ -73,6 +77,13 @@ const migrations: Record<number, (raw: RawRecord) => RawRecord> = {
     supportNudgeLastShown: "",
     ...raw,
     version: 3,
+  }),
+  // v3 → v4: 初回オンボーディング表示済みフラグを追加する。
+  // 既存ユーザーは既に使い始めているので true にして再表示しない。
+  3: (raw) => ({
+    onboardingShown: true,
+    ...raw,
+    version: 4,
   }),
 };
 
@@ -260,10 +271,15 @@ function sanitizeState(raw: RawRecord): SanitizeResult {
     report.recovered = true;
   }
 
+  // onboardingShown: boolean でなければ false に救済(初回扱いにする)。
+  // フィールドが存在しない旧データは migration で true に変換済みのはずだが、
+  // sanitize で念のため boolean 以外を false に揃える。
+  const onboardingShown = typeof raw.onboardingShown === "boolean" ? raw.onboardingShown : false;
+
   const user = sanitizeUser(raw.user, report);
 
   return {
-    state: { user, logs, note, customTasks, energyHistory, supportNudgeLastShown },
+    state: { user, logs, note, customTasks, energyHistory, supportNudgeLastShown, onboardingShown },
     recovered: report.recovered,
   };
 }

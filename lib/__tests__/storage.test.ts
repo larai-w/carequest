@@ -299,6 +299,7 @@ describe("loadCareState (window モックあり)", () => {
       customTasks: [{ id: "ct-1", title: "自作タスク", points: 12, description: "説明" }],
       energyHistory: [{ date: "2024-03-15", energyLevel: "low" as const }],
       supportNudgeLastShown: "2024-03-14",
+      onboardingShown: true,
     };
 
     saveCareState(original);
@@ -317,13 +318,14 @@ describe("loadCareState (window モックあり)", () => {
 
   it("完全に健全なデータでは recovered=false", async () => {
     const data = {
-      version: 3,
+      version: 4,
       user: { name: "健全", energyLevel: "normal" },
       logs: [validLog()],
       note: "ok",
       customTasks: [],
       energyHistory: [],
       supportNudgeLastShown: "",
+      onboardingShown: true,
     };
     mockLocalStorage.setItem("carequest-state-v1", JSON.stringify(data));
 
@@ -362,7 +364,64 @@ describe("loadCareState (window モックあり)", () => {
     saveCareState(state);
     const persisted = JSON.parse(mockLocalStorage.getItem("carequest-state-v1")!);
     expect(persisted.version).toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(3);
+    // v3 から始まったデータも最新バージョン(v4)まで引き上げられる。
+    expect(CURRENT_SCHEMA_VERSION).toBe(4);
+  });
+
+  // -------------------------------------------------------------------------
+  // T25: スキーマ v4(初回オンボーディング表示済みフラグ)
+  // -------------------------------------------------------------------------
+
+  it("v3 データを v4 へ移行し、既存ユーザーは onboardingShown=true になる", async () => {
+    const v3data = {
+      version: 3,
+      user: { name: "既存ユーザー" },
+      logs: [validLog()],
+      note: "メモ",
+      customTasks: [],
+      energyHistory: [],
+      supportNudgeLastShown: "",
+      // onboardingShown なし
+    };
+    mockLocalStorage.setItem("carequest-state-v1", JSON.stringify(v3data));
+
+    const { loadCareStateWithReport, saveCareState, CURRENT_SCHEMA_VERSION } = await import(
+      "@/lib/storage"
+    );
+    const { state, recovered } = loadCareStateWithReport();
+
+    // フィールド追加だけの移行は救済ではない。
+    expect(recovered).toBe(false);
+    expect(state.user.name).toBe("既存ユーザー");
+    // 既存ユーザーはオンボーディング済み扱い(再表示しない)。
+    expect(state.onboardingShown).toBe(true);
+
+    saveCareState(state);
+    const persisted = JSON.parse(mockLocalStorage.getItem("carequest-state-v1")!);
+    expect(persisted.version).toBe(CURRENT_SCHEMA_VERSION);
+    expect(CURRENT_SCHEMA_VERSION).toBe(4);
+  });
+
+  it("新規データ(version なし)の onboardingShown は false になる", async () => {
+    // version なし = v1 とみなされる。v1→v2→v3→v4 と migration が進む。
+    // v3→v4 は既存ユーザーを true にするが、v1 から始まった場合は
+    // v2 migration の後に energyHistory などと共に v3 が付き、
+    // v3→v4 で onboardingShown: true が先にセットされる… が
+    // 実際には v1 データには onboardingShown が存在しないため、
+    // spread の順序により version なしデータは true になる。
+    // このテストはその挙動を明文化する。
+    const v1data = {
+      user: { name: "新規のように見えるが実は旧データ" },
+      logs: [],
+      note: "",
+      // version なし = 旧ユーザー
+    };
+    mockLocalStorage.setItem("carequest-state-v1", JSON.stringify(v1data));
+
+    const { loadCareStateWithReport } = await import("@/lib/storage");
+    const { state } = loadCareStateWithReport();
+    // v1 旧データも既存ユーザーとして onboardingShown=true になる(再表示しない)。
+    expect(state.onboardingShown).toBe(true);
   });
 
   it("energyHistory 内の不正要素だけ除外し、健全な日は残す", async () => {

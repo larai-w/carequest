@@ -7,6 +7,7 @@ import AuthPanel from "@/components/AuthPanel";
 import EnergySelector from "@/components/EnergySelector";
 import EncouragementCard from "@/components/EncouragementCard";
 import StatCard from "@/components/StatCard";
+import OnboardingCard from "@/components/OnboardingCard";
 import RestModeCard from "@/components/RestModeCard";
 import SupportNudgeCard from "@/components/SupportNudgeCard";
 import { getEncouragementMessage } from "@/lib/messages";
@@ -31,6 +32,7 @@ interface HomeViewState {
   // 消えてしまうため、スナップショットとして固定する。
   supportNudgeLastShownAtLoad: string;
   supportNudgeDismissed: boolean;
+  onboardingShown: boolean;
 }
 
 function loadHomeViewState(): HomeViewState {
@@ -50,6 +52,7 @@ function loadHomeViewState(): HomeViewState {
     energyHistory: state.energyHistory,
     supportNudgeLastShownAtLoad: state.supportNudgeLastShown,
     supportNudgeDismissed: false,
+    onboardingShown: state.onboardingShown,
   };
 }
 
@@ -68,6 +71,7 @@ export default function HomePage() {
     energyHistory,
     supportNudgeLastShownAtLoad,
     supportNudgeDismissed,
+    onboardingShown,
   } = viewState;
 
   const dismissRecoveryNotice = useCallback(() => {
@@ -99,6 +103,12 @@ export default function HomePage() {
 
   const dismissSupportNudge = useCallback(() => {
     setViewState((current) => ({ ...current, supportNudgeDismissed: true }));
+  }, []);
+
+  const handleOnboardingStart = useCallback(() => {
+    setViewState((current) => ({ ...current, onboardingShown: true }));
+    const state = loadCareState();
+    saveCareState({ ...state, onboardingShown: true });
   }, []);
 
   const message = useMemo(
@@ -183,6 +193,8 @@ export default function HomePage() {
   return (
     <Layout>
       <div className="space-y-4">
+        {!onboardingShown && <OnboardingCard onStart={handleOnboardingStart} />}
+
         {dataRecovered && (
           <section className="rounded-[28px] border border-stone-200 bg-stone-50/80 p-4 shadow-sm">
             <p className="text-sm leading-6 text-stone-600">

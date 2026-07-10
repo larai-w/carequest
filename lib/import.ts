@@ -55,8 +55,11 @@ function mergeStates(
   // supportNudgeLastShown はこの端末の表示履歴を維持する(インポートで乱さない)。
   const supportNudgeLastShown = existing.supportNudgeLastShown;
 
+  // onboardingShown はこの端末の状態を維持する(インポートで初期化しない)。
+  const onboardingShown = existing.onboardingShown;
+
   return {
-    state: { user, logs, note, customTasks, energyHistory, supportNudgeLastShown },
+    state: { user, logs, note, customTasks, energyHistory, supportNudgeLastShown, onboardingShown },
     importedLogCount: newLogs.length,
   };
 }

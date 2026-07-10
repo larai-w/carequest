@@ -14,6 +14,7 @@ export interface CareQuestExport {
     customTasks: ReturnType<typeof loadCareState>["customTasks"];
     energyHistory: ReturnType<typeof loadCareState>["energyHistory"];
     supportNudgeLastShown: ReturnType<typeof loadCareState>["supportNudgeLastShown"];
+    onboardingShown: ReturnType<typeof loadCareState>["onboardingShown"];
   };
 }
 
@@ -32,6 +33,7 @@ export function buildExportPayload(): CareQuestExport {
       customTasks: state.customTasks,
       energyHistory: state.energyHistory,
       supportNudgeLastShown: state.supportNudgeLastShown,
+      onboardingShown: state.onboardingShown,
     },
   };
 }
