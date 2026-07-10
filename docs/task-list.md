@@ -6,6 +6,97 @@ Last updated: 2026-07-10 JST
 
 完了: T17 UTC日付バグ修正 `64471e0` / T18 Vitest+CI(52→59テスト) `075f040` / T19 ストレージ検証・移行 `81e9bcf` / T20 エラーバウンダリ `8e854b6` / T22 JSON インポート(70テスト、Opus 単独セッションで実施) `0b65db6`
 
+## 第6バッチ(2026-07-10 立案)— 推奨・未着手【テーマ: バックエンド強化】
+
+方針: フロントは第4・5バッチで固まったため、このバッチはバックエンド(Lambda/API Gateway/DynamoDB)と運用の穴を塞ぐ。プランナーのコード点検で **Lambda に2件のセキュリティ欠陥**を発見済み(T27 参照)。PM レンズ: R-01(情報漏えい)/R-05(コスト)/R-10(回帰)の軽減。変更タイプ: インフラ変更はすべて**通常変更**(デプロイは人間承認)。
+
+### 実行方法(Fable 不要)
+
+Sonnet または Opus をメインモデルにしたセッションで:
+
+> docs/task-list.md の T◯◯ を、受け入れ条件どおりに実装してください。まず AGENTS.md と .claude/skills/ の carequest-dev、carequest-product-tone を読んでから着手。1タスク1コミットで、完了後に npm test / lint / build(infra を触ったら infra の build/synth も)の結果を報告。
+
+依存関係と並列可否:
+- **T27 → T28 の順**(テストは切り出されたハンドラが前提)
+- **T27・T29 は両方 `infra/lib/carequest-stack.ts` を触るため同時に別セッションで走らせない**(順番に)
+- T30(設計書)・T31(フロント)・T32(E2E)・T33・T34 は独立して並列可
+- インフラ変更(T27・T29)は synth まで。**deploy は人間**(変更が溜まるので、T27+T29 完了後にまとめて 1 回のデプロイを推奨)
+
+### T27. Lambda の切り出しとセキュリティ欠陥の修正 | P0 | おすすめ度 ★★★ | 推奨モデル: Opus
+
+- 背景: プランナー点検で発見した2件の欠陥修正。**(a) POST /entries がボディの `...body` spread を pk/sk の後に置いているため、ボディに `pk` を入れると他ユーザーのパーティションへ書き込める**(クロステナント書き込み)。**(b) `console.log('Event:', ...)` がイベント全体(Authorization ヘッダーの ID トークン含む)を CloudWatch Logs に平文出力**している
+- [ ] Lambda を `fromInline` から `infra/lambda/entries/index.js`(または .ts)へ切り出し、`Code.fromAsset` に変更(テスト可能にする)
+- [ ] POST の入力検証: 許可フィールドのみ受け付けるホワイトリスト方式(id, taskId, title, points, completedAt, date, energyLevel)。**pk / sk / userId はサーバー側で必ず上書きし、ボディからは受け取らない**
+- [ ] 型・サイズ検証: points は有限数値、date は YYYY-MM-DD、title は文字列長上限(例 200 文字)、ボディ全体サイズ上限(例 10KB)。不正は 400 を返す(500 にしない)
+- [ ] イベント全体のログ出力を廃止し、必要最小限(httpMethod・resource・requestId)の構造化ログに置き換える。トークン・ヘッダーは絶対に出力しない
+- [ ] sk を `log.id` ベースに変更し、同じ記録の再送で重複が生じないようにする(冪等な PUT。T30 の同期設計の土台)
+- [ ] `cd infra && npm run build && npm run synth` green(deploy は人間)
+- ★★★の理由: 認可バイパスに相当する実害のある欠陥。ミスが許されない修正のため Opus 必須。ITIL 上は欠陥修正だが、認可設計に触れるため**通常変更**として人間がデプロイ前に差分確認
+
+### T28. Lambda ユニットテスト + CDK assertions テスト | P1 | おすすめ度 ★★★ | 推奨モデル: Sonnet【T27 完了後】
+
+- 背景: R-10(回帰)。インフラとバックエンドにテストがなく、T27 の修正が正しいことを機械的に保証できない
+- [ ] T27 で切り出したハンドラのユニットテスト: pk 上書き攻撃が防がれる/不正 points・date が 400/正常 POST・GET/OPTIONS プリフライト/未知ルート 404(DynamoDB クライアントはモック)
+- [ ] CDK assertions テスト(`aws-cdk-lib/assertions`): RETAIN ポリシー・Cognito オーソライザ付きメソッド・アラーム2件・Budgets の存在を検証(スナップショットではなくファイングレインで)
+- [ ] `.github/workflows/ci.yml` の infra ジョブにテストステップを追加
+- [ ] npm test / lint / build + infra build/synth/test green
+- ★★★の理由: セキュリティ修正(T27)は「二度と壊れない」仕組みとセットで完了(DoD)。テスト構造が明確で Sonnet 向き
+
+### T29. API Gateway スロットリング + DynamoDB PITR | P1 | おすすめ度 ★★ | 推奨モデル: Sonnet【T27 と同時並行不可】
+
+- 背景: R-05(コスト逸脱)・R-02(データ喪失)。現在レート制限なし = 盗まれたトークン1つで課金攻撃が可能。テーブルのバックアップもない
+- [ ] API Gateway ステージにスロットリング設定(例: rateLimit 10 rps / burstLimit 20。個人アプリには十分)
+- [ ] DynamoDB の Point-in-Time Recovery を有効化
+- [ ] ステージ名 `dev` を `prod` へ変更するかを検討し、**変更する場合は** フロントの `NEXT_PUBLIC_API_URL`(GitHub Secrets)更新が必要な旨を human-todo.md に追記(判断に迷ったら現状維持で可。理由をコミットメッセージに)
+- [ ] risk-register.md の R-05 を更新
+- [ ] infra build/synth green(deploy は人間)
+- ★★の理由: 発生確率は低いが、起きたときの実害(課金・データ喪失)が大きい防波堤。設定変更が中心で Sonnet 向き
+
+### T30. ローカル→AWS 同期(T10)の設計書 | P1 | おすすめ度 ★★★ | 推奨モデル: Opus
+
+- 背景: T10 は「ローカルファースト方針の人間決定待ち」でブロック中。**決定に必要な材料が揃っていないことがブロックの実態**なので、設計書を先に作って人間が Yes/No を判断できる状態にする
+- [ ] `docs/design-sync.md` を新規作成: (1) ローカルファースト原則(localStorage が常に真、AWS はバックアップ)(2) 同期プロトコル: log.id を冪等キーにした差分 PUT(T27 の sk 変更が前提)(3) 競合解決: lib/import.ts のマージ方針(既存優先・ID 重複排除)を踏襲(4) 失敗時の挙動: ローカルに必ず残り、穏やかな文言で通知(5) 段階導入案: Phase A 手動バックアップボタン → Phase B サインイン時自動
+- [ ] 人間が判断すべき決定点を明示した「決定シート」を末尾に(選択肢+おすすめ度+理由の形式)
+- [ ] エッジケースを明記: 同一 log.id で内容が異なる場合/時計ずれ/オフライン長期間/複数端末同時書き込み
+- [ ] コードは書かない(設計のみ)。human-todo.md に「design-sync.md を読んで決定」を追記
+- ★★★の理由: Phase 1 の最重要機能(R-02 の恒久軽減)のクリティカルパス。分散データの整合性設計はミスが許されないため Opus
+
+### T31. 保存失敗の可視化 + API レスポンスの sanitize | P2 | おすすめ度 ★★ | 推奨モデル: Sonnet
+
+- 背景: `saveCareState` が失敗(容量超過・プライベートモード)を握りつぶしており、ユーザーは「記録できたつもり」になり得る。また `fetchCareEntries` がレスポンスを無検証で `CareLog[]` にキャストしている(生 JSON を信用しない原則の違反)
+- [ ] `saveCareState` が成否を返すようにし、失敗時はホーム/クエストで穏やかに通知(「記録を保存できませんでした。端末の空き容量をご確認ください」の趣旨。責めない・焦らせない文言)
+- [ ] `fetchCareEntries` のレスポンスを要素単位で検証(lib/storage.ts の sanitizeLog 相当を通す。不正要素は静かに除外)
+- [ ] ユニットテスト: 保存失敗の検知、不正レスポンス要素の除外
+- [ ] npm test / lint / build green
+- ★★の理由: 「静かに失敗する」箇所を潰すのは固い仕組みの基本。既存パターン(sanitize・穏やかな通知)の適用で Sonnet 向き
+
+### T32. E2E テストの拡充(第5バッチ機能)| P2 | おすすめ度 ★★ | 推奨モデル: Sonnet
+
+- 背景: T21 の E2E は第5バッチ以前の3フローのみ。オンボーディング・インポート・相談窓口カードは回帰検知がない(R-10)
+- [ ] オンボーディング: 初回訪問でカード表示 → 「はじめる」→ リロードで再表示されない(beforeEach の onboardingShown 注入をこのテストだけ外す)
+- [ ] インポート: エクスポート済み JSON を `setInputFiles` で読み込み → 件数メッセージ表示 → 記録が増えている。壊れた JSON では穏やかなエラーメッセージ
+- [ ] 相談窓口カード: localStorage に3日連続 low の energyHistory を注入 → ホームにカード表示 → 「とじる」で消える
+- [ ] npm run test:e2e green(既存3テストも含め全パス)
+- ★★の理由: 安全機能(相談窓口)の回帰は実害が大きい。localStorage 注入パターンは T21 で確立済みで Sonnet 向き
+
+### T33. 依存関係の自動監視(Dependabot + npm audit)| P2 | おすすめ度 ★★ | 推奨モデル: Sonnet
+
+- 背景: 依存パッケージの脆弱性を検知する仕組みがない(現に npm install 時に moderate 2件が放置されている)。サプライチェーンは R-01 の入口
+- [ ] `.github/dependabot.yml`: npm(ルート+infra)と github-actions を週次でチェック、PR は少数にグループ化
+- [ ] CI に `npm audit --audit-level=high` ステップを追加(high 以上で fail。moderate では落とさない: 個人開発で警報疲れを起こさない)
+- [ ] 現在の audit 結果を確認し、修正可能なものは `npm audit fix`(breaking しない範囲)で解消
+- [ ] npm test / lint / build green
+- ★★の理由: 一度入れれば恒久的に効く「仕組みによる防御」。設定ファイル中心で Sonnet 向き
+
+### T34. 本番の定期ヘルスチェック(合成監視)| P2 | おすすめ度 ★ | 推奨モデル: Sonnet
+
+- 背景: 現在の監視(T14)はエラー発生時のみ反応する。サイトが「静かに落ちている」(CloudFront 設定ミス・証明書切れ等)は誰も気づけない
+- [ ] `.github/workflows/synthetic-check.yml`: cron(例: 6時間ごと)で `npm run smoke:prod` を実行し、失敗時のみ GitHub Issue を自動起票(重複起票しない: 既存 open Issue があればスキップ)
+- [ ] Issue の文言はランブックへのリンク付き(初動を迷わせない)
+- [ ] 手動実行(workflow_dispatch)も可能に
+- [ ] npm test / lint / build green
+- ★の理由: あると安心だが、実ユーザーが少ない現段階では優先度は相対的に低い。ITIL 可用性管理の仕上げとして
+
 ## 第5バッチ(2026-07-10 立案)— **全6タスク完了**
 
 完了: T23 `95cfb76` / T24 `9efaa81` / T25 `128a769` / T26 `d8a8f6c` / T21 `186b4aa`
