@@ -1,4 +1,4 @@
-import type { CareLog, CareTask, EnergyLevel, User } from "@/lib/types";
+import type { CareLog, CareTask, DailyEnergy, EnergyLevel, User } from "@/lib/types";
 import { getTodayDate } from "@/lib/date";
 
 // 後方互換のため再エクスポート。新しい参照は lib/date.ts を直接使う。
@@ -9,13 +9,18 @@ const STORAGE_KEY = "carequest-state-v1";
 // スキーマバージョン。保存データの構造を変えたら上げ、migration を追加する。
 // このアプリでは localStorage が唯一の保存先なので、破損・旧構造でも
 // 「健全なフィールドは必ず残す」ことを最優先にする。
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 export interface CareStorageState {
   user: User;
   logs: CareLog[];
   note: string;
   customTasks: CareTask[];
+  // v3: エネルギーレベルの日別履歴。相談窓口の導線(US-502)に使う。
+  energyHistory: DailyEnergy[];
+  // v3: 相談窓口カードを最後に表示した日(YYYY-MM-DD)。空文字は未表示。
+  //     表示を数日に1回までに絞るための throttle。
+  supportNudgeLastShown: string;
 }
 
 // 保存フォーマット。version を持つ以外は CareStorageState と同じ。
@@ -37,7 +42,14 @@ export function createInitialUser(): User {
 }
 
 function createInitialState(): CareStorageState {
-  return { user: createInitialUser(), logs: [], note: "", customTasks: [] };
+  return {
+    user: createInitialUser(),
+    logs: [],
+    note: "",
+    customTasks: [],
+    energyHistory: [],
+    supportNudgeLastShown: "",
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -54,6 +66,14 @@ const migrations: Record<number, (raw: RawRecord) => RawRecord> = {
   // v1(version フィールドなし)→ v2: version を付与するだけ。
   // 既存フィールドは温存し、破壊的変更はしない。
   1: (raw) => ({ ...raw, version: 2 }),
+  // v2 → v3: エネルギー履歴と相談窓口カードの表示履歴フィールドを追加する。
+  // 既存フィールドは温存。実際の値の検証は sanitize が担う。
+  2: (raw) => ({
+    energyHistory: [],
+    supportNudgeLastShown: "",
+    ...raw,
+    version: 3,
+  }),
 };
 
 function detectVersion(raw: RawRecord): number {
@@ -166,6 +186,14 @@ function sanitizeCustomTask(value: unknown): CareTask | null {
   };
 }
 
+function sanitizeDailyEnergy(value: unknown): DailyEnergy | null {
+  if (!isRecord(value)) return null;
+  // date と energyLevel の両方が妥当でなければ、記録として意味を持たないので除外。
+  if (!isDateString(value.date)) return null;
+  if (!isEnergyLevel(value.energyLevel)) return null;
+  return { date: value.date, energyLevel: value.energyLevel };
+}
+
 function sanitizeState(raw: RawRecord): SanitizeResult {
   const report = { recovered: false };
 
@@ -209,10 +237,33 @@ function sanitizeState(raw: RawRecord): SanitizeResult {
     report.recovered = true;
   }
 
+  // energyHistory: logs と同じ方針。不正な要素だけ除外し、健全な日は残す。
+  const energyHistory: DailyEnergy[] = [];
+  if (Array.isArray(raw.energyHistory)) {
+    for (const entry of raw.energyHistory) {
+      const day = sanitizeDailyEnergy(entry);
+      if (day) {
+        energyHistory.push(day);
+      } else {
+        report.recovered = true;
+      }
+    }
+  } else if (raw.energyHistory !== undefined) {
+    report.recovered = true;
+  }
+
+  // supportNudgeLastShown: 日付文字列でなければ空文字("未表示")に救済。
+  let supportNudgeLastShown = "";
+  if (isDateString(raw.supportNudgeLastShown)) {
+    supportNudgeLastShown = raw.supportNudgeLastShown;
+  } else if (raw.supportNudgeLastShown !== undefined && raw.supportNudgeLastShown !== "") {
+    report.recovered = true;
+  }
+
   const user = sanitizeUser(raw.user, report);
 
   return {
-    state: { user, logs, note, customTasks },
+    state: { user, logs, note, customTasks, energyHistory, supportNudgeLastShown },
     recovered: report.recovered,
   };
 }

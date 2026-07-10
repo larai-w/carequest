@@ -92,6 +92,8 @@ describe("loadCareState (window モックあり)", () => {
       customTasks: [
         { id: "custom-1", title: "カスタムタスク", points: 10, description: "説明" },
       ],
+      energyHistory: [{ date: "2024-03-15", energyLevel: "energetic" }],
+      supportNudgeLastShown: "",
     };
     mockLocalStorage.setItem("carequest-state-v1", JSON.stringify(saved));
 
@@ -101,6 +103,7 @@ describe("loadCareState (window モックあり)", () => {
     expect(state.logs.length).toBe(1);
     expect(state.note).toBe("今日のメモ");
     expect(state.customTasks.length).toBe(1);
+    expect(state.energyHistory).toEqual([{ date: "2024-03-15", energyLevel: "energetic" }]);
   });
 
   it("後方互換: customTasks キーが欠落した旧形式 JSON でも空配列にフォールバック", async () => {
@@ -294,6 +297,8 @@ describe("loadCareState (window モックあり)", () => {
       logs: [validLog({ id: "rt-1" })],
       note: "往復メモ",
       customTasks: [{ id: "ct-1", title: "自作タスク", points: 12, description: "説明" }],
+      energyHistory: [{ date: "2024-03-15", energyLevel: "low" as const }],
+      supportNudgeLastShown: "2024-03-14",
     };
 
     saveCareState(original);
@@ -312,16 +317,78 @@ describe("loadCareState (window モックあり)", () => {
 
   it("完全に健全なデータでは recovered=false", async () => {
     const data = {
-      version: 2,
+      version: 3,
       user: { name: "健全", energyLevel: "normal" },
       logs: [validLog()],
       note: "ok",
       customTasks: [],
+      energyHistory: [],
+      supportNudgeLastShown: "",
     };
     mockLocalStorage.setItem("carequest-state-v1", JSON.stringify(data));
 
     const { loadCareStateWithReport } = await import("@/lib/storage");
     const { recovered } = loadCareStateWithReport();
     expect(recovered).toBe(false);
+  });
+
+  // -------------------------------------------------------------------------
+  // T23: スキーマ v3(エネルギー履歴 + 相談窓口カードの表示履歴)
+  // -------------------------------------------------------------------------
+
+  it("v2 データを v3 へ移行し、新フィールドが空で補完される(救済ではない)", async () => {
+    const v2data = {
+      version: 2,
+      user: { name: "移行ユーザー" },
+      logs: [validLog()],
+      note: "メモ",
+      customTasks: [],
+      // energyHistory / supportNudgeLastShown なし
+    };
+    mockLocalStorage.setItem("carequest-state-v1", JSON.stringify(v2data));
+
+    const { loadCareStateWithReport, saveCareState, CURRENT_SCHEMA_VERSION } = await import(
+      "@/lib/storage"
+    );
+    const { state, recovered } = loadCareStateWithReport();
+
+    // フィールド追加だけの移行は救済ではない。既存データは温存される。
+    expect(recovered).toBe(false);
+    expect(state.user.name).toBe("移行ユーザー");
+    expect(state.logs.length).toBe(1);
+    expect(state.energyHistory).toEqual([]);
+    expect(state.supportNudgeLastShown).toBe("");
+
+    saveCareState(state);
+    const persisted = JSON.parse(mockLocalStorage.getItem("carequest-state-v1")!);
+    expect(persisted.version).toBe(CURRENT_SCHEMA_VERSION);
+    expect(CURRENT_SCHEMA_VERSION).toBe(3);
+  });
+
+  it("energyHistory 内の不正要素だけ除外し、健全な日は残す", async () => {
+    const data = {
+      version: 3,
+      user: { name: "太郎" },
+      logs: [],
+      note: "",
+      customTasks: [],
+      energyHistory: [
+        { date: "2024-03-15", energyLevel: "low" },
+        { date: "2024/03/14", energyLevel: "low" }, // 日付形式不正 → 除外
+        { date: "2024-03-13", energyLevel: "bad" }, // energyLevel 不正 → 除外
+        { date: "2024-03-12", energyLevel: "normal" },
+        "not-an-object", // → 除外
+      ],
+      supportNudgeLastShown: "not-a-date", // 日付でない → "" に救済
+    };
+    mockLocalStorage.setItem("carequest-state-v1", JSON.stringify(data));
+
+    const { loadCareStateWithReport } = await import("@/lib/storage");
+    const { state, recovered } = loadCareStateWithReport();
+
+    expect(recovered).toBe(true);
+    expect(state.energyHistory.map((e) => e.date)).toEqual(["2024-03-15", "2024-03-12"]);
+    expect(state.supportNudgeLastShown).toBe("");
+    expect(state.user.name).toBe("太郎");
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Layout from "@/components/Layout";
 import AuthPanel from "@/components/AuthPanel";
@@ -8,10 +8,12 @@ import EnergySelector from "@/components/EnergySelector";
 import EncouragementCard from "@/components/EncouragementCard";
 import StatCard from "@/components/StatCard";
 import RestModeCard from "@/components/RestModeCard";
+import SupportNudgeCard from "@/components/SupportNudgeCard";
 import { getEncouragementMessage } from "@/lib/messages";
 import { loadCareState, loadCareStateWithReport, saveCareState } from "@/lib/storage";
+import { recordDailyEnergy, shouldShowSupportNudge } from "@/lib/support";
 import { getTodayDate } from "@/lib/date";
-import type { CareLog, EnergyLevel } from "@/lib/types";
+import type { CareLog, DailyEnergy, EnergyLevel } from "@/lib/types";
 
 interface HomeViewState {
   energyLevel: EnergyLevel;
@@ -23,6 +25,12 @@ interface HomeViewState {
   todayLogs: CareLog[];
   justExitedRestMode: boolean;
   dataRecovered: boolean;
+  energyHistory: DailyEnergy[];
+  // 相談窓口カードの throttle 判定に使う「読み込み時点の」最終表示日。
+  // セッション中は更新しない。表示中に今日へ書き換えるとカードが即座に
+  // 消えてしまうため、スナップショットとして固定する。
+  supportNudgeLastShownAtLoad: string;
+  supportNudgeDismissed: boolean;
 }
 
 function loadHomeViewState(): HomeViewState {
@@ -39,6 +47,9 @@ function loadHomeViewState(): HomeViewState {
     todayLogs,
     justExitedRestMode: false,
     dataRecovered: recovered,
+    energyHistory: state.energyHistory,
+    supportNudgeLastShownAtLoad: state.supportNudgeLastShown,
+    supportNudgeDismissed: false,
   };
 }
 
@@ -54,10 +65,40 @@ export default function HomePage() {
     todayLogs,
     justExitedRestMode,
     dataRecovered,
+    energyHistory,
+    supportNudgeLastShownAtLoad,
+    supportNudgeDismissed,
   } = viewState;
 
   const dismissRecoveryNotice = useCallback(() => {
     setViewState((current) => ({ ...current, dataRecovered: false }));
+  }, []);
+
+  // 連続 low + throttle を満たすときだけ相談窓口カードを出す。
+  const showSupportNudge = useMemo(
+    () =>
+      !supportNudgeDismissed &&
+      shouldShowSupportNudge(
+        { energyHistory, supportNudgeLastShown: supportNudgeLastShownAtLoad },
+        getTodayDate(),
+      ),
+    [supportNudgeDismissed, energyHistory, supportNudgeLastShownAtLoad],
+  );
+
+  // カードを表示したら「最終表示日=今日」を保存し、数日は再表示しない。
+  // 保存しても supportNudgeLastShownAtLoad(スナップショット)は変えないので、
+  // このセッションの表示は消えない。1度だけ保存する。
+  const nudgePersistedRef = useRef(false);
+  useEffect(() => {
+    if (showSupportNudge && !nudgePersistedRef.current) {
+      nudgePersistedRef.current = true;
+      const state = loadCareState();
+      saveCareState({ ...state, supportNudgeLastShown: getTodayDate() });
+    }
+  }, [showSupportNudge]);
+
+  const dismissSupportNudge = useCallback(() => {
+    setViewState((current) => ({ ...current, supportNudgeDismissed: true }));
   }, []);
 
   const message = useMemo(
@@ -68,15 +109,24 @@ export default function HomePage() {
   const handleEnergyChange = useCallback(
     (value: EnergyLevel) => {
       const state = loadCareState();
-      setViewState((current) => ({ ...current, energyLevel: value }));
+      const today = getTodayDate();
+      // 今日のエネルギーレベルを日別履歴に記録する(同日は上書き)。
+      // これが「low が続いたら相談窓口をそっと出す」判定の元データになる。
+      const nextEnergyHistory = recordDailyEnergy(state.energyHistory, today, value);
+      setViewState((current) => ({
+        ...current,
+        energyLevel: value,
+        energyHistory: nextEnergyHistory,
+      }));
       saveCareState({
         ...state,
         user: {
           ...state.user,
           energyLevel: value,
           todayPoints,
-          lastActiveDate: getTodayDate(),
+          lastActiveDate: today,
         },
+        energyHistory: nextEnergyHistory,
       });
     },
     [todayPoints],
@@ -155,6 +205,8 @@ export default function HomePage() {
             </p>
           </section>
         )}
+
+        {showSupportNudge && <SupportNudgeCard onDismiss={dismissSupportNudge} />}
 
         <section className="rounded-[28px] border border-amber-100 bg-white/80 p-4 shadow-sm">
           <p className="text-sm text-stone-500">今日の自分のポイント</p>
