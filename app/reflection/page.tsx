@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Layout from "@/components/Layout";
 import EncouragementCard from "@/components/EncouragementCard";
 import { loadCareState, saveCareState } from "@/lib/storage";
@@ -8,6 +8,7 @@ import { getTodayDate } from "@/lib/date";
 import { getRecentDaySummaries, type RecentDaySummary } from "@/lib/stats";
 import { getTodaySummaryBody } from "@/lib/messages";
 import { buildExportPayload, downloadAsJson } from "@/lib/export";
+import { parseAndMergeImport } from "@/lib/import";
 import type { CareLog } from "@/lib/types";
 
 interface ReflectionViewState {
@@ -31,6 +32,36 @@ function loadReflectionViewState(): ReflectionViewState {
 export default function ReflectionPage() {
   const [viewState, setViewState] = useState<ReflectionViewState>(() => loadReflectionViewState());
   const { logs, recentDays, note, goodThings } = viewState;
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importMessage, setImportMessage] = useState("");
+
+  const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    // 同じファイルを続けて選べるよう、input は毎回リセットする。
+    event.target.value = "";
+    if (!file) {
+      return;
+    }
+
+    let text: string;
+    try {
+      text = await file.text();
+    } catch {
+      setImportMessage("ファイルを読み込めませんでした。もう一度お試しください。");
+      return;
+    }
+
+    const result = parseAndMergeImport(text, loadCareState());
+    if (!result.ok || !result.state) {
+      setImportMessage(result.message);
+      return;
+    }
+
+    saveCareState(result.state);
+    setViewState(loadReflectionViewState());
+    setImportMessage(result.message);
+  };
 
   const goodThingOptions = [
     "小さな介護ができた",
@@ -162,13 +193,37 @@ export default function ReflectionPage() {
           <p className="mt-1 text-xs leading-5 text-stone-500">
             このファイルはあなたの端末に保存されるだけで、どこにも送信されません。
           </p>
-          <button
-            type="button"
-            onClick={() => downloadAsJson(buildExportPayload())}
-            className="mt-3 rounded-full bg-stone-100 px-4 py-2 text-sm text-stone-700 hover:bg-stone-200 active:bg-stone-300"
-          >
-            自分の記録を保存する（JSON）
-          </button>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => downloadAsJson(buildExportPayload())}
+              className="rounded-full bg-stone-100 px-4 py-2 text-sm text-stone-700 hover:bg-stone-200 active:bg-stone-300"
+            >
+              自分の記録を保存する（JSON）
+            </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="rounded-full bg-stone-100 px-4 py-2 text-sm text-stone-700 hover:bg-stone-200 active:bg-stone-300"
+            >
+              記録を読み込む
+            </button>
+          </div>
+          <p className="mt-2 text-xs leading-5 text-stone-500">
+            別の端末で書き出したファイルを選ぶと、今ある記録に足す形で読み込みます。今の記録が消えることはありません。
+          </p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            onChange={handleImportFile}
+            className="hidden"
+          />
+          {importMessage ? (
+            <p className="mt-3 rounded-2xl bg-amber-50 px-3 py-3 text-sm leading-6 text-stone-700">
+              {importMessage}
+            </p>
+          ) : null}
         </section>
       </div>
     </Layout>
