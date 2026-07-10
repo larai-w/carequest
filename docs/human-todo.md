@@ -43,10 +43,11 @@ AI エージェントでは代行できない、あなたにしかできない�
   - **注意**: ロググループ `/aws/lambda/CareQuestStack-...` が既に存在すると作成エラーになる可能性。`aws logs describe-log-groups --log-group-name-prefix /aws/lambda/CareQuestStack` で事前確認し、あれば手動削除してから deploy
   - deploy 後 `npm run smoke:backend` で green を確認
 
-## T27 デプロイ(セキュリティ修正・コードは準備済み・2026-07-11)
+## T27 + T29 デプロイ(セキュリティ修正・スロットリング・PITR・コードは準備済み・2026-07-11)
 
-- [ ] **Lambda のセキュリティ修正をデプロイ**(T29 のスロットリング変更とまとめて1回で可): `cd infra && npx cdk diff` → `npx cdk deploy`
-  - 修正内容: クロステナント書き込み脆弱性(ボディの pk でパーティション指定が可能だった)+ ID トークンの CloudWatch Logs 平文出力
+- [ ] **Lambda のセキュリティ修正 + API Gateway スロットリング + DynamoDB PITR をまとめてデプロイ**: `cd infra && npx cdk diff` → `npx cdk deploy`
+  - T27 修正内容: クロステナント書き込み脆弱性(ボディの pk でパーティション指定が可能だった)+ ID トークンの CloudWatch Logs 平文出力
+  - T29 追加内容: API Gateway ステージにスロットリング(10 rps / バースト 20)設定 + DynamoDB PITR 有効化
   - デプロイまで本番の脆弱性は残ったままなので、**T6/T14 のデプロイと同時に早めの実施を推奨**
   - デプロイ後 `npm run smoke:backend` で green を確認
 

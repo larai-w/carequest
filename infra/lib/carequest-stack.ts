@@ -51,6 +51,11 @@ export class CareQuestStack extends cdk.Stack {
       sortKey: { name: 'sk', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
+      // T29: データ喪失リスク(R-02)軽減。非推奨の pointInTimeRecovery(boolean) ではなく
+      // pointInTimeRecoverySpecification を使用(CDK 推奨の新 API)
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: true,
+      },
     });
 
     // Lambda コードは infra/lambda/entries/ に切り出し済み。
@@ -83,6 +88,11 @@ export class CareQuestStack extends cdk.Stack {
       restApiName: 'CareQuest API',
       deployOptions: {
         stageName: 'dev',
+        // T29: 課金攻撃リスク(R-05)軽減。個人アプリの想定スループットに合わせた
+        // 緩やかなスロットリング(10 rps / バースト 20)。API キーなしで
+        // アカウント全体の上限(10,000 rps)に達することを防ぐ防波堤
+        throttlingRateLimit: 10,
+        throttlingBurstLimit: 20,
       },
       defaultCorsPreflightOptions: {
         allowOrigins: ALLOWED_ORIGINS,
