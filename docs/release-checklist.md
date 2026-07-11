@@ -6,7 +6,7 @@ Last updated: 2026-07-10 JST
 
 - デプロイ手順・AWS 構成: `docs/deploy.md`
 - 人間がやること・リリース判断: `docs/human-todo.md`
-- 本番障害対応: `docs/runbook.md`（T14 で別途作成）
+- 本番障害対応: `docs/runbook.md`
 
 ---
 
@@ -93,6 +93,6 @@ ITIL 4「変更有効化(Change enablement)」を 1 人+AI 体制に合わせて
 |---|---|
 | デプロイ手順・AWS 構成・IAM・CloudFront | `docs/deploy.md` |
 | 人間がやること・承認ポイント | `docs/human-todo.md` |
-| 本番障害の検知・対応手順 | `docs/runbook.md`（T14 で別途作成） |
+| 本番障害の検知・対応手順 | `docs/runbook.md` |
 | タスク管理・ITIL/PMP 方針 | `docs/project-management.md` |
 | 役割分担（プランナー/ワーカー/人間） | `.claude/skills/carequest-delegate/SKILL.md` |

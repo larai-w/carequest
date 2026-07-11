@@ -14,7 +14,7 @@ This document defines how to manage Care Quest with GitHub Issues and GitHub Pro
 | --- | --- |
 | 価値の共創(Focus on value) | 価値 =「介護者が今日を認められること」。頑張り量の最大化ではない(docs/design-principles.md) |
 | 変更有効化(Change enablement) | 標準変更(文言・タスクデータ)= プランナー承認で完結 / 通常変更(機能・インフラ)= 人間承認 / 緊急変更 = 手順書に従う。詳細は T15 で `docs/release-checklist.md` に文書化 |
-| リリース管理 | development→main のチェックリスト運用。SW の `VERSION` 上げを含む |
+| リリース管理 | development→main のチェックリスト運用。SW の `VERSION` は `npm run build` postbuild で自動注入(手動変更不要) |
 | インシデント・問題管理 | CloudWatch アラーム + `docs/runbook.md`(T14)。検知 → runbook → 恒久対策を Issue 化 |
 | 継続的改善 | 各バッチの「実行結果メモ」= 教訓ログ。得た知見は `.claude/skills/` に還元して再発を仕組みで防ぐ |
 | ナレッジ管理 | docs/ と `.claude/skills/` が SSOT。口頭・チャット限りの決定を作らない |

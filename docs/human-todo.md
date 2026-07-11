@@ -59,4 +59,4 @@ AI エージェントでは代行できない、あなたにしかできない�
 ## 運用メモ
 
 - タスクの実装は「Fable が立案 → carequest-worker(Sonnet/Opus)が実装」の体制です。使い方は `.claude/skills/carequest-delegate/SKILL.md` 参照。Claude Code で「次のタスクを進めて」と言えば、この体制で自動的に進みます
-- 次のおすすめタスク5つは `docs/task-list.md` の 2026-07-09 セクション参照
+- 次のおすすめタスクは `docs/task-list.md` の最新バッチを参照

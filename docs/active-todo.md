@@ -265,10 +265,10 @@ npm run smoke:backend
 - [ ] Change destructive development defaults before production data matters:
   - Cognito User Pool `removalPolicy`
   - DynamoDB table `removalPolicy`
-- [ ] Consider moving the inline Lambda code out of `infra/lib/carequest-stack.ts`.
+- [x] Move the inline Lambda code out of `infra/lib/carequest-stack.ts` — 完了(T27: `infra/lambda/entries/index.js` に切り出し済み)
 - [ ] Narrow CORS from `*` to expected origins once production routing is final.
 - [ ] Add CloudWatch log retention.
-- [ ] Add a lightweight backend integration test or scripted smoke test.
+- [x] Add a lightweight backend integration test or scripted smoke test — 完了(T28: Lambda ユニット + CDK assertions テスト追加済み)
 
 ## Automation available now
 
