@@ -37,6 +37,14 @@ cd infra && npm run build && npm run synth
   - ソースの `public/sw.js` は変更しない。手動で VERSION を上げる必要はない
 - HTML は network-first、静的アセットは cache-first。SW 内の URL は basePath が効かないため `/carequest/` を明示
 
+## 認証 SDK(amplify)は遅延読み込みが前提(T45)
+
+- **aws-amplify / @aws-amplify/auth を静的 import しない**。認証系の新規コードは必ず `await import(...)` で「実際に認証機能を使う瞬間」にだけ読み込む(数百KBの SDK を未サインインの大多数の初期バンドルから外すため)
+- `lib/amplify.ts` は副作用 configure ではなく `ensureAmplifyConfigured()`(遅延 configure)を export する。認証を使う直前にこれを await してから `@aws-amplify/auth` を動的 import する
+- 「未サインイン判定のために amplify を読む」矛盾を避ける**二段判定**: `lib/api.ts` の `isSignedIn` は第一段で軽量フラグ(localStorage `carequest-signed-in-v1`)を見て、無ければ amplify を読まず即 false。フラグがある場合のみ第二段で実セッションを検証。フラグと実態が不整合なら安全側(未サインイン)に倒しフラグを掃除する。フラグは AuthPanel のサインイン/サインアウトで立て下ろす(`setSignedInFlag`)
+- AuthPanel はマウント時に SDK を読まない(フラグだけ見て初期表示を確定)。実セッション確認は「状態確認」操作時に動的 import
+- テスト(`lib/__tests__/api.test.ts`)では `vi.mock("@/lib/amplify")` が `ensureAmplifyConfigured` を返すこと、二段判定の第一段(フラグなし→amplify を読まない)を必ず検証する
+
 ## 本番・AWS の制約
 
 - 公開 URL: `https://veai.jp/carequest/`(S3 `veai-jp-toc-web` の `carequest/` プレフィックス、CloudFront `E32Z6UIZTZD6DE`)

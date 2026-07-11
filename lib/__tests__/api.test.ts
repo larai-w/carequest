@@ -3,11 +3,37 @@ import { fetchAuthSession } from "@aws-amplify/auth";
 
 // Amplify の初期化と認証モジュールをモックする。
 // テスト環境ではブラウザ API も Cognito も利用できないため。
-vi.mock("@/lib/amplify", () => ({}));
+// T45 で lib/amplify は副作用 configure から ensureAmplifyConfigured(動的 import 前提)に変わった。
+vi.mock("@/lib/amplify", () => ({
+  ensureAmplifyConfigured: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock("@aws-amplify/auth", () => ({
   fetchAuthSession: vi.fn().mockResolvedValue({ tokens: undefined }),
   getCurrentUser: vi.fn().mockRejectedValue(new Error("not authenticated")),
 }));
+
+// SIGNED_IN_FLAG_KEY と揃える(lib/api の軽量フラグの localStorage キー)。
+const SIGNED_IN_FLAG_KEY = "carequest-signed-in-v1";
+
+// localStorage の簡易モック。二段判定の第一段(フラグ)を制御するために使う。
+function mockLocalStorage(flag: string | null) {
+  const store = new Map<string, string>();
+  if (flag !== null) {
+    store.set(SIGNED_IN_FLAG_KEY, flag);
+  }
+  vi.stubGlobal("window", {
+    localStorage: {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        store.set(key, value);
+      },
+      removeItem: (key: string) => {
+        store.delete(key);
+      },
+    },
+  });
+  return store;
+}
 
 // グローバル fetch をモックする関数
 function mockFetch(body: unknown, ok = true) {
@@ -174,14 +200,29 @@ describe("fetchCareEntries", () => {
   });
 });
 
-// isSignedIn のテスト
-// fetchAuthSession は vi.mock でモック済み。各テストで vi.mocked でオーバーライドする。
+// isSignedIn のテスト(T45: 二段判定)
+// 第一段: 軽量フラグ(localStorage)。第二段: amplify 動的 import + fetchAuthSession。
 describe("isSignedIn", () => {
   beforeEach(() => {
     vi.resetModules();
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
   });
 
-  it("有効なトークンがある場合は true を返す", async () => {
+  it("フラグが無ければ amplify を一切読み込まず即 false を返す", async () => {
+    mockLocalStorage(null); // フラグなし
+    const amplify = await import("@/lib/amplify");
+
+    const { isSignedIn } = await import("@/lib/api");
+    await expect(isSignedIn()).resolves.toBe(false);
+
+    // 第一段で確定 → amplify も fetchAuthSession も呼ばれていないこと
+    expect(vi.mocked(amplify.ensureAmplifyConfigured)).not.toHaveBeenCalled();
+    expect(vi.mocked(fetchAuthSession)).not.toHaveBeenCalled();
+  });
+
+  it("フラグがあり有効なトークンがある場合は true を返す", async () => {
+    mockLocalStorage("1"); // フラグあり → 第二段へ
     // idToken が存在するセッションを返す
     vi.mocked(fetchAuthSession).mockResolvedValueOnce({
       tokens: {
@@ -195,9 +236,11 @@ describe("isSignedIn", () => {
 
     const { isSignedIn } = await import("@/lib/api");
     await expect(isSignedIn()).resolves.toBe(true);
+    expect(vi.mocked(fetchAuthSession)).toHaveBeenCalled();
   });
 
-  it("トークンが undefined の場合は false を返す(未サインイン)", async () => {
+  it("フラグはあるがトークンが undefined の場合は false を返し、フラグを掃除する", async () => {
+    const store = mockLocalStorage("1");
     vi.mocked(fetchAuthSession).mockResolvedValueOnce({
       tokens: undefined,
       credentials: undefined,
@@ -207,9 +250,12 @@ describe("isSignedIn", () => {
 
     const { isSignedIn } = await import("@/lib/api");
     await expect(isSignedIn()).resolves.toBe(false);
+    // 不整合フラグが掃除されていること
+    expect(store.has(SIGNED_IN_FLAG_KEY)).toBe(false);
   });
 
-  it("idToken が存在しない場合は false を返す", async () => {
+  it("フラグはあるが idToken が存在しない場合は false を返す", async () => {
+    mockLocalStorage("1");
     vi.mocked(fetchAuthSession).mockResolvedValueOnce({
       tokens: {
         idToken: undefined,
@@ -224,19 +270,74 @@ describe("isSignedIn", () => {
     await expect(isSignedIn()).resolves.toBe(false);
   });
 
-  it("fetchAuthSession が例外を投げた場合は安全側(false)に倒れる", async () => {
+  it("フラグはあるが fetchAuthSession が例外を投げた場合は安全側(false)に倒れ、フラグを掃除する", async () => {
     // ネットワーク障害・セッション切れ・設定なし等を想定
+    const store = mockLocalStorage("1");
     vi.mocked(fetchAuthSession).mockRejectedValueOnce(new Error("Network error"));
 
     const { isSignedIn } = await import("@/lib/api");
     await expect(isSignedIn()).resolves.toBe(false);
+    expect(store.has(SIGNED_IN_FLAG_KEY)).toBe(false);
   });
 
   it("セッション切れ(TokenExpiredException 相当)でも安全側に倒れる", async () => {
+    mockLocalStorage("1");
     const expiredError = new Error("TokenExpiredException: Token has expired");
     vi.mocked(fetchAuthSession).mockRejectedValueOnce(expiredError);
 
     const { isSignedIn } = await import("@/lib/api");
     await expect(isSignedIn()).resolves.toBe(false);
+  });
+});
+
+// syncCareLog のテスト(T45: 未サインインフラグなしなら amplify を読まずスキップ)
+describe("syncCareLog", () => {
+  const sampleLog = {
+    id: "log-1",
+    taskId: "medicine",
+    title: "薬を渡した",
+    points: 5,
+    completedAt: "2024-03-15T10:00:00",
+    date: "2024-03-15",
+    energyLevel: "normal" as const,
+  };
+
+  beforeEach(() => {
+    vi.resetModules();
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "https://example.com/api");
+  });
+
+  it("フラグが無ければ amplify を読まずに { skipped: true } を返す", async () => {
+    mockLocalStorage(null); // 未サインイン
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const amplify = await import("@/lib/amplify");
+
+    const { syncCareLog } = await import("@/lib/api");
+    await expect(syncCareLog(sampleLog)).resolves.toEqual({ skipped: true });
+
+    // 認証 SDK も同期 fetch も呼ばれない
+    expect(vi.mocked(amplify.ensureAmplifyConfigured)).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("フラグがあり有効セッションなら同期を実行し成功を返す", async () => {
+    // isSignedIn(第二段)と getAuthHeaders 用にトークンを返す
+    mockLocalStorage("1");
+    vi.mocked(fetchAuthSession).mockResolvedValue({
+      tokens: {
+        idToken: { toString: () => "valid-token" } as unknown as NonNullable<Awaited<ReturnType<typeof fetchAuthSession>>["tokens"]>["idToken"],
+        accessToken: undefined as unknown as NonNullable<Awaited<ReturnType<typeof fetchAuthSession>>["tokens"]>["accessToken"],
+      },
+      credentials: undefined,
+      identityId: undefined,
+      userSub: undefined,
+    });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
+
+    const { syncCareLog } = await import("@/lib/api");
+    await expect(syncCareLog(sampleLog)).resolves.toEqual({ skipped: false, ok: true });
   });
 });
