@@ -25,6 +25,7 @@ function makeState(overrides: Partial<CareStorageState> = {}): CareStorageState 
     energyHistory: [],
     supportNudgeLastShown: "",
     onboardingShown: false,
+    goodThingsHistory: [],
     ...overrides,
   };
 }
@@ -169,5 +170,45 @@ describe("parseAndMergeImport", () => {
     expect(result.ok).toBe(true);
     expect(result.importedLogCount).toBe(0);
     expect(result.message).toContain("新しく増えた記録はありません");
+  });
+
+  // -------------------------------------------------------------------------
+  // T39: goodThingsHistory のインポートマージ
+  // -------------------------------------------------------------------------
+
+  it("goodThingsHistory は日付で重複排除し、既存優先でマージする", () => {
+    const existing = makeState({
+      goodThingsHistory: [
+        { date: "2024-03-15", items: ["小さな介護ができた"] },
+      ],
+    });
+    const file = makeExportFile({
+      goodThingsHistory: [
+        { date: "2024-03-15", items: ["自分の休憩ができた"] }, // 同日 → 既存優先
+        { date: "2024-03-14", items: ["家族と安心できた"] },   // 別日 → 追加
+      ],
+    });
+    const result = parseAndMergeImport(file, existing);
+
+    expect(result.ok).toBe(true);
+    // 2 日分になる
+    expect(result.state!.goodThingsHistory).toHaveLength(2);
+    // 2024-03-15 は既存が優先される
+    const mar15 = result.state!.goodThingsHistory.find((g) => g.date === "2024-03-15");
+    expect(mar15!.items).toEqual(["小さな介護ができた"]);
+    // 2024-03-14 は新たに追加される
+    const mar14 = result.state!.goodThingsHistory.find((g) => g.date === "2024-03-14");
+    expect(mar14!.items).toEqual(["家族と安心できた"]);
+  });
+
+  it("goodThingsHistory が空のインポートでは既存が維持される", () => {
+    const existing = makeState({
+      goodThingsHistory: [{ date: "2024-03-15", items: ["小さな介護ができた"] }],
+    });
+    const file = makeExportFile({ goodThingsHistory: [] });
+    const result = parseAndMergeImport(file, existing);
+
+    expect(result.ok).toBe(true);
+    expect(result.state!.goodThingsHistory).toEqual([{ date: "2024-03-15", items: ["小さな介護ができた"] }]);
   });
 });

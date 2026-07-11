@@ -25,6 +25,13 @@ export interface DailyEnergy {
   energyLevel: EnergyLevel;
 }
 
+// 「今日のよかったこと」の日別記録(v5 で追加)。
+// date ごとに選択された項目リストを保持し、翌日には当日分だけがまっさらになる。
+export interface DailyGoodThings {
+  date: string; // YYYY-MM-DD
+  items: string[]; // 選択されたよかったこと文言の配列
+}
+
 export interface CareLog {
   id: string;
   taskId: string;

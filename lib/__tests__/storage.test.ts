@@ -300,6 +300,7 @@ describe("loadCareState (window モックあり)", () => {
       energyHistory: [{ date: "2024-03-15", energyLevel: "low" as const }],
       supportNudgeLastShown: "2024-03-14",
       onboardingShown: true,
+      goodThingsHistory: [{ date: "2024-03-15", items: ["小さな介護ができた"] }],
     };
 
     saveCareState(original);
@@ -318,7 +319,7 @@ describe("loadCareState (window モックあり)", () => {
 
   it("完全に健全なデータでは recovered=false", async () => {
     const data = {
-      version: 4,
+      version: 5,
       user: { name: "健全", energyLevel: "normal" },
       logs: [validLog()],
       note: "ok",
@@ -326,6 +327,7 @@ describe("loadCareState (window モックあり)", () => {
       energyHistory: [],
       supportNudgeLastShown: "",
       onboardingShown: true,
+      goodThingsHistory: [],
     };
     mockLocalStorage.setItem("carequest-state-v1", JSON.stringify(data));
 
@@ -409,8 +411,8 @@ describe("loadCareState (window モックあり)", () => {
     saveCareState(state);
     const persisted = JSON.parse(mockLocalStorage.getItem("carequest-state-v1")!);
     expect(persisted.version).toBe(CURRENT_SCHEMA_VERSION);
-    // v3 から始まったデータも最新バージョン(v4)まで引き上げられる。
-    expect(CURRENT_SCHEMA_VERSION).toBe(4);
+    // v3 から始まったデータも最新バージョン(v5)まで引き上げられる。
+    expect(CURRENT_SCHEMA_VERSION).toBe(5);
   });
 
   // -------------------------------------------------------------------------
@@ -444,11 +446,11 @@ describe("loadCareState (window モックあり)", () => {
     saveCareState(state);
     const persisted = JSON.parse(mockLocalStorage.getItem("carequest-state-v1")!);
     expect(persisted.version).toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(4);
+    expect(CURRENT_SCHEMA_VERSION).toBe(5);
   });
 
   it("新規データ(version なし)の onboardingShown は false になる", async () => {
-    // version なし = v1 とみなされる。v1→v2→v3→v4 と migration が進む。
+    // version なし = v1 とみなされる。v1→v2→v3→v4→v5 と migration が進む。
     // v3→v4 は既存ユーザーを true にするが、v1 から始まった場合は
     // v2 migration の後に energyHistory などと共に v3 が付き、
     // v3→v4 で onboardingShown: true が先にセットされる… が
@@ -494,5 +496,74 @@ describe("loadCareState (window モックあり)", () => {
     expect(state.energyHistory.map((e) => e.date)).toEqual(["2024-03-15", "2024-03-12"]);
     expect(state.supportNudgeLastShown).toBe("");
     expect(state.user.name).toBe("太郎");
+  });
+
+  // -------------------------------------------------------------------------
+  // T39: スキーマ v5(「今日のよかったこと」日別履歴)
+  // -------------------------------------------------------------------------
+
+  it("v4 データを v5 へ移行し、goodThingsHistory が空で補完される(救済ではない)", async () => {
+    const v4data = {
+      version: 4,
+      user: { name: "v4ユーザー" },
+      logs: [validLog()],
+      note: "メモ",
+      customTasks: [],
+      energyHistory: [],
+      supportNudgeLastShown: "",
+      onboardingShown: true,
+      // goodThingsHistory なし
+    };
+    mockLocalStorage.setItem("carequest-state-v1", JSON.stringify(v4data));
+
+    const { loadCareStateWithReport, saveCareState, CURRENT_SCHEMA_VERSION } = await import(
+      "@/lib/storage"
+    );
+    const { state, recovered } = loadCareStateWithReport();
+
+    // フィールド追加だけの移行は救済ではない。既存データは温存される。
+    expect(recovered).toBe(false);
+    expect(state.user.name).toBe("v4ユーザー");
+    expect(state.logs.length).toBe(1);
+    expect(state.goodThingsHistory).toEqual([]);
+    // user.goodThings は v5 migration では変換しない(過去データの日付が不明なため)。
+    // 既存の goodThings は user フィールドとして温存される。
+
+    saveCareState(state);
+    const persisted = JSON.parse(mockLocalStorage.getItem("carequest-state-v1")!);
+    expect(persisted.version).toBe(CURRENT_SCHEMA_VERSION);
+    expect(CURRENT_SCHEMA_VERSION).toBe(5);
+  });
+
+  it("goodThingsHistory 内の不正要素だけ除外し、健全な日は残す(要素単位の救済)", async () => {
+    const data = {
+      version: 5,
+      user: { name: "花子" },
+      logs: [],
+      note: "",
+      customTasks: [],
+      energyHistory: [],
+      supportNudgeLastShown: "",
+      onboardingShown: true,
+      goodThingsHistory: [
+        { date: "2024-03-15", items: ["小さな介護ができた", "自分の休憩ができた"] }, // 健全
+        { date: "2024/03/14", items: ["散歩した"] },                                  // date 形式不正 → 除外
+        { date: "2024-03-13", items: "string" },                                       // items が配列でない → 除外
+        { date: "2024-03-12", items: ["散歩した", 42, "読書した"] },                  // 数値要素を除外して救済
+        "not-an-object",                                                                // → 除外
+      ],
+    };
+    mockLocalStorage.setItem("carequest-state-v1", JSON.stringify(data));
+
+    const { loadCareStateWithReport } = await import("@/lib/storage");
+    const { state, recovered } = loadCareStateWithReport();
+
+    expect(recovered).toBe(true);
+    // 健全な 2 日だけ残る(2024-03-13 は除外、2024-03-14 は除外、2024-03-15 と -12 は残る)
+    expect(state.goodThingsHistory.map((g) => g.date)).toEqual(["2024-03-15", "2024-03-12"]);
+    // 数値要素が除かれた 2024-03-12 の items は文字列のみ
+    expect(state.goodThingsHistory[1].items).toEqual(["散歩した", "読書した"]);
+    // 健全な日は内容も保持される
+    expect(state.goodThingsHistory[0].items).toEqual(["小さな介護ができた", "自分の休憩ができた"]);
   });
 });
