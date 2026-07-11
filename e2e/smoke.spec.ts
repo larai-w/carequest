@@ -50,11 +50,12 @@ test("クエストで記録したタスクがリロード後も残る", async ({
 test("ホームから休息モードをオン/オフできる", async ({ page }) => {
   await page.goto(`${BASE}/`);
 
-  // 「今日は無理しない」ボタンでおやすみモードに入る
-  await page.click("button:has-text('今日は無理しない')");
-
-  // おやすみモード画面が表示される
-  await expect(page.locator("text=おやすみモード中")).toBeVisible();
+  // hydration 完了前のクリックはイベントハンドラ未接続で失われることがあるため、
+  // 「クリック → 結果の表示確認」をセットでリトライする(Playwright 標準パターン)。
+  await expect(async () => {
+    await page.click("button:has-text('今日は無理しない')", { timeout: 2000 });
+    await expect(page.locator("text=おやすみモード中")).toBeVisible({ timeout: 2000 });
+  }).toPass({ timeout: 15_000 });
 
   // 「通常モードにもどる」で通常ホームに戻る
   await page.click("button:has-text('通常モードにもどる')");
