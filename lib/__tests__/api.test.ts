@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { fetchAuthSession } from "@aws-amplify/auth";
 
 // Amplify の初期化と認証モジュールをモックする。
 // テスト環境ではブラウザ API も Cognito も利用できないため。
@@ -170,5 +171,72 @@ describe("fetchCareEntries", () => {
 
     const { fetchCareEntries } = await import("@/lib/api");
     await expect(fetchCareEntries()).resolves.toEqual([]);
+  });
+});
+
+// isSignedIn のテスト
+// fetchAuthSession は vi.mock でモック済み。各テストで vi.mocked でオーバーライドする。
+describe("isSignedIn", () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it("有効なトークンがある場合は true を返す", async () => {
+    // idToken が存在するセッションを返す
+    vi.mocked(fetchAuthSession).mockResolvedValueOnce({
+      tokens: {
+        idToken: { toString: () => "valid-token" } as unknown as NonNullable<Awaited<ReturnType<typeof fetchAuthSession>>["tokens"]>["idToken"],
+        accessToken: undefined as unknown as NonNullable<Awaited<ReturnType<typeof fetchAuthSession>>["tokens"]>["accessToken"],
+      },
+      credentials: undefined,
+      identityId: undefined,
+      userSub: undefined,
+    });
+
+    const { isSignedIn } = await import("@/lib/api");
+    await expect(isSignedIn()).resolves.toBe(true);
+  });
+
+  it("トークンが undefined の場合は false を返す(未サインイン)", async () => {
+    vi.mocked(fetchAuthSession).mockResolvedValueOnce({
+      tokens: undefined,
+      credentials: undefined,
+      identityId: undefined,
+      userSub: undefined,
+    });
+
+    const { isSignedIn } = await import("@/lib/api");
+    await expect(isSignedIn()).resolves.toBe(false);
+  });
+
+  it("idToken が存在しない場合は false を返す", async () => {
+    vi.mocked(fetchAuthSession).mockResolvedValueOnce({
+      tokens: {
+        idToken: undefined,
+        accessToken: undefined as unknown as NonNullable<Awaited<ReturnType<typeof fetchAuthSession>>["tokens"]>["accessToken"],
+      },
+      credentials: undefined,
+      identityId: undefined,
+      userSub: undefined,
+    });
+
+    const { isSignedIn } = await import("@/lib/api");
+    await expect(isSignedIn()).resolves.toBe(false);
+  });
+
+  it("fetchAuthSession が例外を投げた場合は安全側(false)に倒れる", async () => {
+    // ネットワーク障害・セッション切れ・設定なし等を想定
+    vi.mocked(fetchAuthSession).mockRejectedValueOnce(new Error("Network error"));
+
+    const { isSignedIn } = await import("@/lib/api");
+    await expect(isSignedIn()).resolves.toBe(false);
+  });
+
+  it("セッション切れ(TokenExpiredException 相当)でも安全側に倒れる", async () => {
+    const expiredError = new Error("TokenExpiredException: Token has expired");
+    vi.mocked(fetchAuthSession).mockRejectedValueOnce(expiredError);
+
+    const { isSignedIn } = await import("@/lib/api");
+    await expect(isSignedIn()).resolves.toBe(false);
   });
 });
