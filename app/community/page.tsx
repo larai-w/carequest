@@ -1,17 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Layout from "@/components/Layout";
 import EncouragementCard from "@/components/EncouragementCard";
 import StatCard from "@/components/StatCard";
 import { careTasks } from "@/lib/tasks";
 import { getCommunityMessage } from "@/lib/messages";
 import { loadCareState } from "@/lib/storage";
+import { useHydratedState } from "@/lib/useHydratedState";
 import { getCommunityStats } from "@/lib/stats";
 import type { CareLog } from "@/lib/types";
 
 export default function CommunityPage() {
-  const [logs] = useState<CareLog[]>(() => loadCareState().logs);
+  // サーバー/クライアント初回描画は空配列で一致させ、マウント後に localStorage から読む。
+  const [logs] = useHydratedState<CareLog[]>([], () => loadCareState().logs);
 
   const stats = useMemo(() => getCommunityStats(logs), [logs]);
   const featuredTask = useMemo(() => {
