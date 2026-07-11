@@ -15,6 +15,7 @@ import { loadCareState, loadCareStateWithReport, saveCareState } from "@/lib/sto
 import { useHydratedState } from "@/lib/useHydratedState";
 import { recordDailyEnergy, shouldShowSupportNudge } from "@/lib/support";
 import { getTodayDate } from "@/lib/date";
+import { removeLog, recalcTodayStats } from "@/lib/logs";
 import type { CareLog, DailyEnergy, EnergyLevel } from "@/lib/types";
 
 interface HomeViewState {
@@ -229,6 +230,38 @@ export default function HomePage() {
     }
   }, [setViewState]);
 
+  const handleDeleteLog = useCallback(
+    (logId: string) => {
+      const state = loadCareState();
+      const nextLogs = removeLog(state.logs, logId);
+      const today = getTodayDate();
+      const { todayPoints: nextTodayPoints, completedCount: nextCompletedCount } =
+        recalcTodayStats(nextLogs, today);
+      const nextTodayLogs = nextLogs.filter((log) => log.date === today);
+
+      setViewState((current) => ({
+        ...current,
+        todayLogs: nextTodayLogs,
+        todayPoints: nextTodayPoints,
+        completedCount: nextCompletedCount,
+        latestTaskTitle: nextTodayLogs.at(-1)?.title ?? "",
+      }));
+
+      const ok = saveCareState({
+        ...state,
+        logs: nextLogs,
+        user: {
+          ...state.user,
+          todayPoints: nextTodayPoints,
+        },
+      });
+      if (!ok) {
+        setViewState((current) => ({ ...current, saveFailed: true }));
+      }
+    },
+    [setViewState],
+  );
+
   if (restMode) {
     return (
       <Layout>
@@ -312,8 +345,17 @@ export default function HomePage() {
           ) : (
             <div className="mt-3 space-y-2">
               {todayLogs.map((log) => (
-                <div key={log.id} className="rounded-2xl bg-stone-50 px-3 py-2 text-sm text-stone-700">
-                  {log.title} <span className="ml-2 text-amber-700">+{log.points}pt</span>
+                <div key={log.id} className="relative flex items-center rounded-2xl bg-stone-50 px-3 py-2 pr-12 text-sm text-stone-700">
+                  <span className="flex-1">{log.title}</span>
+                  <span className="ml-2 text-amber-700">+{log.points}pt</span>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteLog(log.id)}
+                    aria-label={`${log.title}の記録を取り消す`}
+                    className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-stone-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 hover:text-stone-600"
+                  >
+                    ×
+                  </button>
                 </div>
               ))}
             </div>

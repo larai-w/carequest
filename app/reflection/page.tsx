@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import Layout from "@/components/Layout";
 import EncouragementCard from "@/components/EncouragementCard";
 import { loadCareState, saveCareState } from "@/lib/storage";
@@ -10,6 +10,7 @@ import { getRecentDaySummaries, type RecentDaySummary } from "@/lib/stats";
 import { getTodaySummaryBody } from "@/lib/messages";
 import { buildExportPayload, downloadAsJson } from "@/lib/export";
 import { parseAndMergeImport } from "@/lib/import";
+import { removeLog, recalcTodayStats } from "@/lib/logs";
 import type { CareLog } from "@/lib/types";
 
 interface ReflectionViewState {
@@ -17,6 +18,8 @@ interface ReflectionViewState {
   recentDays: RecentDaySummary[];
   note: string;
   goodThings: string[];
+  // 保存失敗の通知を表示するかどうか(T31 の saveFailed 通知パターン)。
+  saveFailed: boolean;
 }
 
 // サーバー/クライアント初回描画で使う既定状態。localStorage を読まない。
@@ -25,6 +28,7 @@ const serverReflectionViewState: ReflectionViewState = {
   recentDays: [],
   note: "",
   goodThings: [],
+  saveFailed: false,
 };
 
 function loadReflectionViewState(): ReflectionViewState {
@@ -35,6 +39,7 @@ function loadReflectionViewState(): ReflectionViewState {
     recentDays: getRecentDaySummaries(state.logs),
     note: state.note,
     goodThings: state.user.goodThings ?? [],
+    saveFailed: false,
   };
 }
 
@@ -43,7 +48,7 @@ export default function ReflectionPage() {
     serverReflectionViewState,
     loadReflectionViewState,
   );
-  const { logs, recentDays, note, goodThings } = viewState;
+  const { logs, recentDays, note, goodThings, saveFailed } = viewState;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importMessage, setImportMessage] = useState("");
@@ -109,9 +114,57 @@ export default function ReflectionPage() {
     });
   };
 
+  const dismissSaveFailedNotice = useCallback(() => {
+    setViewState((current) => ({ ...current, saveFailed: false }));
+  }, [setViewState]);
+
+  const handleDeleteLog = useCallback(
+    (logId: string) => {
+      const state = loadCareState();
+      const nextLogs = removeLog(state.logs, logId);
+      const today = getTodayDate();
+      const { todayPoints: nextTodayPoints } = recalcTodayStats(nextLogs, today);
+      const nextTodayLogs = nextLogs.filter((log) => log.date === today);
+
+      setViewState((current) => ({
+        ...current,
+        logs: nextTodayLogs,
+        recentDays: getRecentDaySummaries(nextLogs),
+      }));
+
+      const ok = saveCareState({
+        ...state,
+        logs: nextLogs,
+        user: {
+          ...state.user,
+          todayPoints: nextTodayPoints,
+        },
+      });
+      if (!ok) {
+        setViewState((current) => ({ ...current, saveFailed: true }));
+      }
+    },
+    [setViewState],
+  );
+
   return (
     <Layout>
       <div className="space-y-4">
+        {saveFailed && (
+          <section className="rounded-[28px] border border-stone-200 bg-stone-50/80 p-4 shadow-sm">
+            <p className="text-sm leading-6 text-stone-600">
+              記録を保存できませんでした。端末の空き容量をご確認ください。今日の記録はこのままご利用いただけます。
+            </p>
+            <button
+              type="button"
+              onClick={dismissSaveFailedNotice}
+              className="mt-3 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+            >
+              わかりました
+            </button>
+          </section>
+        )}
+
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <p className="text-sm text-stone-500">今日やったこと</p>
           <div className="mt-3 space-y-2">
@@ -119,8 +172,17 @@ export default function ReflectionPage() {
               <p className="text-sm text-stone-600">今日の記録はまだありません。小さな一歩でも大丈夫です。</p>
             ) : (
               logs.map((log) => (
-                <div key={log.id} className="rounded-2xl bg-stone-50 px-3 py-3 text-sm text-stone-700">
-                  {log.title} <span className="ml-2 text-amber-700">+{log.points}pt</span>
+                <div key={log.id} className="relative flex items-center rounded-2xl bg-stone-50 px-3 py-3 pr-12 text-sm text-stone-700">
+                  <span className="flex-1">{log.title}</span>
+                  <span className="ml-2 text-amber-700">+{log.points}pt</span>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteLog(log.id)}
+                    aria-label={`${log.title}の記録を取り消す`}
+                    className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-stone-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 hover:text-stone-600"
+                  >
+                    ×
+                  </button>
                 </div>
               ))
             )}
