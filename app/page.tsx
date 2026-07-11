@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import Layout from "@/components/Layout";
 import AuthPanel from "@/components/AuthPanel";
@@ -12,6 +12,7 @@ import RestModeCard from "@/components/RestModeCard";
 import SupportNudgeCard from "@/components/SupportNudgeCard";
 import { getEncouragementMessage } from "@/lib/messages";
 import { loadCareState, loadCareStateWithReport, saveCareState } from "@/lib/storage";
+import { useHydratedState } from "@/lib/useHydratedState";
 import { recordDailyEnergy, shouldShowSupportNudge } from "@/lib/support";
 import { getTodayDate } from "@/lib/date";
 import type { CareLog, DailyEnergy, EnergyLevel } from "@/lib/types";
@@ -37,6 +38,27 @@ interface HomeViewState {
   onboardingShown: boolean;
 }
 
+// サーバー/クライアント初回描画で使う既定状態。localStorage を読まない。
+// 空データでもカードの骨組みがそのまま出る形にして、ちらつきを最小化する。
+const serverHomeViewState: HomeViewState = {
+  energyLevel: "normal",
+  todayPoints: 0,
+  completedCount: 0,
+  profileName: "あなた",
+  latestTaskTitle: "",
+  restMode: false,
+  todayLogs: [],
+  justExitedRestMode: false,
+  dataRecovered: false,
+  saveFailed: false,
+  energyHistory: [],
+  supportNudgeLastShownAtLoad: "",
+  supportNudgeDismissed: false,
+  // 初回描画ではオンボーディングカードを出さない(実データ読み込み後に判定する)。
+  // 未読み込みの一瞬にカードを出してからすぐ消すと、逆にちらついて見えるため。
+  onboardingShown: true,
+};
+
 function loadHomeViewState(): HomeViewState {
   const { state, recovered } = loadCareStateWithReport();
   const todayLogs = state.logs.filter((log) => log.date === getTodayDate());
@@ -60,7 +82,10 @@ function loadHomeViewState(): HomeViewState {
 }
 
 export default function HomePage() {
-  const [viewState, setViewState] = useState<HomeViewState>(() => loadHomeViewState());
+  const [viewState, setViewState] = useHydratedState<HomeViewState>(
+    serverHomeViewState,
+    loadHomeViewState,
+  );
   const {
     energyLevel,
     todayPoints,
@@ -80,11 +105,11 @@ export default function HomePage() {
 
   const dismissRecoveryNotice = useCallback(() => {
     setViewState((current) => ({ ...current, dataRecovered: false }));
-  }, []);
+  }, [setViewState]);
 
   const dismissSaveFailedNotice = useCallback(() => {
     setViewState((current) => ({ ...current, saveFailed: false }));
-  }, []);
+  }, [setViewState]);
 
   // 連続 low + throttle を満たすときだけ相談窓口カードを出す。
   const showSupportNudge = useMemo(
@@ -112,7 +137,7 @@ export default function HomePage() {
 
   const dismissSupportNudge = useCallback(() => {
     setViewState((current) => ({ ...current, supportNudgeDismissed: true }));
-  }, []);
+  }, [setViewState]);
 
   const handleOnboardingStart = useCallback(() => {
     setViewState((current) => ({ ...current, onboardingShown: true }));
@@ -121,7 +146,7 @@ export default function HomePage() {
     if (!ok) {
       setViewState((current) => ({ ...current, saveFailed: true }));
     }
-  }, []);
+  }, [setViewState]);
 
   const message = useMemo(
     () => getEncouragementMessage(energyLevel, todayPoints, completedCount, latestTaskTitle),
@@ -154,7 +179,7 @@ export default function HomePage() {
         setViewState((current) => ({ ...current, saveFailed: true }));
       }
     },
-    [todayPoints],
+    [todayPoints, setViewState],
   );
 
   const handleProfileNameChange = useCallback((value: string) => {
@@ -170,7 +195,7 @@ export default function HomePage() {
     if (!ok) {
       setViewState((current) => ({ ...current, saveFailed: true }));
     }
-  }, []);
+  }, [setViewState]);
 
   const handleEnterRestMode = useCallback(() => {
     setViewState((current) => ({
@@ -186,7 +211,7 @@ export default function HomePage() {
     if (!ok) {
       setViewState((current) => ({ ...current, saveFailed: true }));
     }
-  }, []);
+  }, [setViewState]);
 
   const handleExitRestMode = useCallback(() => {
     setViewState((current) => ({
@@ -202,7 +227,7 @@ export default function HomePage() {
     if (!ok) {
       setViewState((current) => ({ ...current, saveFailed: true }));
     }
-  }, []);
+  }, [setViewState]);
 
   if (restMode) {
     return (

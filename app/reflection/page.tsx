@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import Layout from "@/components/Layout";
 import EncouragementCard from "@/components/EncouragementCard";
 import { loadCareState, saveCareState } from "@/lib/storage";
+import { useHydratedState } from "@/lib/useHydratedState";
 import { getTodayDate } from "@/lib/date";
 import { getRecentDaySummaries, type RecentDaySummary } from "@/lib/stats";
 import { getTodaySummaryBody } from "@/lib/messages";
@@ -18,6 +19,14 @@ interface ReflectionViewState {
   goodThings: string[];
 }
 
+// サーバー/クライアント初回描画で使う既定状態。localStorage を読まない。
+const serverReflectionViewState: ReflectionViewState = {
+  logs: [],
+  recentDays: [],
+  note: "",
+  goodThings: [],
+};
+
 function loadReflectionViewState(): ReflectionViewState {
   const state = loadCareState();
 
@@ -30,7 +39,10 @@ function loadReflectionViewState(): ReflectionViewState {
 }
 
 export default function ReflectionPage() {
-  const [viewState, setViewState] = useState<ReflectionViewState>(() => loadReflectionViewState());
+  const [viewState, setViewState] = useHydratedState<ReflectionViewState>(
+    serverReflectionViewState,
+    loadReflectionViewState,
+  );
   const { logs, recentDays, note, goodThings } = viewState;
 
   const fileInputRef = useRef<HTMLInputElement>(null);

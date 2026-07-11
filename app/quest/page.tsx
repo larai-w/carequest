@@ -7,6 +7,7 @@ import EncouragementCard from "@/components/EncouragementCard";
 import { careTasks } from "@/lib/tasks";
 import { getEncouragementMessage } from "@/lib/messages";
 import { loadCareState, saveCareState } from "@/lib/storage";
+import { useHydratedState } from "@/lib/useHydratedState";
 import { getTodayDate } from "@/lib/date";
 import { syncCareLog } from "@/lib/api";
 import type { CareLog, CareTask, EnergyLevel } from "@/lib/types";
@@ -24,6 +25,16 @@ interface QuestViewState {
   saveFailed: boolean;
 }
 
+// サーバー/クライアント初回描画で使う既定状態。localStorage を読まない。
+const serverQuestViewState: QuestViewState = {
+  logs: [],
+  energyLevel: "normal",
+  todayPoints: 0,
+  restMode: false,
+  customTasks: [],
+  saveFailed: false,
+};
+
 function loadQuestViewState(): QuestViewState {
   const state = loadCareState();
 
@@ -40,7 +51,10 @@ function loadQuestViewState(): QuestViewState {
 }
 
 export default function QuestPage() {
-  const [viewState, setViewState] = useState<QuestViewState>(() => loadQuestViewState());
+  const [viewState, setViewState] = useHydratedState<QuestViewState>(
+    serverQuestViewState,
+    loadQuestViewState,
+  );
   const [message, setMessage] = useState("今日の介護に、ちゃんと意味があります。");
   const [customTaskInput, setCustomTaskInput] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
