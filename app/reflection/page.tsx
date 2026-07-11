@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Layout from "@/components/Layout";
 import EncouragementCard from "@/components/EncouragementCard";
+import BackupReminderCard from "@/components/BackupReminderCard";
 import { loadCareState, saveCareState } from "@/lib/storage";
 import { useHydratedState } from "@/lib/useHydratedState";
 import { getTodayDate } from "@/lib/date";
@@ -11,6 +12,7 @@ import { getTodaySummaryBody } from "@/lib/messages";
 import { buildExportPayload, downloadAsJson } from "@/lib/export";
 import { parseAndMergeImport } from "@/lib/import";
 import { removeLog, recalcTodayStats } from "@/lib/logs";
+import { shouldShowBackupReminder } from "@/lib/backup-reminder";
 import type { CareLog } from "@/lib/types";
 
 interface ReflectionViewState {
@@ -20,6 +22,13 @@ interface ReflectionViewState {
   goodThings: string[];
   // 保存失敗の通知を表示するかどうか(T31 の saveFailed 通知パターン)。
   saveFailed: boolean;
+  // バックアップリマインドカードの throttle 判定に使う「読み込み時点の」値。
+  // app/page.tsx の supportNudgeLastShownAtLoad と同じスナップショット方式。
+  // セッション中はこれを更新しない(表示中に消えないようにするため)。
+  totalLogCount: number;
+  lastExportDateAtLoad: string;
+  exportReminderLastShownAtLoad: string;
+  exportReminderDismissed: boolean;
 }
 
 // サーバー/クライアント初回描画で使う既定状態。localStorage を読まない。
@@ -29,6 +38,10 @@ const serverReflectionViewState: ReflectionViewState = {
   note: "",
   goodThings: [],
   saveFailed: false,
+  totalLogCount: 0,
+  lastExportDateAtLoad: "",
+  exportReminderLastShownAtLoad: "",
+  exportReminderDismissed: false,
 };
 
 /**
@@ -70,6 +83,10 @@ function loadReflectionViewState(): ReflectionViewState {
     note: state.note,
     goodThings: getTodayGoodThings(state.goodThingsHistory, today),
     saveFailed: false,
+    totalLogCount: state.logs.length,
+    lastExportDateAtLoad: state.lastExportDate,
+    exportReminderLastShownAtLoad: state.exportReminderLastShown,
+    exportReminderDismissed: false,
   };
 }
 
@@ -78,7 +95,7 @@ export default function ReflectionPage() {
     serverReflectionViewState,
     loadReflectionViewState,
   );
-  const { logs, recentDays, note, goodThings, saveFailed } = viewState;
+  const { logs, recentDays, note, goodThings, saveFailed, totalLogCount, lastExportDateAtLoad, exportReminderLastShownAtLoad, exportReminderDismissed } = viewState;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importMessage, setImportMessage] = useState("");
@@ -149,6 +166,48 @@ export default function ReflectionPage() {
     setViewState((current) => ({ ...current, saveFailed: false }));
   }, [setViewState]);
 
+  // バックアップリマインドカードを表示すべきかを判定する。
+  // app/page.tsx の showSupportNudge と同じスナップショット方式。
+  const showBackupReminder = useMemo(
+    () =>
+      !exportReminderDismissed &&
+      shouldShowBackupReminder(
+        {
+          logCount: totalLogCount,
+          lastExportDate: lastExportDateAtLoad,
+          exportReminderLastShown: exportReminderLastShownAtLoad,
+        },
+        getTodayDate(),
+      ),
+    [exportReminderDismissed, totalLogCount, lastExportDateAtLoad, exportReminderLastShownAtLoad],
+  );
+
+  // カードを表示したら「最終表示日=今日」を保存し、7日は再表示しない。
+  // スナップショット(exportReminderLastShownAtLoad)は変えないので、このセッション中は消えない。
+  const exportReminderPersistedRef = useRef(false);
+  useEffect(() => {
+    if (showBackupReminder && !exportReminderPersistedRef.current) {
+      exportReminderPersistedRef.current = true;
+      const state = loadCareState();
+      saveCareState({ ...state, exportReminderLastShown: getTodayDate() });
+    }
+  }, [showBackupReminder]);
+
+  const dismissExportReminder = useCallback(() => {
+    setViewState((current) => ({ ...current, exportReminderDismissed: true }));
+  }, [setViewState]);
+
+  // エクスポートボタンのハンドラ。
+  // buildExportPayload は純粋なままにし、lastExportDate の更新はここで行う。
+  const handleExport = useCallback(() => {
+    downloadAsJson(buildExportPayload());
+    const today = getTodayDate();
+    const state = loadCareState();
+    saveCareState({ ...state, lastExportDate: today });
+    // エクスポート直後はリマインドカードを非表示にする。
+    setViewState((current) => ({ ...current, exportReminderDismissed: true }));
+  }, [setViewState]);
+
   const handleDeleteLog = useCallback(
     (logId: string) => {
       const state = loadCareState();
@@ -194,6 +253,15 @@ export default function ReflectionPage() {
               わかりました
             </button>
           </section>
+        )}
+
+        {showBackupReminder && (
+          <BackupReminderCard
+            onDismiss={dismissExportReminder}
+            onExport={() => {
+              handleExport();
+            }}
+          />
         )}
 
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
@@ -301,7 +369,7 @@ export default function ReflectionPage() {
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => downloadAsJson(buildExportPayload())}
+              onClick={handleExport}
               className="rounded-full bg-stone-100 px-4 py-2 text-sm text-stone-700 hover:bg-stone-200 active:bg-stone-300"
             >
               自分の記録を保存する（JSON）

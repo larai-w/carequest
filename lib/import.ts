@@ -64,8 +64,13 @@ function mergeStates(
   const newGoodThings = imported.goodThingsHistory.filter((g) => !existingGoodThingsDates.has(g.date));
   const goodThingsHistory = [...existing.goodThingsHistory, ...newGoodThings];
 
+  // lastExportDate / exportReminderLastShown はこの端末の状態を維持する。
+  // supportNudgeLastShown と同じ「この端末の状態」扱い(インポートで乱さない)。
+  const lastExportDate = existing.lastExportDate;
+  const exportReminderLastShown = existing.exportReminderLastShown;
+
   return {
-    state: { user, logs, note, customTasks, energyHistory, supportNudgeLastShown, onboardingShown, goodThingsHistory },
+    state: { user, logs, note, customTasks, energyHistory, supportNudgeLastShown, onboardingShown, goodThingsHistory, lastExportDate, exportReminderLastShown },
     importedLogCount: newLogs.length,
   };
 }

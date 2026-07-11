@@ -301,6 +301,8 @@ describe("loadCareState (window モックあり)", () => {
       supportNudgeLastShown: "2024-03-14",
       onboardingShown: true,
       goodThingsHistory: [{ date: "2024-03-15", items: ["小さな介護ができた"] }],
+      lastExportDate: "2024-03-10",
+      exportReminderLastShown: "2024-03-12",
     };
 
     saveCareState(original);
@@ -411,8 +413,8 @@ describe("loadCareState (window モックあり)", () => {
     saveCareState(state);
     const persisted = JSON.parse(mockLocalStorage.getItem("carequest-state-v1")!);
     expect(persisted.version).toBe(CURRENT_SCHEMA_VERSION);
-    // v3 から始まったデータも最新バージョン(v5)まで引き上げられる。
-    expect(CURRENT_SCHEMA_VERSION).toBe(5);
+    // v3 から始まったデータも最新バージョン(v6)まで引き上げられる。
+    expect(CURRENT_SCHEMA_VERSION).toBe(6);
   });
 
   // -------------------------------------------------------------------------
@@ -446,7 +448,7 @@ describe("loadCareState (window モックあり)", () => {
     saveCareState(state);
     const persisted = JSON.parse(mockLocalStorage.getItem("carequest-state-v1")!);
     expect(persisted.version).toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(5);
+    expect(CURRENT_SCHEMA_VERSION).toBe(6);
   });
 
   it("新規データ(version なし)の onboardingShown は false になる", async () => {
@@ -532,7 +534,7 @@ describe("loadCareState (window モックあり)", () => {
     saveCareState(state);
     const persisted = JSON.parse(mockLocalStorage.getItem("carequest-state-v1")!);
     expect(persisted.version).toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(5);
+    expect(CURRENT_SCHEMA_VERSION).toBe(6);
   });
 
   it("goodThingsHistory 内の不正要素だけ除外し、健全な日は残す(要素単位の救済)", async () => {
@@ -565,5 +567,135 @@ describe("loadCareState (window モックあり)", () => {
     expect(state.goodThingsHistory[1].items).toEqual(["散歩した", "読書した"]);
     // 健全な日は内容も保持される
     expect(state.goodThingsHistory[0].items).toEqual(["小さな介護ができた", "自分の休憩ができた"]);
+  });
+
+  // -------------------------------------------------------------------------
+  // T41: スキーマ v6(バックアップリマインドフィールド)
+  // -------------------------------------------------------------------------
+
+  it("v5 データを v6 へ移行し、lastExportDate/exportReminderLastShown が空で補完される(救済ではない)", async () => {
+    const v5data = {
+      version: 5,
+      user: { name: "v5ユーザー" },
+      logs: [validLog()],
+      note: "メモ",
+      customTasks: [],
+      energyHistory: [],
+      supportNudgeLastShown: "",
+      onboardingShown: true,
+      goodThingsHistory: [],
+      // lastExportDate / exportReminderLastShown なし
+    };
+    mockLocalStorage.setItem("carequest-state-v1", JSON.stringify(v5data));
+
+    const { loadCareStateWithReport, saveCareState, CURRENT_SCHEMA_VERSION } = await import(
+      "@/lib/storage"
+    );
+    const { state, recovered } = loadCareStateWithReport();
+
+    // フィールド追加だけの移行は救済ではない。既存データは温存される。
+    expect(recovered).toBe(false);
+    expect(state.user.name).toBe("v5ユーザー");
+    expect(state.logs.length).toBe(1);
+    expect(state.lastExportDate).toBe("");
+    expect(state.exportReminderLastShown).toBe("");
+
+    saveCareState(state);
+    const persisted = JSON.parse(mockLocalStorage.getItem("carequest-state-v1")!);
+    expect(persisted.version).toBe(CURRENT_SCHEMA_VERSION);
+    expect(CURRENT_SCHEMA_VERSION).toBe(6);
+  });
+
+  it("lastExportDate が不正値(非日付文字列)なら空文字に救済して recovered=true", async () => {
+    const data = {
+      version: 6,
+      user: { name: "テスト" },
+      logs: [],
+      note: "",
+      customTasks: [],
+      energyHistory: [],
+      supportNudgeLastShown: "",
+      onboardingShown: true,
+      goodThingsHistory: [],
+      lastExportDate: "not-a-date",      // 不正 → "" に救済
+      exportReminderLastShown: "",
+    };
+    mockLocalStorage.setItem("carequest-state-v1", JSON.stringify(data));
+
+    const { loadCareStateWithReport } = await import("@/lib/storage");
+    const { state, recovered } = loadCareStateWithReport();
+
+    expect(recovered).toBe(true);
+    expect(state.lastExportDate).toBe("");
+  });
+
+  it("exportReminderLastShown が不正値(非日付文字列)なら空文字に救済して recovered=true", async () => {
+    const data = {
+      version: 6,
+      user: { name: "テスト" },
+      logs: [],
+      note: "",
+      customTasks: [],
+      energyHistory: [],
+      supportNudgeLastShown: "",
+      onboardingShown: true,
+      goodThingsHistory: [],
+      lastExportDate: "",
+      exportReminderLastShown: "invalid!!", // 不正 → "" に救済
+    };
+    mockLocalStorage.setItem("carequest-state-v1", JSON.stringify(data));
+
+    const { loadCareStateWithReport } = await import("@/lib/storage");
+    const { state, recovered } = loadCareStateWithReport();
+
+    expect(recovered).toBe(true);
+    expect(state.exportReminderLastShown).toBe("");
+  });
+
+  it("lastExportDate が有効な日付なら正しく保持される", async () => {
+    const data = {
+      version: 6,
+      user: { name: "テスト" },
+      logs: [],
+      note: "",
+      customTasks: [],
+      energyHistory: [],
+      supportNudgeLastShown: "",
+      onboardingShown: true,
+      goodThingsHistory: [],
+      lastExportDate: "2026-07-01",
+      exportReminderLastShown: "2026-07-05",
+    };
+    mockLocalStorage.setItem("carequest-state-v1", JSON.stringify(data));
+
+    const { loadCareStateWithReport } = await import("@/lib/storage");
+    const { state, recovered } = loadCareStateWithReport();
+
+    expect(recovered).toBe(false);
+    expect(state.lastExportDate).toBe("2026-07-01");
+    expect(state.exportReminderLastShown).toBe("2026-07-05");
+  });
+
+  it("往復(save → load)で v6 フィールドを含むデータが完全に一致する", async () => {
+    const { saveCareState, loadCareState, createInitialUser } = await import("@/lib/storage");
+    const original = {
+      user: {
+        ...createInitialUser(),
+        name: "v6往復テスト",
+      },
+      logs: [validLog({ id: "v6-1" })],
+      note: "v6メモ",
+      customTasks: [],
+      energyHistory: [],
+      supportNudgeLastShown: "",
+      onboardingShown: true,
+      goodThingsHistory: [],
+      lastExportDate: "2026-07-01",
+      exportReminderLastShown: "2026-07-05",
+    };
+
+    saveCareState(original);
+    const loaded = loadCareState();
+    expect(loaded).toEqual(original);
   });
 });
