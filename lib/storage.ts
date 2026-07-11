@@ -9,7 +9,7 @@ const STORAGE_KEY = "carequest-state-v1";
 // スキーマバージョン。保存データの構造を変えたら上げ、migration を追加する。
 // このアプリでは localStorage が唯一の保存先なので、破損・旧構造でも
 // 「健全なフィールドは必ず残す」ことを最優先にする。
-export const CURRENT_SCHEMA_VERSION = 5;
+export const CURRENT_SCHEMA_VERSION = 6;
 
 export interface CareStorageState {
   user: User;
@@ -27,6 +27,12 @@ export interface CareStorageState {
   // v5: 「今日のよかったこと」の日別履歴。
   //     date ごとにチェックした items を保持し、翌日は当日分がまっさらになる(当日のエントリが存在しない)。
   goodThingsHistory: DailyGoodThings[];
+  // v6: 最後にエクスポートを実行した日(YYYY-MM-DD)。空文字は未エクスポート。
+  //     バックアップリマインドの判定に使う(T41)。
+  lastExportDate: string;
+  // v6: バックアップリマインドカードを最後に表示した日(YYYY-MM-DD)。空文字は未表示。
+  //     表示を7日に1回までに絞るための throttle(supportNudgeLastShown と同じ方針)。
+  exportReminderLastShown: string;
 }
 
 // 保存フォーマット。version を持つ以外は CareStorageState と同じ。
@@ -57,6 +63,8 @@ function createInitialState(): CareStorageState {
     supportNudgeLastShown: "",
     onboardingShown: false,
     goodThingsHistory: [],
+    lastExportDate: "",
+    exportReminderLastShown: "",
   };
 }
 
@@ -98,6 +106,17 @@ const migrations: Record<number, (raw: RawRecord) => RawRecord> = {
     goodThingsHistory: [],
     ...raw,
     version: 5,
+  }),
+  // v5 → v6: バックアップリマインドのフィールドを追加する。
+  // lastExportDate: 最後にエクスポートした日(空文字=未エクスポート)。
+  // exportReminderLastShown: リマインドカードを最後に表示した日(空文字=未表示)。
+  // 既存ユーザーは「未エクスポート」扱いで始まり、20件の記録がたまった時点でリマインドが出る。
+  // supportNudgeLastShown と同じ方針: フィールド追加だけで既存データは温存する。
+  5: (raw) => ({
+    lastExportDate: "",
+    exportReminderLastShown: "",
+    ...raw,
+    version: 6,
   }),
 };
 
@@ -317,10 +336,27 @@ function sanitizeState(raw: RawRecord): SanitizeResult {
     report.recovered = true;
   }
 
+  // lastExportDate: 日付文字列でなければ空文字("未エクスポート")に救済。
+  // supportNudgeLastShown と同じパターン。
+  let lastExportDate = "";
+  if (isDateString(raw.lastExportDate)) {
+    lastExportDate = raw.lastExportDate;
+  } else if (raw.lastExportDate !== undefined && raw.lastExportDate !== "") {
+    report.recovered = true;
+  }
+
+  // exportReminderLastShown: 日付文字列でなければ空文字("未表示")に救済。
+  let exportReminderLastShown = "";
+  if (isDateString(raw.exportReminderLastShown)) {
+    exportReminderLastShown = raw.exportReminderLastShown;
+  } else if (raw.exportReminderLastShown !== undefined && raw.exportReminderLastShown !== "") {
+    report.recovered = true;
+  }
+
   const user = sanitizeUser(raw.user, report);
 
   return {
-    state: { user, logs, note, customTasks, energyHistory, supportNudgeLastShown, onboardingShown, goodThingsHistory },
+    state: { user, logs, note, customTasks, energyHistory, supportNudgeLastShown, onboardingShown, goodThingsHistory, lastExportDate, exportReminderLastShown },
     recovered: report.recovered,
   };
 }

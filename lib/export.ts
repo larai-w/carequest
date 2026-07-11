@@ -16,6 +16,12 @@ export interface CareQuestExport {
     supportNudgeLastShown: ReturnType<typeof loadCareState>["supportNudgeLastShown"];
     onboardingShown: ReturnType<typeof loadCareState>["onboardingShown"];
     goodThingsHistory: ReturnType<typeof loadCareState>["goodThingsHistory"];
+    // v6: バックアップリマインド関連フィールド。
+    // lastExportDate / exportReminderLastShown はこの端末の状態を示すフィールドで、
+    // supportNudgeLastShown と同じ「この端末の状態」扱い。
+    // エクスポートには含めるが、インポート時は端末側の値を維持する(lib/import.ts 参照)。
+    lastExportDate: ReturnType<typeof loadCareState>["lastExportDate"];
+    exportReminderLastShown: ReturnType<typeof loadCareState>["exportReminderLastShown"];
   };
 }
 
@@ -36,6 +42,8 @@ export function buildExportPayload(): CareQuestExport {
       supportNudgeLastShown: state.supportNudgeLastShown,
       onboardingShown: state.onboardingShown,
       goodThingsHistory: state.goodThingsHistory,
+      lastExportDate: state.lastExportDate,
+      exportReminderLastShown: state.exportReminderLastShown,
     },
   };
 }
