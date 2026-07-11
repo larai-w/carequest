@@ -16,7 +16,7 @@ This document turns the skills needed for Care Quest into reusable project asset
 | AWS CLI | Production verification and deploy use AWS CLI. | `scripts/aws-status.sh`, `scripts/deploy-static.sh` | Safely run read-only checks and targeted S3/CloudFront deploys. |
 | AWS CDK | Cognito, API Gateway, Lambda, and DynamoDB are CDK-managed. | `infra/` | Run synth/build/deploy, review CloudFormation output before deploy. |
 | Cognito | User auth and email verification use Cognito. | `lib/amplify.ts`, `components/AuthPanel.tsx`, CDK stack | Verify sign-up/sign-in and token use. |
-| API Gateway + Lambda | Backend API handles health and care entries. | `infra/lib/carequest-stack.ts`, `lib/api.ts` | Debug Lambda runtime errors and API Gateway integration issues. |
+| API Gateway + Lambda | Backend API handles health and care entries. | `infra/lambda/entries/index.js`(ハンドラー), `infra/lib/carequest-stack.ts`(CDK 定義), `lib/api.ts`(フロント) | Debug Lambda runtime errors and API Gateway integration issues. |
 | DynamoDB | Care entries are stored by user partition key. | CDK table, Lambda handler | Understand `pk/sk`, query patterns, and item shape mapping. |
 | CloudFront + S3 | Production URL is served through existing `veai.jp` distribution. | `docs/deploy.md`, `scripts/deploy-static.sh` | Know that `/carequest/` is served from `veai-jp-toc-web/carequest/`. |
 | GitHub Actions | CI and production deploy are workflow-driven. | `.github/workflows/*` | Verify CI, secrets, and deploy behavior. |
@@ -30,8 +30,10 @@ Run these before handing work to another agent:
 ```bash
 git status --short --branch
 npm run lint
+npm test
 npm run build
 cd infra && npm run build
+cd infra && npm test
 cd infra && npm run synth
 ```
 

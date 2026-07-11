@@ -92,7 +92,7 @@ Phase 1 のデータ次第で以下から選択(全部やらない):
 ### 2.3 開発運用ルール
 
 - ブランチ: `development` に集約 → 確認後 `main`(本番)
-- 全 PR: lint + build + CDK synth の CI green を必須
+- 全 PR: lint + test + build + CDK synth の CI green を必須（E2E は PR 時に自動実行）
 - タスク管理: GitHub Issues + Projects(`docs/project-management.md` 準拠)
 - AWS 変更: `npm run aws:status` → 変更 → `npm run smoke:backend` / `smoke:prod`
 - **CloudFront の制約**: Free プランの cache behavior 上限に達しているため、`/carequest/*` 専用 behavior は追加しない
