@@ -63,19 +63,57 @@ export function getRecentDaySummaries(
   return summaries;
 }
 
-export function getCommunityStats(logs: CareLog[], today: string = getTodayDate()) {
-  const todayLogs = logs.filter((log) => log.date === today);
+/**
+ * あゆみ統計: ユーザー自身のすべての記録から「これまでの積み重ね」を返す純関数。
+ *
+ * 「みんな」(偽コミュニティ)の代わりに自分の実データだけを正直に見せる。
+ * Phase 2 で本物のコミュニティ(US-401)を設計する際に見直す。
+ * ルート(/community)は URL の変更がブックマーク・SW キャッシュに影響するため据え置き。
+ *
+ * @param logs - 全期間のログ(空配列でも安全に動作する)
+ * @returns あゆみ統計オブジェクト
+ */
+export function getJourneyStats(logs: CareLog[]) {
+  // 累計ポイント
+  const totalPoints = logs.reduce((sum, log) => sum + (Number.isFinite(log.points) ? log.points : 0), 0);
+
+  // タスク別累計回数(不正な taskId は動的に追加)
   const taskCounts = Object.fromEntries(careTasks.map((task) => [task.id, 0])) as Record<string, number>;
-  todayLogs.forEach((log) => {
+  logs.forEach((log) => {
     taskCounts[log.taskId] = (taskCounts[log.taskId] ?? 0) + 1;
   });
 
-  const totalPoints = todayLogs.reduce((sum, log) => sum + log.points, 0);
-  const participantCount = 180 + Math.floor(totalPoints / 6) + todayLogs.length;
+  // 記録をはじめてからの日数(最初の記録日から今日まで)。
+  // date が不正な形式("YYYY-MM-DD" 以外)の記録は無視する。
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+  const validDates = logs
+    .map((log) => log.date)
+    .filter((d) => DATE_RE.test(d));
+
+  let daysSinceFirst = 0;
+  let recordedDays = 0;
+  if (validDates.length > 0) {
+    const sorted = [...validDates].sort();
+    const firstDate = sorted[0];
+    const today = getTodayDate();
+    // ローカル midnight として解釈するため手動パース
+    const [fy, fm, fd] = firstDate.split("-").map(Number);
+    const [ty, tm, td] = today.split("-").map(Number);
+    const firstMs = new Date(fy, fm - 1, fd).getTime();
+    const todayMs = new Date(ty, tm - 1, td).getTime();
+    const diff = todayMs - firstMs;
+    // 未来日付の記録が混ざっていても 0 未満にしない
+    daysSinceFirst = diff >= 0 ? Math.floor(diff / 86_400_000) + 1 : 1;
+
+    // 記録した日数(ユニーク日数)
+    recordedDays = new Set(validDates).size;
+  }
 
   return {
-    totalPoints: 12430 + totalPoints * 2 + todayLogs.length * 8,
-    participantCount,
+    totalPoints,
     taskCounts,
+    daysSinceFirst,
+    recordedDays,
+    totalLogs: logs.length,
   };
 }
