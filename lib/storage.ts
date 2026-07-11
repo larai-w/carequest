@@ -1,4 +1,4 @@
-import type { CareLog, CareTask, DailyEnergy, EnergyLevel, User } from "@/lib/types";
+import type { CareLog, CareTask, DailyEnergy, DailyGoodThings, EnergyLevel, User } from "@/lib/types";
 import { getTodayDate } from "@/lib/date";
 
 // 後方互換のため再エクスポート。新しい参照は lib/date.ts を直接使う。
@@ -9,7 +9,7 @@ const STORAGE_KEY = "carequest-state-v1";
 // スキーマバージョン。保存データの構造を変えたら上げ、migration を追加する。
 // このアプリでは localStorage が唯一の保存先なので、破損・旧構造でも
 // 「健全なフィールドは必ず残す」ことを最優先にする。
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;
 
 export interface CareStorageState {
   user: User;
@@ -24,6 +24,9 @@ export interface CareStorageState {
   // v4: 初回オンボーディングカードを表示済みかどうか。
   //     localStorage の性質(端末内保存・アカウント不要・書き出し可能)を最初に一度だけ伝える。
   onboardingShown: boolean;
+  // v5: 「今日のよかったこと」の日別履歴。
+  //     date ごとにチェックした items を保持し、翌日は当日分がまっさらになる(当日のエントリが存在しない)。
+  goodThingsHistory: DailyGoodThings[];
 }
 
 // 保存フォーマット。version を持つ以外は CareStorageState と同じ。
@@ -53,6 +56,7 @@ function createInitialState(): CareStorageState {
     energyHistory: [],
     supportNudgeLastShown: "",
     onboardingShown: false,
+    goodThingsHistory: [],
   };
 }
 
@@ -84,6 +88,16 @@ const migrations: Record<number, (raw: RawRecord) => RawRecord> = {
     onboardingShown: true,
     ...raw,
     version: 4,
+  }),
+  // v4 → v5: 「今日のよかったこと」の日別履歴フィールドを追加する。
+  // 既存の user.goodThings は温存し、ここでは goodThingsHistory に変換しない。
+  // 理由: 過去のどの日に選択したものかが分からないため、日付に紐づけることができない。
+  //       user.goodThings への読み取りアクセス(import の goodThings 和集合マージ等)は
+  //       引き続き機能する。新しい書き込みは goodThingsHistory にのみ行われる。
+  4: (raw) => ({
+    goodThingsHistory: [],
+    ...raw,
+    version: 5,
   }),
 };
 
@@ -205,6 +219,17 @@ function sanitizeDailyEnergy(value: unknown): DailyEnergy | null {
   return { date: value.date, energyLevel: value.energyLevel };
 }
 
+function sanitizeDailyGoodThings(value: unknown): DailyGoodThings | null {
+  if (!isRecord(value)) return null;
+  // date が不正であればエントリごと除外する(energyHistory と同じ方針)。
+  if (!isDateString(value.date)) return null;
+  // items が配列でなければエントリごと除外する。
+  if (!Array.isArray(value.items)) return null;
+  // items 内の非文字列要素だけを除外し、文字列のみ残す(要素単位の救済)。
+  const items = value.items.filter((item): item is string => typeof item === "string");
+  return { date: value.date, items };
+}
+
 function sanitizeState(raw: RawRecord): SanitizeResult {
   const report = { recovered: false };
 
@@ -276,10 +301,26 @@ function sanitizeState(raw: RawRecord): SanitizeResult {
   // sanitize で念のため boolean 以外を false に揃える。
   const onboardingShown = typeof raw.onboardingShown === "boolean" ? raw.onboardingShown : false;
 
+  // goodThingsHistory: energyHistory と同じ方針。不正な要素だけ除外し、健全な日は残す。
+  // date 不正・items 非配列・非文字列 items 要素の除外(要素単位の救済)。
+  const goodThingsHistory: DailyGoodThings[] = [];
+  if (Array.isArray(raw.goodThingsHistory)) {
+    for (const entry of raw.goodThingsHistory) {
+      const day = sanitizeDailyGoodThings(entry);
+      if (day) {
+        goodThingsHistory.push(day);
+      } else {
+        report.recovered = true;
+      }
+    }
+  } else if (raw.goodThingsHistory !== undefined) {
+    report.recovered = true;
+  }
+
   const user = sanitizeUser(raw.user, report);
 
   return {
-    state: { user, logs, note, customTasks, energyHistory, supportNudgeLastShown, onboardingShown },
+    state: { user, logs, note, customTasks, energyHistory, supportNudgeLastShown, onboardingShown, goodThingsHistory },
     recovered: report.recovered,
   };
 }

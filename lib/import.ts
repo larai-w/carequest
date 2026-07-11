@@ -58,8 +58,14 @@ function mergeStates(
   // onboardingShown はこの端末の状態を維持する(インポートで初期化しない)。
   const onboardingShown = existing.onboardingShown;
 
+  // goodThingsHistory: 日付で重複排除して統合。既存優先(energyHistory と同じ方針)。
+  // 同じ日付のエントリが両方に存在する場合は既存を残し、インポート側は足さない。
+  const existingGoodThingsDates = new Set(existing.goodThingsHistory.map((g) => g.date));
+  const newGoodThings = imported.goodThingsHistory.filter((g) => !existingGoodThingsDates.has(g.date));
+  const goodThingsHistory = [...existing.goodThingsHistory, ...newGoodThings];
+
   return {
-    state: { user, logs, note, customTasks, energyHistory, supportNudgeLastShown, onboardingShown },
+    state: { user, logs, note, customTasks, energyHistory, supportNudgeLastShown, onboardingShown, goodThingsHistory },
     importedLogCount: newLogs.length,
   };
 }

@@ -15,6 +15,7 @@ export interface CareQuestExport {
     energyHistory: ReturnType<typeof loadCareState>["energyHistory"];
     supportNudgeLastShown: ReturnType<typeof loadCareState>["supportNudgeLastShown"];
     onboardingShown: ReturnType<typeof loadCareState>["onboardingShown"];
+    goodThingsHistory: ReturnType<typeof loadCareState>["goodThingsHistory"];
   };
 }
 
@@ -34,6 +35,7 @@ export function buildExportPayload(): CareQuestExport {
       energyHistory: state.energyHistory,
       supportNudgeLastShown: state.supportNudgeLastShown,
       onboardingShown: state.onboardingShown,
+      goodThingsHistory: state.goodThingsHistory,
     },
   };
 }
