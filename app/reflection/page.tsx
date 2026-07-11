@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Layout from "@/components/Layout";
 import EncouragementCard from "@/components/EncouragementCard";
 import BackupReminderCard from "@/components/BackupReminderCard";
-import { loadCareState, saveCareState } from "@/lib/storage";
+import ResetDataCard from "@/components/ResetDataCard";
+import { loadCareState, saveCareState, resetCareState } from "@/lib/storage";
 import { useHydratedState } from "@/lib/useHydratedState";
 import { getTodayDate } from "@/lib/date";
 import { getRecentDaySummaries, type RecentDaySummary } from "@/lib/stats";
@@ -29,6 +30,12 @@ interface ReflectionViewState {
   lastExportDateAtLoad: string;
   exportReminderLastShownAtLoad: string;
   exportReminderDismissed: boolean;
+  // T42: 全削除フロー。showResetConfirm が true のとき ResetDataCard を表示する。
+  showResetConfirm: boolean;
+  // T42: 削除完了メッセージ。削除後に一度だけ表示し、再アクションで消える。
+  resetCompleted: boolean;
+  // T42: 削除失敗の通知(T31 の saveFailed パターンと同様)。
+  resetFailed: boolean;
 }
 
 // サーバー/クライアント初回描画で使う既定状態。localStorage を読まない。
@@ -42,6 +49,9 @@ const serverReflectionViewState: ReflectionViewState = {
   lastExportDateAtLoad: "",
   exportReminderLastShownAtLoad: "",
   exportReminderDismissed: false,
+  showResetConfirm: false,
+  resetCompleted: false,
+  resetFailed: false,
 };
 
 /**
@@ -87,6 +97,9 @@ function loadReflectionViewState(): ReflectionViewState {
     lastExportDateAtLoad: state.lastExportDate,
     exportReminderLastShownAtLoad: state.exportReminderLastShown,
     exportReminderDismissed: false,
+    showResetConfirm: false,
+    resetCompleted: false,
+    resetFailed: false,
   };
 }
 
@@ -95,7 +108,7 @@ export default function ReflectionPage() {
     serverReflectionViewState,
     loadReflectionViewState,
   );
-  const { logs, recentDays, note, goodThings, saveFailed, totalLogCount, lastExportDateAtLoad, exportReminderLastShownAtLoad, exportReminderDismissed } = viewState;
+  const { logs, recentDays, note, goodThings, saveFailed, totalLogCount, lastExportDateAtLoad, exportReminderLastShownAtLoad, exportReminderDismissed, showResetConfirm, resetCompleted, resetFailed } = viewState;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importMessage, setImportMessage] = useState("");
@@ -237,6 +250,37 @@ export default function ReflectionPage() {
     [setViewState],
   );
 
+  // T42: 全削除フローのハンドラ群。
+  const handleShowResetConfirm = useCallback(() => {
+    setViewState((current) => ({ ...current, showResetConfirm: true, resetCompleted: false, resetFailed: false }));
+  }, [setViewState]);
+
+  const handleCancelReset = useCallback(() => {
+    setViewState((current) => ({ ...current, showResetConfirm: false }));
+  }, [setViewState]);
+
+  // エクスポート後に確認カードを閉じず、削除に進めるようにする。
+  // エクスポート自体は handleExport を再利用するが、カードはそのまま残す。
+  const handleExportFromResetCard = useCallback(() => {
+    handleExport();
+    // exportReminderDismissed を true にしても showResetConfirm は維持する。
+    setViewState((current) => ({ ...current, exportReminderDismissed: true }));
+  }, [handleExport, setViewState]);
+
+  const handleConfirmReset = useCallback(() => {
+    const ok = resetCareState();
+    if (ok) {
+      // 削除成功: 画面を初期状態に近い表示へ切り替え、完了メッセージを表示する。
+      setViewState({
+        ...serverReflectionViewState,
+        resetCompleted: true,
+      });
+    } else {
+      // 削除失敗: 画面は継続(T31 の saveFailed パターンと同様)。
+      setViewState((current) => ({ ...current, showResetConfirm: false, resetFailed: true }));
+    }
+  }, [setViewState]);
+
   return (
     <Layout>
       <div className="space-y-4">
@@ -252,6 +296,29 @@ export default function ReflectionPage() {
             >
               わかりました
             </button>
+          </section>
+        )}
+
+        {resetFailed && (
+          <section className="rounded-[28px] border border-stone-200 bg-stone-50/80 p-4 shadow-sm">
+            <p className="text-sm leading-6 text-stone-600">
+              削除ができませんでした。端末の設定をご確認ください。記録はそのままです。
+            </p>
+            <button
+              type="button"
+              onClick={() => setViewState((current) => ({ ...current, resetFailed: false }))}
+              className="mt-3 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+            >
+              わかりました
+            </button>
+          </section>
+        )}
+
+        {resetCompleted && (
+          <section className="rounded-[28px] border border-stone-200 bg-stone-50/80 p-4 shadow-sm">
+            <p className="text-sm leading-6 text-stone-600">
+              まっさらになりました。これまでの時間は、ちゃんとあなたのものです。
+            </p>
           </section>
         )}
 
@@ -397,7 +464,28 @@ export default function ReflectionPage() {
               {importMessage}
             </p>
           ) : null}
+
+          {!showResetConfirm && !resetCompleted && (
+            <div className="mt-4 border-t border-stone-100 pt-4">
+              <button
+                type="button"
+                onClick={handleShowResetConfirm}
+                aria-label="すべての記録を削除する"
+                className="rounded-full px-3 py-1.5 text-xs text-stone-400 underline-offset-2 hover:text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+              >
+                すべての記録を削除する
+              </button>
+            </div>
+          )}
         </section>
+
+        {showResetConfirm && (
+          <ResetDataCard
+            onCancel={handleCancelReset}
+            onExport={handleExportFromResetCard}
+            onConfirmReset={handleConfirmReset}
+          />
+        )}
       </div>
     </Layout>
   );
