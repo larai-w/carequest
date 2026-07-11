@@ -41,9 +41,13 @@ ITIL 4「変更有効化(Change enablement)」を 1 人+AI 体制に合わせて
 [ ] human-todo.md の未完了 P1 項目がないこと
       （特に: Secrets 確認・実メール Cognito テスト・相談窓口の電話番号確認）
 [ ] Service Worker VERSION が自動スタンプされていることを確認（`npm run build` の postbuild で out/sw.js に git SHA + 日付が注入される。手動変更は不要）
-[ ] 掲載している外部情報が最新であること
-      - 「認知症の人と家族の会」0120-294-456（公式サイトで要確認）
-      - 「よりそいホットライン」0120-279-338（公式サイトで要確認）
+[ ] 掲載している相談窓口情報が最新であること（T46 以降は lib/contacts.ts で一元管理）
+      手順:
+        1. lib/contacts.ts の各窓口について、href の公式サイトで電話番号・受付時間を確認する
+        2. 確認が取れたら lib/contacts.ts の該当窓口の lastVerified を今日の日付(YYYY-MM-DD)に更新してコミットする
+           → コミット日時が「確認の証跡」になる
+        3. CI の contacts テスト(lib/__tests__/contacts.test.ts)が lastVerified の陳腐化を
+           180 日ごとに機械検知するため、更新を忘れると CI が失敗して知らせてくれる
 [ ] プライバシーページの連絡先が決定・掲載されていること
 ```
 
