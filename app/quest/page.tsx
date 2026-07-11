@@ -89,8 +89,6 @@ export default function QuestPage() {
 
     setViewState((current) => ({ ...current, logs: nextLogs, todayPoints: nextPoints }));
     setMessage(getEncouragementMessage(energyLevel, nextPoints, nextLogs.filter((log) => log.date === today).length, task.title));
-    setSyncStatus("クラウド同期中...");
-
     const state = loadCareState();
     const saveOk = saveCareState({
       ...state,
@@ -106,8 +104,17 @@ export default function QuestPage() {
       setViewState((current) => ({ ...current, saveFailed: true }));
     }
 
-    const synced = await syncCareLog(nextLog);
-    setSyncStatus(synced ? "クラウド同期に成功しました。" : "クラウド同期に失敗しました。オフラインか認証が必要かもしれません。");
+    const syncResult = await syncCareLog(nextLog);
+    if (syncResult.skipped) {
+      // 未サインイン: 端末保存のみで完結するのが正常状態。文言は一切表示しない。
+      setSyncStatus("");
+    } else if (syncResult.ok) {
+      // サインイン済み、同期成功: 控えめに表示
+      setSyncStatus("バックアップが完了しました。");
+    } else {
+      // サインイン済み、同期失敗: 記録はローカルに残っていることを穏やかに伝える
+      setSyncStatus("同期できませんでした。記録はこの端末にちゃんと残っています。");
+    }
   };
 
   const handleAddCustomTask = () => {
