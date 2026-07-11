@@ -1,23 +1,6 @@
 import Link from "next/link";
 import Layout from "@/components/Layout";
-
-const supportContacts = [
-  {
-    name: "地域包括支援センター",
-    detail: "介護の困りごと全般の身近な窓口です。お住まいの市区町村名と合わせて検索できます。",
-    href: null,
-  },
-  {
-    name: "認知症の人と家族の会(電話相談)",
-    detail: "0120-294-456(フリーダイヤル)。介護する家族どうしで話せる窓口です。",
-    href: "https://www.alzheimer.or.jp/",
-  },
-  {
-    name: "よりそいホットライン",
-    detail: "0120-279-338。どんなつらさでも、24時間むりょうで話せます。",
-    href: "https://www.since2011.net/yorisoi/",
-  },
-];
+import { supportContacts } from "@/lib/contacts";
 
 export default function AboutPage() {
   return (
