@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 const navItems = [
   { href: "/", label: "ホーム" },
   { href: "/quest", label: "クエスト" },
-  { href: "/community", label: "みんな" },
+  { href: "/community", label: "あゆみ" },
   { href: "/reflection", label: "ふりかえり" },
   { href: "/about", label: "About" },
 ];

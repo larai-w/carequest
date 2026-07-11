@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getTodaySummaryBody, getEncouragementMessage } from "@/lib/messages";
+import { getTodaySummaryBody, getEncouragementMessage, getJourneyMessage } from "@/lib/messages";
 import type { CareLog } from "@/lib/types";
 
 // テスト用ヘルパー
@@ -145,5 +145,41 @@ describe("getEncouragementMessage", () => {
   it("energetic, ポイント30以上: 称賛メッセージ", () => {
     const result = getEncouragementMessage("energetic", 50, 5);
     expect(result).toBe("今日も小さな介護が、ちゃんと価値を持っています。");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getJourneyMessage
+// ---------------------------------------------------------------------------
+
+describe("getJourneyMessage", () => {
+  it("totalLogs=0, recordedDays=0: 記録ゼロの初回ユーザーに穏やかなメッセージ", () => {
+    const result = getJourneyMessage(0, 0);
+    expect(result).toBeTruthy();
+    expect(result).not.toContain("0件");
+    expect(result).not.toContain("0日");
+  });
+
+  it("totalLogs=1, recordedDays=1: 1件でも記録があれば件数を含む", () => {
+    const result = getJourneyMessage(1, 1);
+    expect(result).toContain("1件");
+  });
+
+  it("recordedDays=7: 7日達成メッセージに日数を含む", () => {
+    const result = getJourneyMessage(20, 7);
+    expect(result).toContain("7日");
+  });
+
+  it("recordedDays=30: 30日達成メッセージに日数を含む", () => {
+    const result = getJourneyMessage(100, 30);
+    expect(result).toContain("30日");
+  });
+
+  it("記録ゼロでも他人との比較・ランキング表現を含まない", () => {
+    const result = getJourneyMessage(0, 0);
+    expect(result).not.toContain("みんな");
+    expect(result).not.toContain("参加者");
+    expect(result).not.toContain("介護者");
+    expect(result).not.toContain("合計");
   });
 });

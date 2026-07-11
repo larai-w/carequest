@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getTodayStats, getRecentDaySummaries } from "@/lib/stats";
+import { getTodayStats, getRecentDaySummaries, getJourneyStats } from "@/lib/stats";
 import type { CareLog } from "@/lib/types";
 
 // テスト用ヘルパー: 最小構成の CareLog を生成する
@@ -139,5 +139,100 @@ describe("getRecentDaySummaries", () => {
     const result = getRecentDaySummaries(logs, 7, "2024-03-01");
     expect(result[0].date).toBe("2024-02-28");
     expect(result[0].label).toBe("2月28日");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getJourneyStats
+// ---------------------------------------------------------------------------
+
+describe("getJourneyStats", () => {
+  it("ログが空のとき totalPoints=0, totalLogs=0, recordedDays=0, daysSinceFirst=0 を返す", () => {
+    const stats = getJourneyStats([]);
+    expect(stats.totalPoints).toBe(0);
+    expect(stats.totalLogs).toBe(0);
+    expect(stats.recordedDays).toBe(0);
+    expect(stats.daysSinceFirst).toBe(0);
+  });
+
+  it("累計ポイントを全ログから正しく合計する", () => {
+    const logs: CareLog[] = [
+      makeLog({ date: "2024-03-10", taskId: "medicine", points: 5 }),
+      makeLog({ date: "2024-03-11", taskId: "meal", points: 10 }),
+      makeLog({ date: "2024-03-11", taskId: "hospital", points: 20 }),
+    ];
+    const stats = getJourneyStats(logs);
+    expect(stats.totalPoints).toBe(35);
+    expect(stats.totalLogs).toBe(3);
+  });
+
+  it("記録した日数(ユニーク日数)を正しく返す", () => {
+    const logs: CareLog[] = [
+      makeLog({ date: "2024-03-10", taskId: "medicine", points: 5 }),
+      makeLog({ date: "2024-03-10", taskId: "meal", points: 5 }), // 同日: ユニーク1日
+      makeLog({ date: "2024-03-11", taskId: "hospital", points: 20 }),
+    ];
+    const stats = getJourneyStats(logs);
+    expect(stats.recordedDays).toBe(2);
+  });
+
+  it("タスク別累計回数を正しく集計する", () => {
+    const logs: CareLog[] = [
+      makeLog({ date: "2024-03-10", taskId: "medicine", points: 5 }),
+      makeLog({ date: "2024-03-11", taskId: "medicine", points: 5 }),
+      makeLog({ date: "2024-03-11", taskId: "meal", points: 5 }),
+    ];
+    const stats = getJourneyStats(logs);
+    expect(stats.taskCounts["medicine"]).toBe(2);
+    expect(stats.taskCounts["meal"]).toBe(1);
+  });
+
+  it("daysSinceFirst: 最初の記録日から今日まで1以上の整数を返す", () => {
+    // 過去の固定日を使う。今日が 2026-07-11 の場合でも1以上になる。
+    const logs: CareLog[] = [
+      makeLog({ date: "2024-01-01", taskId: "medicine", points: 5 }),
+    ];
+    const stats = getJourneyStats(logs);
+    expect(stats.daysSinceFirst).toBeGreaterThanOrEqual(1);
+    expect(Number.isFinite(stats.daysSinceFirst)).toBe(true);
+  });
+
+  it("不正な date 文字列が混ざっていても NaN を返さない", () => {
+    const logs: CareLog[] = [
+      makeLog({ date: "invalid-date", taskId: "medicine", points: 5 }),
+      makeLog({ date: "2024-03-10", taskId: "meal", points: 10 }),
+    ];
+    const stats = getJourneyStats(logs);
+    expect(Number.isNaN(stats.totalPoints)).toBe(false);
+    expect(Number.isNaN(stats.daysSinceFirst)).toBe(false);
+    // 不正な date は validDates から除外されるが、totalLogs には含まれる
+    expect(stats.totalLogs).toBe(2);
+    expect(stats.recordedDays).toBe(1); // 正常な日付は "2024-03-10" のみ
+  });
+
+  it("points が NaN になるログが混ざっていても totalPoints が NaN にならない", () => {
+    const logs: CareLog[] = [
+      { ...makeLog({ date: "2024-03-10", taskId: "medicine", points: 5 }), points: NaN },
+      makeLog({ date: "2024-03-10", taskId: "meal", points: 10 }),
+    ];
+    const stats = getJourneyStats(logs);
+    expect(Number.isNaN(stats.totalPoints)).toBe(false);
+    expect(stats.totalPoints).toBe(10);
+  });
+
+  it("未来日付の記録が混ざっていても daysSinceFirst が負にならない", () => {
+    const logs: CareLog[] = [
+      makeLog({ date: "2099-12-31", taskId: "medicine", points: 5 }),
+    ];
+    const stats = getJourneyStats(logs);
+    expect(stats.daysSinceFirst).toBeGreaterThanOrEqual(1);
+  });
+
+  it("カスタムタスク id の記録も taskCounts に集計される", () => {
+    const logs: CareLog[] = [
+      makeLog({ date: "2024-03-10", taskId: "custom-xyz", points: 15 }),
+    ];
+    const stats = getJourneyStats(logs);
+    expect(stats.taskCounts["custom-xyz"]).toBe(1);
   });
 });

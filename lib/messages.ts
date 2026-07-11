@@ -58,14 +58,27 @@ export function getTodaySummaryBody(logs: CareLog[]): string {
   return `今日は${listed}${suffix}小さく見えても、大切な介護です。`;
 }
 
-export function getCommunityMessage(totalPoints: number, participantCount: number): string {
-  if (totalPoints >= 13000) {
-    return "今日も、たくさんの介護者の支えが、ここに集まっています。";
+/**
+ * あゆみメッセージ: ユーザー自身の記録数・日数から積み重ねを静かに認める文言を返す。
+ * - 記録ゼロでも責めない
+ * - 他者との比較なし(「競わせない」原則)
+ */
+export function getJourneyMessage(totalLogs: number, recordedDays: number): string {
+  if (totalLogs === 0) {
+    return "これからの記録が、ここに少しずつ残っていきます。今日の分だけで十分です。";
   }
 
-  if (participantCount >= 200) {
-    return "今日もどこかで、誰かの安心につながる支えが続いています。";
+  if (recordedDays >= 30) {
+    return `${recordedDays}日分の支えが、ここに残っています。`;
   }
 
-  return "今日も、どこかで誰かが一緒に支えています。";
+  if (recordedDays >= 7) {
+    return `${recordedDays}日分の記録が積み重なっています。`;
+  }
+
+  if (totalLogs >= 1) {
+    return `${totalLogs}件の支えが、ここに残っています。`;
+  }
+
+  return "これからの記録が、ここに少しずつ残っていきます。今日の分だけで十分です。";
 }
