@@ -38,6 +38,7 @@ This document defines how to manage Care Quest with GitHub Issues and GitHub Pro
 3. 変更タイプ: 各タスクは標準変更か通常変更か。人間承認ポイントを human-todo に書いたか
 4. 品質: 全タスクに受け入れ条件と DoD があるか
 5. 教訓: 前バッチの実行結果メモから、今回の進め方を変える点はあるか
+6. 入力確認: open の GitHub Issue(synthetic-check 起票含む)・直近の CI 失敗・`docs/improvement-log.md` を立案の入力として確認したか
 
 ## Definition of Done (DoD)
 
@@ -53,6 +54,7 @@ PMP「品質」知識エリアの適用として、**全タスクに共通の完
 | 関連 docs 更新 | 仕様・設計・運用に影響する変更は `docs/` の該当ドキュメントを同一コミットまたはタスク内で更新している |
 | human-todo 記録 | 人間作業(承認・実機確認・秘匿情報の設定など)が発生する場合は `docs/human-todo.md` に記載している |
 | 1タスク1コミット | 標準変更はプランナー承認で完結。通常変更・緊急変更は `docs/release-checklist.md` の承認マトリクスに従う |
+| 再発防止とセット | レビューや本番で見つかった欠陥の修正は、再発防止(回帰テスト or スキル/テンプレ追記)とセットで Done とする(先行事例: T28 の pk 上書き攻撃回帰テスト) |
 
 ### コード変更タスク(追加条件)
 
