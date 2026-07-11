@@ -698,4 +698,92 @@ describe("loadCareState (window モックあり)", () => {
     const loaded = loadCareState();
     expect(loaded).toEqual(original);
   });
+
+  // -------------------------------------------------------------------------
+  // T42: resetCareState(全削除)
+  // -------------------------------------------------------------------------
+
+  it("resetCareState 後に loadCareState がデフォルト(createInitialState)と完全一致する", async () => {
+    const { saveCareState, loadCareState, resetCareState, createInitialUser, createInitialState } = await import("@/lib/storage");
+
+    // まず何かデータを保存する
+    saveCareState({
+      user: { ...createInitialUser(), name: "削除前ユーザー", todayPoints: 50 },
+      logs: [validLog({ id: "pre-reset-1" })],
+      note: "消えるメモ",
+      customTasks: [{ id: "ct-1", title: "自作", points: 10, description: "" }],
+      energyHistory: [{ date: "2024-03-15", energyLevel: "low" as const }],
+      supportNudgeLastShown: "2024-03-14",
+      onboardingShown: true,
+      goodThingsHistory: [{ date: "2024-03-15", items: ["よかった"] }],
+      lastExportDate: "2024-03-10",
+      exportReminderLastShown: "2024-03-12",
+    });
+
+    // リセット
+    const ok = resetCareState();
+    expect(ok).toBe(true);
+
+    // リセット後のロードが初期状態と完全一致
+    const loaded = loadCareState();
+    const initial = createInitialState();
+    // lastActiveDate は getTodayDate() で生成されるため、テスト実行日と一致すれば OK
+    expect(loaded).toEqual(initial);
+  });
+
+  it("resetCareState 後に onboardingShown が false(オンボーディング再表示)になる", async () => {
+    const { saveCareState, loadCareState, resetCareState, createInitialUser } = await import("@/lib/storage");
+
+    // onboardingShown=true で保存
+    saveCareState({
+      ...createInitialUser(),
+      user: { ...createInitialUser(), name: "オンボーディング済み" },
+      logs: [],
+      note: "",
+      customTasks: [],
+      energyHistory: [],
+      supportNudgeLastShown: "",
+      onboardingShown: true,
+      goodThingsHistory: [],
+      lastExportDate: "",
+      exportReminderLastShown: "",
+    } as Parameters<typeof saveCareState>[0]);
+
+    resetCareState();
+    const loaded = loadCareState();
+    // リセット後は onboardingShown が false(初期状態)
+    expect(loaded.onboardingShown).toBe(false);
+  });
+
+  it("resetCareState は localStorage.removeItem が throw するとき false を返す", async () => {
+    // removeItem を throw するモックに差し替える
+    const throwingRemoveItem = () => {
+      throw new DOMException("SecurityError", "SecurityError");
+    };
+    (globalThis as Record<string, unknown>)["window"] = {
+      localStorage: {
+        ...mockLocalStorage,
+        removeItem: throwingRemoveItem,
+      },
+    };
+
+    const { resetCareState } = await import("@/lib/storage");
+    const result = resetCareState();
+    expect(result).toBe(false);
+  });
+
+  it("resetCareState が false を返しても例外は外に出ない(画面継続が可能)", async () => {
+    const throwingRemoveItem = () => {
+      throw new Error("storage error");
+    };
+    (globalThis as Record<string, unknown>)["window"] = {
+      localStorage: {
+        ...mockLocalStorage,
+        removeItem: throwingRemoveItem,
+      },
+    };
+
+    const { resetCareState } = await import("@/lib/storage");
+    expect(() => resetCareState()).not.toThrow();
+  });
 });

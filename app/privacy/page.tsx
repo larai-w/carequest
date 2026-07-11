@@ -35,10 +35,13 @@ export default function PrivacyPage() {
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h3 className="text-lg font-semibold text-stone-800">データの削除</h3>
           <p className="mt-3 text-sm leading-7 text-stone-700">
-            端末内のデータは、ブラウザのサイトデータ削除でいつでも消せます。アカウントに保存されたデータの削除をご希望の場合は、About ページ記載の運営元までご連絡ください。
+            端末内のデータは、ふりかえり画面のデータ管理セクションにある「すべての記録を削除する」からアプリ内で削除できます。削除後はオンボーディングが再表示される、まっさらな状態に戻ります。
           </p>
           <p className="mt-2 text-sm leading-7 text-stone-700">
-            また、削除の前にふりかえり画面から記録を JSON ファイルとして手元に持ち出すこともできます。
+            削除の前にふりかえり画面から記録を JSON ファイルとして手元に持ち出すこともできます。
+          </p>
+          <p className="mt-2 text-sm leading-7 text-stone-500">
+            ブラウザのサイトデータ削除でも同様に消すことができます。アカウントに保存されたデータの削除をご希望の場合は、About ページ記載の運営元までご連絡ください。
           </p>
         </section>
 

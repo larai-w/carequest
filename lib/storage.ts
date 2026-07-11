@@ -53,7 +53,7 @@ export function createInitialUser(): User {
   };
 }
 
-function createInitialState(): CareStorageState {
+export function createInitialState(): CareStorageState {
   return {
     user: createInitialUser(),
     logs: [],
@@ -435,6 +435,29 @@ export function sanitizeRawState(raw: unknown): CareStorageState {
 // ---------------------------------------------------------------------------
 // 保存
 // ---------------------------------------------------------------------------
+
+/**
+ * すべての記録を初期状態にリセットする。
+ * localStorage のキーを削除し、次回ロード時に createInitialState() が返る状態にする。
+ * onboardingShown も初期化されるため、オンボーディングが再表示される。
+ *
+ * 戻り値: 削除に成功したら true、失敗(プライベートモード等)なら false。
+ * 失敗時も例外は外に出さない(呼び出し側で画面を継続できる)。
+ */
+export function resetCareState(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+    return true;
+  } catch {
+    // localStorage へのアクセス自体が失敗するケース(プライベートモード等)。
+    // 例外を外に出さず、呼び出し側で画面継続できるようにする。
+    return false;
+  }
+}
 
 /**
  * 状態を localStorage に保存する。
