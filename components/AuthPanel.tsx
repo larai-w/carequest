@@ -18,10 +18,11 @@ export default function AuthPanel() {
   const [resetStage, setResetStage] = useState<ResetStage>("request");
   const [confirmationCode, setConfirmationCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  // 通信中フラグ。実行中はボタンを無効化して二重タップを防ぎ、「…しています」を見せる。
+  const [busy, setBusy] = useState(false);
 
   // サインインが確認できたときの自動同期(Phase B)。背景で復元→バックアップを実行し、
   // 結果を穏やかに知らせる。UI はブロックしない・失敗しても記録はローカルに残る。
-  // lib/sync は動的 import(初期バンドルを軽く保つ・T45 の精神)。
   const runSignInSync = async () => {
     try {
       const { syncOnSignIn } = await import("@/lib/sync");
@@ -35,12 +36,13 @@ export default function AuthPanel() {
         setMessage("記録をクラウドにバックアップしました。");
       }
     } catch {
-      // 同期に失敗しても記録はこの端末に安全。穏やかに伝える。
       setMessage("記録はこの端末に安全に保存されています。");
     }
   };
 
   const handleSignIn = async () => {
+    setBusy(true);
+    setMessage("サインインしています…");
     try {
       // 認証 SDK はこの操作の瞬間に初めて動的 import する(初期バンドルには含めない・T45)。
       const { ensureAmplifyConfigured } = await import("@/lib/amplify");
@@ -54,10 +56,14 @@ export default function AuthPanel() {
       void runSignInSync();
     } catch {
       setMessage("ログインに失敗しました。ユーザー情報を確認してください。");
+    } finally {
+      setBusy(false);
     }
   };
 
   const handleSignOut = async () => {
+    setBusy(true);
+    setMessage("サインアウトしています…");
     try {
       const { ensureAmplifyConfigured } = await import("@/lib/amplify");
       await ensureAmplifyConfigured();
@@ -70,10 +76,14 @@ export default function AuthPanel() {
       setMessage("ログアウトしました。");
     } catch {
       setMessage("ログアウトに失敗しました。");
+    } finally {
+      setBusy(false);
     }
   };
 
   const handleCheckUser = async () => {
+    setBusy(true);
+    setMessage("状態を確認しています…");
     try {
       const { ensureAmplifyConfigured } = await import("@/lib/amplify");
       await ensureAmplifyConfigured();
@@ -89,13 +99,16 @@ export default function AuthPanel() {
       setCurrentUsername(null);
       setMessage("まだログインしていません。");
       setIsSignedIn(false);
-      // 実セッションが無いのでフラグも下ろす(不整合の掃除)。
       setSignedInFlag(false);
+    } finally {
+      setBusy(false);
     }
   };
 
   // 道B: 新規登録(メールに確認コードが届く)。username = email(プールの設定)。
   const handleSignUp = async () => {
+    setBusy(true);
+    setMessage("登録しています…");
     try {
       const { ensureAmplifyConfigured } = await import("@/lib/amplify");
       await ensureAmplifyConfigured();
@@ -127,10 +140,14 @@ export default function AuthPanel() {
       } else {
         setMessage("登録できませんでした。もう一度お試しください。");
       }
+    } finally {
+      setBusy(false);
     }
   };
 
   const handleConfirmSignUp = async () => {
+    setBusy(true);
+    setMessage("確認しています…");
     try {
       const { ensureAmplifyConfigured } = await import("@/lib/amplify");
       await ensureAmplifyConfigured();
@@ -149,10 +166,14 @@ export default function AuthPanel() {
       } else {
         setMessage("確認できませんでした。もう一度お試しください。");
       }
+    } finally {
+      setBusy(false);
     }
   };
 
   const handleResendCode = async () => {
+    setBusy(true);
+    setMessage("確認コードを再送しています…");
     try {
       const { ensureAmplifyConfigured } = await import("@/lib/amplify");
       await ensureAmplifyConfigured();
@@ -161,11 +182,15 @@ export default function AuthPanel() {
       setMessage("確認コードを再送しました。メールをご確認ください。");
     } catch {
       setMessage("コードを再送できませんでした。もう一度お試しください。");
+    } finally {
+      setBusy(false);
     }
   };
 
   // T48: パスワード再設定。登録メールに再設定コードを送る → コード+新パスワードで確定。
   const handleRequestReset = async () => {
+    setBusy(true);
+    setMessage("再設定コードを送っています…");
     try {
       const { ensureAmplifyConfigured } = await import("@/lib/amplify");
       await ensureAmplifyConfigured();
@@ -187,10 +212,14 @@ export default function AuthPanel() {
         setMessage("登録済みのメールアドレスなら、再設定コードをお送りしました。メールをご確認ください。");
         setResetStage("confirm");
       }
+    } finally {
+      setBusy(false);
     }
   };
 
   const handleConfirmReset = async () => {
+    setBusy(true);
+    setMessage("パスワードを変更しています…");
     try {
       const { ensureAmplifyConfigured } = await import("@/lib/amplify");
       await ensureAmplifyConfigured();
@@ -217,6 +246,8 @@ export default function AuthPanel() {
       } else {
         setMessage("パスワードを変更できませんでした。もう一度お試しください。");
       }
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -261,18 +292,18 @@ export default function AuthPanel() {
   }, []);
 
   const primaryButton =
-    "min-h-[44px] rounded-full bg-stone-800 px-4 py-2 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2";
+    "min-h-[44px] rounded-full bg-stone-800 px-4 py-2 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 disabled:opacity-60";
   const subtleButton =
-    "min-h-[44px] rounded-full bg-stone-100 px-4 py-2 text-sm font-semibold text-stone-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2";
+    "min-h-[44px] rounded-full bg-stone-100 px-4 py-2 text-sm font-semibold text-stone-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 disabled:opacity-60";
+  const amberButton =
+    "min-h-[44px] rounded-full bg-amber-100 px-4 py-2 text-sm font-semibold text-amber-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 disabled:opacity-60";
   const linkButton =
-    "rounded-full px-2 py-1 text-xs text-stone-500 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 hover:text-stone-700";
+    "rounded-full px-2 py-1 text-xs text-stone-500 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 hover:text-stone-700 disabled:opacity-60";
   const tabClass = (active: boolean) =>
-    `rounded-full px-4 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 ${
+    `rounded-full px-4 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 disabled:opacity-60 ${
       active ? "bg-stone-800 text-white" : "bg-stone-100 text-stone-600"
     }`;
-
-  const input =
-    "w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-sm";
+  const input = "w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-sm";
 
   // サインイン済みは、ログインフォームを畳んで「ログイン中 + サインアウト」だけ見せる。
   if (isSignedIn) {
@@ -282,10 +313,10 @@ export default function AuthPanel() {
         <p className="mt-1 text-sm text-stone-600">記録はクラウドにも控えられています。</p>
         <p className="mt-3 text-sm text-stone-700">ログイン中: {currentUsername ?? "ユーザー"}</p>
         <div className="mt-3 flex flex-wrap gap-2">
-          <button type="button" onClick={handleSignOut} className={subtleButton}>
+          <button type="button" onClick={handleSignOut} disabled={busy} className={subtleButton}>
             サインアウト
           </button>
-          <button type="button" onClick={handleCheckUser} className="min-h-[44px] rounded-full bg-amber-100 px-4 py-2 text-sm font-semibold text-amber-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
+          <button type="button" onClick={handleCheckUser} disabled={busy} className={amberButton}>
             状態確認
           </button>
         </div>
@@ -304,10 +335,10 @@ export default function AuthPanel() {
       </p>
 
       <div className="mt-3 flex gap-2">
-        <button type="button" onClick={switchToSignIn} className={tabClass(mode !== "signUp")}>
+        <button type="button" onClick={switchToSignIn} disabled={busy} className={tabClass(mode !== "signUp")}>
           ログイン
         </button>
-        <button type="button" onClick={switchToSignUp} className={tabClass(mode === "signUp")}>
+        <button type="button" onClick={switchToSignUp} disabled={busy} className={tabClass(mode === "signUp")}>
           新規登録
         </button>
       </div>
@@ -335,14 +366,14 @@ export default function AuthPanel() {
         {mode === "signIn" ? (
           <>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={handleSignIn} className={primaryButton}>
+              <button type="button" onClick={handleSignIn} disabled={busy} className={primaryButton}>
                 サインイン
               </button>
-              <button type="button" onClick={handleCheckUser} className="min-h-[44px] rounded-full bg-amber-100 px-4 py-2 text-sm font-semibold text-amber-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2">
+              <button type="button" onClick={handleCheckUser} disabled={busy} className={amberButton}>
                 状態確認
               </button>
             </div>
-            <button type="button" onClick={switchToReset} className={linkButton}>
+            <button type="button" onClick={switchToReset} disabled={busy} className={linkButton}>
               パスワードをお忘れですか？
             </button>
           </>
@@ -352,7 +383,7 @@ export default function AuthPanel() {
               <p className="text-xs leading-5 text-stone-500">
                 パスワードは8文字以上で、大文字・小文字・数字を含めてください。登録すると、メールに確認コードが届きます。
               </p>
-              <button type="button" onClick={handleSignUp} className={primaryButton}>
+              <button type="button" onClick={handleSignUp} disabled={busy} className={primaryButton}>
                 新規登録する
               </button>
             </>
@@ -367,10 +398,10 @@ export default function AuthPanel() {
                 autoComplete="one-time-code"
               />
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={handleConfirmSignUp} className={primaryButton}>
+                <button type="button" onClick={handleConfirmSignUp} disabled={busy} className={primaryButton}>
                   確認する
                 </button>
-                <button type="button" onClick={handleResendCode} className={subtleButton}>
+                <button type="button" onClick={handleResendCode} disabled={busy} className={subtleButton}>
                   コードを再送
                 </button>
               </div>
@@ -382,10 +413,10 @@ export default function AuthPanel() {
               登録したメールアドレスに、パスワード再設定用のコードをお送りします。
             </p>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={handleRequestReset} className={primaryButton}>
+              <button type="button" onClick={handleRequestReset} disabled={busy} className={primaryButton}>
                 再設定コードを送る
               </button>
-              <button type="button" onClick={switchToSignIn} className={subtleButton}>
+              <button type="button" onClick={switchToSignIn} disabled={busy} className={subtleButton}>
                 ログインにもどる
               </button>
             </div>
@@ -412,10 +443,10 @@ export default function AuthPanel() {
               パスワードは8文字以上で、大文字・小文字・数字を含めてください。
             </p>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={handleConfirmReset} className={primaryButton}>
+              <button type="button" onClick={handleConfirmReset} disabled={busy} className={primaryButton}>
                 パスワードを変更
               </button>
-              <button type="button" onClick={switchToSignIn} className={subtleButton}>
+              <button type="button" onClick={switchToSignIn} disabled={busy} className={subtleButton}>
                 ログインにもどる
               </button>
             </div>
