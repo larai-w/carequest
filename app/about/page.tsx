@@ -56,6 +56,21 @@ export default function AboutPage() {
             をご覧ください。
           </p>
         </section>
+
+        <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
+          <h3 className="text-lg font-semibold text-stone-800">運営元・お問い合わせ</h3>
+          <p className="mt-3 text-sm leading-7 text-stone-700">
+            Care Quest は veai.jp が運営しています。データの削除のご依頼やお困りごとがあれば、下記までご連絡ください。
+          </p>
+          <p className="mt-2 text-sm leading-7 text-stone-700">
+            <a
+              href="mailto:care_q@veai.jp"
+              className="font-semibold text-amber-700 underline underline-offset-2"
+            >
+              care_q@veai.jp
+            </a>
+          </p>
+        </section>
       </div>
     </Layout>
   );

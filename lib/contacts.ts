@@ -52,15 +52,15 @@ export const supportContacts: SupportContact[] = [
     name: "認知症の人と家族の会（電話相談）",
     phone: "0120-294-456",
     detail:
-      "0120-294-456（フリーダイヤル）。介護する家族どうしで話せる窓口です。",
+      "0120-294-456（フリーダイヤル）。土日祝日を除く毎日10時~15時。LINE通話でも相談できます。介護する家族どうしで話せる窓口です。",
     href: "https://www.alzheimer.or.jp/",
-    lastVerified: "2026-07-08",
+    lastVerified: "2026-07-12",
   },
   {
     name: "よりそいホットライン",
     phone: "0120-279-338",
     detail: "0120-279-338。どんなつらさでも、24時間むりょうで話せます。",
     href: "https://www.since2011.net/yorisoi/",
-    lastVerified: "2026-07-08",
+    lastVerified: "2026-07-12",
   },
 ];
