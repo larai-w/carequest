@@ -165,6 +165,7 @@ export default function ReflectionPage() {
   // 失敗しても記録はローカルに残る。文言は責めない・急かさない(design-sync §4)。
   const handleCloudBackup = async () => {
     setCloudBusy(true);
+    setCloudMessage("クラウドにバックアップしています…");
     try {
       const result = await backupCareLogs(loadCareState().logs);
       if (result.skipped) {
@@ -188,6 +189,7 @@ export default function ReflectionPage() {
   // T10 Phase A: クラウドの記録を取得し、既存優先でローカルにマージする(上書きしない)。
   const handleCloudRestore = async () => {
     setCloudBusy(true);
+    setCloudMessage("クラウドから復元しています…");
     try {
       if (!(await isSignedIn())) {
         setCloudMessage("サインインすると、クラウドの控えから復元できます。");
