@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fetchAuthSession } from "@aws-amplify/auth";
+import { fetchAuthSession, deleteUser } from "@aws-amplify/auth";
 
 // Amplify の初期化と認証モジュールをモックする。
 // テスト環境ではブラウザ API も Cognito も利用できないため。
@@ -10,6 +10,7 @@ vi.mock("@/lib/amplify", () => ({
 vi.mock("@aws-amplify/auth", () => ({
   fetchAuthSession: vi.fn().mockResolvedValue({ tokens: undefined }),
   getCurrentUser: vi.fn().mockRejectedValue(new Error("not authenticated")),
+  deleteUser: vi.fn().mockResolvedValue(undefined),
 }));
 
 // SIGNED_IN_FLAG_KEY と揃える(lib/api の軽量フラグの localStorage キー)。
@@ -339,5 +340,75 @@ describe("syncCareLog", () => {
 
     const { syncCareLog } = await import("@/lib/api");
     await expect(syncCareLog(sampleLog)).resolves.toEqual({ skipped: false, ok: true });
+  });
+});
+
+// deleteCloudEntries / deleteAccount のテスト(US-503)
+describe("deleteCloudEntries / deleteAccount", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "https://example.com/api");
+  });
+
+  function signedInSession() {
+    return {
+      tokens: {
+        idToken: { toString: () => "valid-token" } as unknown as NonNullable<Awaited<ReturnType<typeof fetchAuthSession>>["tokens"]>["idToken"],
+        accessToken: undefined as unknown as NonNullable<Awaited<ReturnType<typeof fetchAuthSession>>["tokens"]>["accessToken"],
+      },
+      credentials: undefined,
+      identityId: undefined,
+      userSub: undefined,
+    };
+  }
+
+  it("未サインインなら DELETE せず { ok: false }", async () => {
+    mockLocalStorage(null);
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const { deleteCloudEntries } = await import("@/lib/api");
+    await expect(deleteCloudEntries()).resolves.toEqual({ ok: false });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("サインイン済みで削除成功 → { ok: true, deleted } を DELETE メソッドで呼ぶ", async () => {
+    mockLocalStorage("1");
+    vi.mocked(fetchAuthSession).mockResolvedValue(signedInSession());
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: vi.fn().mockResolvedValue({ ok: true, deleted: 3 }) }));
+    const { deleteCloudEntries } = await import("@/lib/api");
+    const result = await deleteCloudEntries();
+    expect(result).toEqual({ ok: true, deleted: 3 });
+    const init = vi.mocked(fetch).mock.calls[0][1] as RequestInit;
+    expect(init.method).toBe("DELETE");
+  });
+
+  it("レスポンスが ok でなければ { ok: false }", async () => {
+    mockLocalStorage("1");
+    vi.mocked(fetchAuthSession).mockResolvedValue(signedInSession());
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, json: vi.fn().mockResolvedValue({}) }));
+    const { deleteCloudEntries } = await import("@/lib/api");
+    await expect(deleteCloudEntries()).resolves.toEqual({ ok: false });
+  });
+
+  it("deleteAccount: データ削除が失敗したら deleteUser を呼ばず { ok: false }(孤児 PII を残さない)", async () => {
+    mockLocalStorage("1");
+    vi.mocked(fetchAuthSession).mockResolvedValue(signedInSession());
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, json: vi.fn().mockResolvedValue({}) }));
+    const { deleteAccount } = await import("@/lib/api");
+    await expect(deleteAccount()).resolves.toEqual({ ok: false });
+    expect(vi.mocked(deleteUser)).not.toHaveBeenCalled();
+  });
+
+  it("deleteAccount: データ削除成功 → deleteUser 実行・軽量フラグ解除 → { ok: true }", async () => {
+    const store = mockLocalStorage("1");
+    vi.mocked(fetchAuthSession).mockResolvedValue(signedInSession());
+    vi.mocked(deleteUser).mockResolvedValue(undefined);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: vi.fn().mockResolvedValue({ ok: true, deleted: 1 }) }));
+    const { deleteAccount } = await import("@/lib/api");
+    await expect(deleteAccount()).resolves.toEqual({ ok: true });
+    expect(vi.mocked(deleteUser)).toHaveBeenCalled();
+    expect(store.has(SIGNED_IN_FLAG_KEY)).toBe(false);
   });
 });

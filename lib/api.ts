@@ -228,3 +228,58 @@ export async function backupCareLogs(logs: CareLog[]): Promise<BackupResult> {
   }
   return { skipped: false, total: logs.length, succeeded, failed };
 }
+
+/**
+ * クラウド(サーバー)に保存した自分の記録をすべて削除する(US-503)。
+ * サーバー側で pk = userId(トークン由来)に固定して削除するので、他人のデータは消えない。
+ * **ローカル(localStorage)の記録には一切触れない** — 端末の記録は本人のものとして残す。
+ */
+export async function deleteCloudEntries(): Promise<{ ok: boolean; deleted?: number }> {
+  if (!(await isSignedIn())) {
+    return { ok: false };
+  }
+  if (!entriesEndpoint) {
+    return { ok: false };
+  }
+  try {
+    const response = await fetch(entriesEndpoint, {
+      method: "DELETE",
+      headers: await getAuthHeaders(),
+    });
+    if (!response.ok) {
+      return { ok: false };
+    }
+    const raw: unknown = await response.json().catch(() => ({}));
+    const deleted =
+      typeof raw === "object" && raw !== null && typeof (raw as { deleted?: unknown }).deleted === "number"
+        ? (raw as { deleted: number }).deleted
+        : undefined;
+    return { ok: true, deleted };
+  } catch {
+    return { ok: false };
+  }
+}
+
+/**
+ * アカウントを削除する(US-503 / design-sync E-6)。
+ * 1. 先にクラウドの記録を削除する(アカウント削除後は sub が変わり孤児データになるため)。
+ *    データ削除に失敗したら、孤児 PII を残さないためアカウント削除には進まない。
+ * 2. Cognito のユーザー自身を削除(deleteUser)。
+ * **ローカルの記録は削除しない** — 端末の記録は本人の手元に残す。
+ */
+export async function deleteAccount(): Promise<{ ok: boolean }> {
+  const del = await deleteCloudEntries();
+  if (!del.ok) {
+    return { ok: false };
+  }
+  try {
+    const { ensureAmplifyConfigured } = await import("@/lib/amplify");
+    await ensureAmplifyConfigured();
+    const { deleteUser } = await import("@aws-amplify/auth");
+    await deleteUser();
+    setSignedInFlag(false);
+    return { ok: true };
+  } catch {
+    return { ok: false };
+  }
+}

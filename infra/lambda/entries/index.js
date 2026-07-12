@@ -1,6 +1,11 @@
 'use strict';
 
-const { DynamoDBClient, PutItemCommand, QueryCommand } = require('@aws-sdk/client-dynamodb');
+const {
+  DynamoDBClient,
+  PutItemCommand,
+  QueryCommand,
+  BatchWriteItemCommand,
+} = require('@aws-sdk/client-dynamodb');
 
 const dynamodb = new DynamoDBClient({});
 
@@ -65,7 +70,7 @@ function getCorsHeaders(event) {
   return {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Vary': 'Origin',
   };
@@ -248,6 +253,49 @@ exports.handler = async (event) => {
     } catch (error) {
       console.error('Put error:', error.message);
       return response(500, corsHeaders, { message: 'Error saving entry' });
+    }
+  }
+
+  // DELETE /entries: 認証ユーザー自身(pk = userId)の記録をすべて削除する(US-503)。
+  // 端末側(localStorage)の記録には一切触れない。サーバーのバックアップのみを消す。
+  // pk はトークン由来の userId で固定。他ユーザーのパーティションは触れない。
+  if (event.httpMethod === 'DELETE' && event.resource === '/entries') {
+    try {
+      let deleted = 0;
+      let lastEvaluatedKey;
+      do {
+        const result = await dynamodb.send(
+          new QueryCommand({
+            TableName: process.env.TABLE_NAME,
+            KeyConditionExpression: 'pk = :userId',
+            ExpressionAttributeValues: { ':userId': { S: userId } },
+            // 削除にはキー(pk, sk)だけあればよい。本文は取得しない。
+            ProjectionExpression: 'pk, sk',
+            ExclusiveStartKey: lastEvaluatedKey,
+          })
+        );
+        const items = result.Items || [];
+        // BatchWriteItem は1回25件まで。25件ずつ削除する。
+        for (let i = 0; i < items.length; i += 25) {
+          const batch = items.slice(i, i + 25);
+          await dynamodb.send(
+            new BatchWriteItemCommand({
+              RequestItems: {
+                [process.env.TABLE_NAME]: batch.map((it) => ({
+                  DeleteRequest: { Key: { pk: it.pk, sk: it.sk } },
+                })),
+              },
+            })
+          );
+          deleted += batch.length;
+        }
+        lastEvaluatedKey = result.LastEvaluatedKey;
+      } while (lastEvaluatedKey);
+
+      return response(200, corsHeaders, { ok: true, deleted });
+    } catch (error) {
+      console.error('Delete error:', error.message);
+      return response(500, corsHeaders, { message: 'Error deleting entries' });
     }
   }
 

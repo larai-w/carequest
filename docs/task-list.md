@@ -45,6 +45,10 @@ Last updated: 2026-07-12 JST
 1. **サインイン後にログインフォームが残る** → `AuthPanel` をサインイン時は「ログイン中: ◯◯ + サインアウト/状態確認」だけに畳む(フォーム・タブを隠す)。
 2. **記録がいつのものか分かりにくい** → `lib/date.ts` に `formatLogWhen`(completedAt があれば「M月D日 HH:MM」、無ければ date から「M月D日」)を追加し、ホーム/ふりかえりの各記録に穏やかに(text-xs stone-400)表示。責めないトーン=「記録がない日」は示さない。テスト追加(`lib/__tests__/date.test.ts`)。検証: lint green・test 210 passed・build green。
 
+### T52. アカウント/クラウドデータ削除(US-503)| P2 | 推奨モデル: Opus — **完了・2026-07-12 バックエンドデプロイ済み**
+
+完了メモ: サインイン済みユーザーが自分のクラウド記録・アカウントを削除できる。design-sync E-6 準拠で**ローカル(localStorage)の記録は絶対に消さない**。実装: Lambda `DELETE /entries`(pk=トークン由来 userId に固定・ページネーション Query + 25件 BatchWrite・他人のデータは消えない)/ CDK(DELETE メソッド Cognito 認証 + CORS に DELETE)/ `lib/api.ts` `deleteCloudEntries`・`deleteAccount`(先にデータ削除→失敗時は deleteUser せず孤児 PII を残さない)/ AuthPanel サインイン済みビューに2段階確認の削除メニュー。**このタスクは design-sync D-5 の「削除フローは人間レビュー必須」ゲート対象**のため、実装→/security-review(脆弱性なし)→オーナー承認を経てデプロイ。検証: infra 46 + frontend 215 テスト・lint・build・synth green。本番検証: 未認証 DELETE=401、認証 DELETE で全件削除→GET 0件。バックエンドは `cdk deploy -c alertEmail=irevail8@gmail.com` 済み(alertEmail は SNS 購読維持のため必須)。**残**: スパム登録対策のハードニング(別途)。
+
 ### T51. 非同期処理の途中フィードバック(実ユーザー堅牢性)| P2 | 推奨モデル: Sonnet — **完了(2026-07-12)**
 
 完了メモ: 認証(サインイン/新規登録/確認/再送/再設定/状態確認/サインアウト)とクラウド同期(バックアップ/復元)に、実行中の「…しています」文言 + `busy`/`cloudBusy` によるボタン無効化(二重タップ防止)を追加。`AuthPanel` は単一 `busy` state で全ボタンを制御し `disabled:opacity-60`。遅い回線でも「押せたのか/壊れたのか」が分かる。frontend のみ。検証: lint green・test 210 passed・build green。背景: Phase 1 実ユーザー向けの堅牢性(押し直し・二重送信の防止)。
