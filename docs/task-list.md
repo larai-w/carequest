@@ -45,6 +45,10 @@ Last updated: 2026-07-12 JST
 1. **サインイン後にログインフォームが残る** → `AuthPanel` をサインイン時は「ログイン中: ◯◯ + サインアウト/状態確認」だけに畳む(フォーム・タブを隠す)。
 2. **記録がいつのものか分かりにくい** → `lib/date.ts` に `formatLogWhen`(completedAt があれば「M月D日 HH:MM」、無ければ date から「M月D日」)を追加し、ホーム/ふりかえりの各記録に穏やかに(text-xs stone-400)表示。責めないトーン=「記録がない日」は示さない。テスト追加(`lib/__tests__/date.test.ts`)。検証: lint green・test 210 passed・build green。
 
+### T51. 非同期処理の途中フィードバック(実ユーザー堅牢性)| P2 | 推奨モデル: Sonnet — **完了(2026-07-12)**
+
+完了メモ: 認証(サインイン/新規登録/確認/再送/再設定/状態確認/サインアウト)とクラウド同期(バックアップ/復元)に、実行中の「…しています」文言 + `busy`/`cloudBusy` によるボタン無効化(二重タップ防止)を追加。`AuthPanel` は単一 `busy` state で全ボタンを制御し `disabled:opacity-60`。遅い回線でも「押せたのか/壊れたのか」が分かる。frontend のみ。検証: lint green・test 210 passed・build green。背景: Phase 1 実ユーザー向けの堅牢性(押し直し・二重送信の防止)。
+
 ### T50. 過去の日の記録を開いて見る(US-202 深化)| P2 | 推奨モデル: Sonnet — **完了(2026-07-12)**
 
 完了メモ: ふりかえり「ここ7日間のあゆみ」の各日をタップで展開し、その日の個々の記録(タイトル + `formatLogWhen` の日付時刻 + ポイント)を表示。これまで個々の記録は「今日」しか見られなかったのを、過去7日の任意の日に広げた。記録は `loadCareState().logs` を都度フィルタ(view state に持たず同期不整合を避ける)。`aria-expanded` 付きボタン・「ひらく/とじる」。責めないトーン=記録がない日は元々出さない(getRecentDaySummaries が除外)。frontend のみ・インフラ変更なし。検証: lint green・test 210 passed・build green。背景: オーナーの「記録がいつの日か分かりにくい」フィードバックの延長(T49b)+ US-202(ふりかえり履歴)の深化。
