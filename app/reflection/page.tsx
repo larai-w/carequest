@@ -13,7 +13,7 @@ import { useHydratedState } from "@/lib/useHydratedState";
 import { getTodayDate, formatLogWhen } from "@/lib/date";
 import { getRecentDaySummaries, type RecentDaySummary } from "@/lib/stats";
 import { getTodaySummaryBody } from "@/lib/messages";
-import { buildExportPayload, downloadAsJson } from "@/lib/export";
+import { buildExportPayload, downloadAsJson, downloadLogsCsv } from "@/lib/export";
 import { parseAndMergeImport } from "@/lib/import";
 import { removeLog, recalcTodayStats } from "@/lib/logs";
 import { shouldShowBackupReminder } from "@/lib/backup-reminder";
@@ -293,6 +293,12 @@ export default function ReflectionPage() {
     setViewState((current) => ({ ...current, exportReminderDismissed: true }));
   }, [setViewState]);
 
+  // US-503: 記録を CSV で書き出す(表計算ソフト・共有・印刷向け)。
+  // JSON(復元用)とは別物なので lastExportDate は更新しない(バックアップ扱いにしない)。
+  const handleExportCsv = useCallback(() => {
+    downloadLogsCsv(loadCareState().logs);
+  }, []);
+
   const handleDeleteLog = useCallback(
     (logId: string) => {
       const state = loadCareState();
@@ -545,6 +551,13 @@ export default function ReflectionPage() {
               className="rounded-full bg-stone-100 px-4 py-2 text-sm text-stone-700 hover:bg-stone-200 active:bg-stone-300"
             >
               自分の記録を保存する（JSON）
+            </button>
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              className="rounded-full bg-stone-100 px-4 py-2 text-sm text-stone-700 hover:bg-stone-200 active:bg-stone-300"
+            >
+              表計算ソフト用に書き出す（CSV）
             </button>
             <button
               type="button"
