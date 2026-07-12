@@ -5,7 +5,10 @@ import Layout from "@/components/Layout";
 import EncouragementCard from "@/components/EncouragementCard";
 import BackupReminderCard from "@/components/BackupReminderCard";
 import ResetDataCard from "@/components/ResetDataCard";
+import CloudBackupCard from "@/components/CloudBackupCard";
 import { loadCareState, saveCareState, resetCareState } from "@/lib/storage";
+import { backupCareLogs, fetchCareEntries, isSignedIn } from "@/lib/api";
+import { mergeRestoredLogs } from "@/lib/backup";
 import { useHydratedState } from "@/lib/useHydratedState";
 import { getTodayDate } from "@/lib/date";
 import { getRecentDaySummaries, type RecentDaySummary } from "@/lib/stats";
@@ -112,6 +115,9 @@ export default function ReflectionPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importMessage, setImportMessage] = useState("");
+  // T10 Phase A: クラウドバックアップ/復元の穏やかな結果メッセージと実行中フラグ。
+  const [cloudMessage, setCloudMessage] = useState("");
+  const [cloudBusy, setCloudBusy] = useState(false);
 
   const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -138,6 +144,55 @@ export default function ReflectionPage() {
     saveCareState(result.state);
     setViewState(loadReflectionViewState());
     setImportMessage(result.message);
+  };
+
+  // T10 Phase A: 手動でローカルの全 logs をクラウドへ冪等 PUT する。
+  // 失敗しても記録はローカルに残る。文言は責めない・急かさない(design-sync §4)。
+  const handleCloudBackup = async () => {
+    setCloudBusy(true);
+    try {
+      const result = await backupCareLogs(loadCareState().logs);
+      if (result.skipped) {
+        setCloudMessage("サインインすると、この端末の記録をクラウドに控えておけます。");
+      } else if (result.total === 0) {
+        setCloudMessage("まだ控えておく記録がありません。");
+      } else if (result.failed === 0) {
+        setCloudMessage("バックアップが完了しました。");
+      } else if (result.succeeded > 0) {
+        setCloudMessage("一部の記録を控えました。残りはこの端末にちゃんと残っています。");
+      } else {
+        setCloudMessage("同期できませんでした。記録はこの端末にちゃんと残っています。");
+      }
+    } catch {
+      setCloudMessage("同期できませんでした。記録はこの端末にちゃんと残っています。");
+    } finally {
+      setCloudBusy(false);
+    }
+  };
+
+  // T10 Phase A: クラウドの記録を取得し、既存優先でローカルにマージする(上書きしない)。
+  const handleCloudRestore = async () => {
+    setCloudBusy(true);
+    try {
+      if (!(await isSignedIn())) {
+        setCloudMessage("サインインすると、クラウドの控えから復元できます。");
+        return;
+      }
+      // fetchCareEntries は sanitize 済みの入口(T31)。生 JSON を信用しない。
+      const fetched = await fetchCareEntries();
+      const { state, importedLogCount } = mergeRestoredLogs(loadCareState(), fetched);
+      saveCareState(state);
+      setViewState(loadReflectionViewState());
+      setCloudMessage(
+        importedLogCount > 0
+          ? `${importedLogCount}件の記録を読み込みました。`
+          : "読み込みは完了しました。新しく増えた記録はありませんでした。",
+      );
+    } catch {
+      setCloudMessage("同期できませんでした。記録はこの端末にちゃんと残っています。");
+    } finally {
+      setCloudBusy(false);
+    }
   };
 
   const goodThingOptions = [
@@ -478,6 +533,13 @@ export default function ReflectionPage() {
             </div>
           )}
         </section>
+
+        <CloudBackupCard
+          onBackup={handleCloudBackup}
+          onRestore={handleCloudRestore}
+          message={cloudMessage}
+          busy={cloudBusy}
+        />
 
         {showResetConfirm && (
           <ResetDataCard

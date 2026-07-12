@@ -14,6 +14,7 @@ import { getEncouragementMessage } from "@/lib/messages";
 import { loadCareState, loadCareStateWithReport, saveCareState } from "@/lib/storage";
 import { useHydratedState } from "@/lib/useHydratedState";
 import { recordDailyEnergy, shouldShowSupportNudge } from "@/lib/support";
+import { SYNC_EVENT_NAME } from "@/lib/sync";
 import { getTodayDate } from "@/lib/date";
 import { removeLog, recalcTodayStats } from "@/lib/logs";
 import type { CareLog, DailyEnergy, EnergyLevel } from "@/lib/types";
@@ -103,6 +104,15 @@ export default function HomePage() {
     supportNudgeDismissed,
     onboardingShown,
   } = viewState;
+
+  // サインイン時の背景同期(Phase B)でクラウドの記録が復元されたら、
+  // 表示中のホーム(今日の記録・ポイント)を最新化する。イベントコールバック内の
+  // setState なので react-hooks/set-state-in-effect には該当しない。
+  useEffect(() => {
+    const onSynced = () => setViewState(loadHomeViewState());
+    window.addEventListener(SYNC_EVENT_NAME, onSynced);
+    return () => window.removeEventListener(SYNC_EVENT_NAME, onSynced);
+  }, [setViewState]);
 
   const dismissRecoveryNotice = useCallback(() => {
     setViewState((current) => ({ ...current, dataRecovered: false }));
