@@ -15,7 +15,7 @@ import { loadCareState, loadCareStateWithReport, saveCareState } from "@/lib/sto
 import { useHydratedState } from "@/lib/useHydratedState";
 import { recordDailyEnergy, shouldShowSupportNudge } from "@/lib/support";
 import { SYNC_EVENT_NAME } from "@/lib/sync";
-import { getTodayDate } from "@/lib/date";
+import { getTodayDate, formatLogWhen } from "@/lib/date";
 import { removeLog, recalcTodayStats } from "@/lib/logs";
 import type { CareLog, DailyEnergy, EnergyLevel } from "@/lib/types";
 
@@ -356,7 +356,12 @@ export default function HomePage() {
             <div className="mt-3 space-y-2">
               {todayLogs.map((log) => (
                 <div key={log.id} className="relative flex items-center rounded-2xl bg-stone-50 px-3 py-2 pr-12 text-sm text-stone-700">
-                  <span className="flex-1">{log.title}</span>
+                  <div className="flex-1">
+                    <span>{log.title}</span>
+                    {formatLogWhen(log.completedAt, log.date) ? (
+                      <span className="mt-0.5 block text-xs text-stone-400">{formatLogWhen(log.completedAt, log.date)}</span>
+                    ) : null}
+                  </div>
                   <span className="ml-2 text-amber-700">+{log.points}pt</span>
                   <button
                     type="button"
