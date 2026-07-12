@@ -13,6 +13,24 @@ export default function AboutPage() {
           </p>
         </section>
 
+        <section className="rounded-[28px] border border-amber-100 bg-amber-50/80 p-4 shadow-sm">
+          <h3 className="text-lg font-semibold text-stone-800">はじめる前に、3つの安心</h3>
+          <ul className="mt-3 space-y-2 text-sm leading-7 text-stone-700">
+            <li>
+              <span className="font-semibold text-stone-800">無料で使えます。</span>
+              アプリ内の課金はありません。
+            </li>
+            <li>
+              <span className="font-semibold text-stone-800">登録なしで、すぐ始められます。</span>
+              クラウドに控えたいときだけ、任意で登録できます。
+            </li>
+            <li>
+              <span className="font-semibold text-stone-800">記録は、まずこの端末の中だけ。</span>
+              外には送られません。サインインしたときだけ、日本国内の AWS にもバックアップできます。
+            </li>
+          </ul>
+        </section>
+
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h3 className="text-lg font-semibold text-stone-800">安全に関する注意</h3>
           <p className="mt-3 text-sm leading-7 text-stone-700">
@@ -44,6 +62,32 @@ export default function AboutPage() {
               </div>
             ))}
           </div>
+        </section>
+
+        <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
+          <h3 className="text-lg font-semibold text-stone-800">よくある質問</h3>
+          <dl className="mt-3 space-y-3 text-sm leading-7 text-stone-700">
+            <div>
+              <dt className="font-semibold text-stone-800">スマホでも使えますか?</dt>
+              <dd className="mt-1 text-stone-600">はい。スマホのブラウザで使えます。「ホーム画面に追加」すると、アプリのように開けます。</dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-stone-800">オフラインでも使えますか?</dt>
+              <dd className="mt-1 text-stone-600">はい。ネットがつながらない場所でも、記録やふりかえりができます。</dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-stone-800">記録は誰かに見られますか?</dt>
+              <dd className="mt-1 text-stone-600">いいえ。記録はこの端末に保存され、あなたの同意なく他の人に公開されることはありません。</dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-stone-800">記録が消えないか心配です。</dt>
+              <dd className="mt-1 text-stone-600">端末に保存されるので、ブラウザのデータを消さなければ残ります。心配なときは、ふりかえり画面から JSON / CSV で書き出したり、登録してクラウドに控えることもできます。</dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-stone-800">使うのをやめたいときは?</dt>
+              <dd className="mt-1 text-stone-600">いつでもふりかえり画面からすべての記録を削除できます。登録した場合は、ホーム画面の「アカウント」から、クラウドの記録やアカウントも削除できます。</dd>
+            </div>
+          </dl>
         </section>
 
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">

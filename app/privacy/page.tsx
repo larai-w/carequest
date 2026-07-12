@@ -38,17 +38,20 @@ export default function PrivacyPage() {
             端末内のデータは、ふりかえり画面のデータ管理セクションにある「すべての記録を削除する」からアプリ内で削除できます。削除後はオンボーディングが再表示される、まっさらな状態に戻ります。
           </p>
           <p className="mt-2 text-sm leading-7 text-stone-700">
-            削除の前にふりかえり画面から記録を JSON ファイルとして手元に持ち出すこともできます。
+            削除の前にふりかえり画面から記録を JSON または CSV ファイルとして手元に持ち出すこともできます。
+          </p>
+          <p className="mt-2 text-sm leading-7 text-stone-700">
+            アカウント登録をした場合は、ホーム画面の「アカウント」から、クラウドに保存した記録の削除や、アカウントそのものの削除ができます。どちらの場合も、この端末に保存された記録は残ります。
           </p>
           <p className="mt-2 text-sm leading-7 text-stone-500">
-            ブラウザのサイトデータ削除でも同様に消すことができます。アカウントに保存されたデータの削除をご希望の場合は、About ページ記載の運営元までご連絡ください。
+            ブラウザのサイトデータ削除でも端末内のデータを消すことができます。ご不明な点は About ページ記載の運営元までご連絡ください。
           </p>
         </section>
 
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h3 className="text-lg font-semibold text-stone-800">このポリシーについて</h3>
           <p className="mt-3 text-sm leading-7 text-stone-700">
-            内容を変更する場合は、このページでお知らせします。最終更新日: 2026年7月8日
+            内容を変更する場合は、このページでお知らせします。最終更新日: 2026年7月12日
           </p>
         </section>
       </div>
