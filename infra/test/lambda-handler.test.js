@@ -12,6 +12,7 @@ import {
   DynamoDBClient,
   PutItemCommand,
   QueryCommand,
+  BatchWriteItemCommand,
 } from '@aws-sdk/client-dynamodb';
 
 // ── DynamoDB モック ────────────────────────────────────────────────────────
@@ -25,6 +26,7 @@ beforeEach(async () => {
   // デフォルトの正常レスポンス
   ddbMock.on(PutItemCommand).resolves({});
   ddbMock.on(QueryCommand).resolves({ Items: [] });
+  ddbMock.on(BatchWriteItemCommand).resolves({});
 
   // require をリセットするため vi.resetModules() を呼び、モジュールを再読込
   vi.resetModules();
@@ -88,9 +90,83 @@ describe('未知ルート', () => {
     expect(res.statusCode).toBe(404);
   });
 
-  it('DELETE /entries → 404', async () => {
-    const res = await handler(makeEvent({ httpMethod: 'DELETE', resource: '/entries' }));
+  it('PUT /entries → 404 (未対応メソッド)', async () => {
+    const res = await handler(makeEvent({ httpMethod: 'PUT', resource: '/entries' }));
     expect(res.statusCode).toBe(404);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DELETE /entries – 自分のクラウド記録を全削除 (US-503)
+// ─────────────────────────────────────────────────────────────────────────────
+function deleteEvent(username, extra = {}) {
+  return makeEvent({
+    httpMethod: 'DELETE',
+    resource: '/entries',
+    requestContext: {
+      requestId: 'del-req',
+      authorizer: { claims: { 'cognito:username': username } },
+    },
+    ...extra,
+  });
+}
+
+describe('DELETE /entries (US-503)', () => {
+  it('自分の pk のみを Query して削除する', async () => {
+    ddbMock.on(QueryCommand).resolves({
+      Items: [
+        { pk: { S: 'alice' }, sk: { S: 'log-1' } },
+        { pk: { S: 'alice' }, sk: { S: 'log-2' } },
+      ],
+    });
+    const res = await handler(deleteEvent('alice'));
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body)).toEqual({ ok: true, deleted: 2 });
+
+    // Query は自分の pk のみを対象にする
+    const queryInput = ddbMock.commandCalls(QueryCommand)[0].args[0].input;
+    expect(queryInput.ExpressionAttributeValues[':userId']).toEqual({ S: 'alice' });
+
+    // BatchWriteItem に DeleteRequest が2件渡る
+    const batchCalls = ddbMock.commandCalls(BatchWriteItemCommand);
+    expect(batchCalls).toHaveLength(1);
+    const requestItems = batchCalls[0].args[0].input.RequestItems;
+    const tableRequests = Object.values(requestItems)[0];
+    expect(tableRequests).toHaveLength(2);
+    expect(tableRequests[0].DeleteRequest.Key).toEqual({ pk: { S: 'alice' }, sk: { S: 'log-1' } });
+  });
+
+  it('記録が無ければ deleted:0 で BatchWrite を呼ばない', async () => {
+    ddbMock.on(QueryCommand).resolves({ Items: [] });
+    const res = await handler(deleteEvent('bob'));
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body)).toEqual({ ok: true, deleted: 0 });
+    expect(ddbMock.commandCalls(BatchWriteItemCommand)).toHaveLength(0);
+  });
+
+  it('ページネーション: LastEvaluatedKey を辿って全件削除する', async () => {
+    ddbMock
+      .on(QueryCommand)
+      .resolvesOnce({ Items: [{ pk: { S: 'c' }, sk: { S: 's1' } }], LastEvaluatedKey: { pk: { S: 'c' }, sk: { S: 's1' } } })
+      .resolvesOnce({ Items: [{ pk: { S: 'c' }, sk: { S: 's2' } }] });
+    const res = await handler(deleteEvent('c'));
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body)).toEqual({ ok: true, deleted: 2 });
+    expect(ddbMock.commandCalls(QueryCommand)).toHaveLength(2);
+  });
+
+  it('26件は25件+1件の2バッチに分けて削除する', async () => {
+    const items = Array.from({ length: 26 }, (_, i) => ({ pk: { S: 'd' }, sk: { S: `s${i}` } }));
+    ddbMock.on(QueryCommand).resolves({ Items: items });
+    const res = await handler(deleteEvent('d'));
+    expect(JSON.parse(res.body)).toEqual({ ok: true, deleted: 26 });
+    expect(ddbMock.commandCalls(BatchWriteItemCommand)).toHaveLength(2);
+  });
+
+  it('DynamoDB エラー時 → 500', async () => {
+    ddbMock.on(QueryCommand).rejects(new Error('DDB Error'));
+    const res = await handler(deleteEvent('e'));
+    expect(res.statusCode).toBe(500);
   });
 });
 
