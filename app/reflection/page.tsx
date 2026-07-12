@@ -118,6 +118,21 @@ export default function ReflectionPage() {
   // T10 Phase A: クラウドバックアップ/復元の穏やかな結果メッセージと実行中フラグ。
   const [cloudMessage, setCloudMessage] = useState("");
   const [cloudBusy, setCloudBusy] = useState(false);
+  // 「ここ7日間のあゆみ」で開いている日と、その日の記録(タップで展開)。
+  const [expandedDate, setExpandedDate] = useState<string | null>(null);
+  const [expandedLogs, setExpandedLogs] = useState<CareLog[]>([]);
+
+  // 過去の日をタップして、その日の記録を見る/閉じる。記録は localStorage から都度読む。
+  const toggleDay = (date: string) => {
+    if (expandedDate === date) {
+      setExpandedDate(null);
+      setExpandedLogs([]);
+      return;
+    }
+    const dayLogs = loadCareState().logs.filter((log) => log.date === date);
+    setExpandedDate(date);
+    setExpandedLogs(dayLogs);
+  };
 
   const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -432,20 +447,48 @@ export default function ReflectionPage() {
               これからの記録が、ここに少しずつ残っていきます。今日の分だけで十分です。
             </p>
           ) : (
-            <div className="mt-3 space-y-2">
-              {recentDays.map((day) => (
-                <div
-                  key={day.date}
-                  className="flex items-center justify-between rounded-2xl bg-stone-50 px-3 py-3 text-sm text-stone-700"
-                >
-                  <span>{day.label}</span>
-                  <span>
-                    {day.completedTasks}件の支え
-                    <span className="ml-2 text-amber-700">+{day.totalPoints}pt</span>
-                  </span>
-                </div>
-              ))}
-            </div>
+            <>
+              <p className="mt-1 text-xs text-stone-500">日をタップすると、その日の記録を見られます。</p>
+              <div className="mt-3 space-y-2">
+                {recentDays.map((day) => {
+                  const expanded = expandedDate === day.date;
+                  return (
+                    <div key={day.date}>
+                      <button
+                        type="button"
+                        onClick={() => toggleDay(day.date)}
+                        aria-expanded={expanded}
+                        className="flex w-full items-center justify-between rounded-2xl bg-stone-50 px-3 py-3 text-left text-sm text-stone-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+                      >
+                        <span>
+                          {day.label}
+                          <span className="ml-2 text-xs text-stone-400">{expanded ? "とじる" : "ひらく"}</span>
+                        </span>
+                        <span>
+                          {day.completedTasks}件の支え
+                          <span className="ml-2 text-amber-700">+{day.totalPoints}pt</span>
+                        </span>
+                      </button>
+                      {expanded ? (
+                        <div className="mt-2 space-y-2 pl-3">
+                          {expandedLogs.map((log) => (
+                            <div key={log.id} className="flex items-center rounded-2xl bg-white px-3 py-2 text-sm text-stone-700">
+                              <div className="flex-1">
+                                <span>{log.title}</span>
+                                {formatLogWhen(log.completedAt, log.date) ? (
+                                  <span className="mt-0.5 block text-xs text-stone-400">{formatLogWhen(log.completedAt, log.date)}</span>
+                                ) : null}
+                              </div>
+                              <span className="ml-2 text-amber-700">+{log.points}pt</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </section>
 
