@@ -96,7 +96,7 @@ export class CareQuestStack extends cdk.Stack {
       },
       defaultCorsPreflightOptions: {
         allowOrigins: ALLOWED_ORIGINS,
-        allowMethods: ['GET', 'POST', 'OPTIONS'],
+        allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
         allowHeaders: ['Content-Type', 'Authorization'],
       },
     });
@@ -116,6 +116,11 @@ export class CareQuestStack extends cdk.Stack {
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
     entries.addMethod('POST', new apigateway.LambdaIntegration(apiHandler), {
+      authorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
+    // US-503: 認証ユーザー自身のクラウド記録をすべて削除(端末の記録は消さない)。
+    entries.addMethod('DELETE', new apigateway.LambdaIntegration(apiHandler), {
       authorizer,
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });

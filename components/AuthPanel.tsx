@@ -20,6 +20,10 @@ export default function AuthPanel() {
   const [newPassword, setNewPassword] = useState("");
   // 通信中フラグ。実行中はボタンを無効化して二重タップを防ぎ、「…しています」を見せる。
   const [busy, setBusy] = useState(false);
+  // US-503: クラウドデータ/アカウント削除の開閉と2段階確認。
+  const [dangerOpen, setDangerOpen] = useState(false);
+  const [confirmingData, setConfirmingData] = useState(false);
+  const [confirmingAccount, setConfirmingAccount] = useState(false);
 
   // サインインが確認できたときの自動同期(Phase B)。背景で復元→バックアップを実行し、
   // 結果を穏やかに知らせる。UI はブロックしない・失敗しても記録はローカルに残る。
@@ -251,6 +255,51 @@ export default function AuthPanel() {
     }
   };
 
+  // US-503: クラウドの記録だけを削除(アカウントとローカルは残す)。
+  const handleDeleteCloudData = async () => {
+    setBusy(true);
+    setMessage("クラウドの記録を削除しています…");
+    try {
+      const { deleteCloudEntries } = await import("@/lib/api");
+      const result = await deleteCloudEntries();
+      setConfirmingData(false);
+      setDangerOpen(false);
+      setMessage(
+        result.ok
+          ? "クラウドの記録を削除しました。この端末の記録は残っています。"
+          : "削除できませんでした。もう一度お試しください。",
+      );
+    } catch {
+      setMessage("削除できませんでした。もう一度お試しください。");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // US-503: アカウント削除(クラウドの記録も消す)。ローカルの記録は残す。
+  const handleDeleteAccount = async () => {
+    setBusy(true);
+    setMessage("アカウントを削除しています…");
+    try {
+      const { deleteAccount } = await import("@/lib/api");
+      const result = await deleteAccount();
+      if (result.ok) {
+        setIsSignedIn(false);
+        setCurrentUsername(null);
+        setConfirmingAccount(false);
+        setDangerOpen(false);
+        setMode("signIn");
+        setMessage("アカウントを削除しました。この端末の記録は残っています。");
+      } else {
+        setMessage("アカウントを削除できませんでした。もう一度お試しください。");
+      }
+    } catch {
+      setMessage("アカウントを削除できませんでした。もう一度お試しください。");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const switchToSignIn = () => {
     setMode("signIn");
     setResetStage("request");
@@ -321,6 +370,76 @@ export default function AuthPanel() {
           </button>
         </div>
         <p className="mt-3 text-sm text-stone-600">{message}</p>
+
+        {!dangerOpen ? (
+          <button type="button" onClick={() => setDangerOpen(true)} className={`mt-3 ${linkButton}`}>
+            クラウドのデータ・アカウントを削除
+          </button>
+        ) : (
+          <div className="mt-3 space-y-3 border-t border-stone-200 pt-3">
+            <p className="text-xs leading-5 text-stone-500">
+              どちらを選んでも、この端末に保存された記録は消えません。消えるのはクラウド上の控えだけです。
+            </p>
+
+            {confirmingData ? (
+              <div className="rounded-2xl bg-stone-50 p-3">
+                <p className="text-sm leading-6 text-stone-600">クラウドに保存した記録を削除します。よろしいですか?</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button type="button" onClick={handleDeleteCloudData} disabled={busy} className={subtleButton}>
+                    削除する
+                  </button>
+                  <button type="button" onClick={() => setConfirmingData(false)} disabled={busy} className={linkButton}>
+                    やめる
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmingData(true);
+                  setConfirmingAccount(false);
+                }}
+                disabled={busy}
+                className={subtleButton}
+              >
+                クラウドの記録を削除
+              </button>
+            )}
+
+            {confirmingAccount ? (
+              <div className="rounded-2xl bg-stone-50 p-3">
+                <p className="text-sm leading-6 text-stone-600">
+                  アカウントとクラウドの記録を削除します。この操作は元に戻せません。よろしいですか?
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button type="button" onClick={handleDeleteAccount} disabled={busy} className={subtleButton}>
+                    アカウントを削除する
+                  </button>
+                  <button type="button" onClick={() => setConfirmingAccount(false)} disabled={busy} className={linkButton}>
+                    やめる
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmingAccount(true);
+                  setConfirmingData(false);
+                }}
+                disabled={busy}
+                className={subtleButton}
+              >
+                アカウントを削除
+              </button>
+            )}
+
+            <button type="button" onClick={() => setDangerOpen(false)} disabled={busy} className={linkButton}>
+              とじる
+            </button>
+          </div>
+        )}
       </section>
     );
   }
