@@ -1,0 +1,41 @@
+version: 2
+updates:
+  # フロントエンド (ルート)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      # minor / patch をまとめて PR 数を抑制
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # インフラ (CDK)
+  - package-ecosystem: "npm"
+    directory: "/infra"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      actions-minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"

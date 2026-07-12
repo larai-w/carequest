@@ -21,7 +21,8 @@ export default function EnergySelector({ value, onChange }: EnergySelectorProps)
           key={option.value}
           type="button"
           onClick={() => onChange(option.value)}
-          className={`rounded-2xl border px-3 py-3 text-sm font-semibold transition ${
+          aria-pressed={value === option.value}
+          className={`rounded-2xl border px-3 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 ${
             value === option.value
               ? "border-amber-400 bg-amber-500 text-white"
               : "border-stone-200 bg-white/80 text-stone-700"

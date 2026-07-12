@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 const navItems = [
   { href: "/", label: "ホーム" },
   { href: "/quest", label: "クエスト" },
-  { href: "/community", label: "みんな" },
+  { href: "/community", label: "あゆみ" },
   { href: "/reflection", label: "ふりかえり" },
   { href: "/about", label: "About" },
 ];
@@ -21,7 +21,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         <header className="mb-6 rounded-[28px] border border-white/70 bg-white/80 px-4 py-4 shadow-sm backdrop-blur">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-amber-600">
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-amber-700">
                 Care Quest
               </p>
               <h1 className="text-lg font-semibold text-stone-800">今日も、少しだけやさしく</h1>
@@ -34,14 +34,18 @@ export default function Layout({ children }: { children: ReactNode }) {
 
         <main className="flex-1">{children}</main>
 
-        <nav className="fixed bottom-3 left-1/2 z-20 flex w-[calc(100%-1.5rem)] max-w-4xl -translate-x-1/2 overflow-hidden rounded-full border border-white/70 bg-white/90 px-2 py-2 shadow-lg backdrop-blur">
+        <nav
+          aria-label="メインナビゲーション"
+          className="fixed bottom-3 left-1/2 z-20 flex w-[calc(100%-1.5rem)] max-w-4xl -translate-x-1/2 overflow-hidden rounded-full border border-white/70 bg-white/90 px-2 py-2 shadow-lg backdrop-blur"
+        >
           {navItems.map((item) => {
             const active = pathname === item.href;
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex-1 rounded-full px-2 py-2 text-center text-sm font-medium transition ${
+                aria-current={active ? "page" : undefined}
+                className={`flex-1 rounded-full px-2 py-2 text-center text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1 ${
                   active ? "bg-amber-500 text-white" : "text-stone-600"
                 }`}
               >

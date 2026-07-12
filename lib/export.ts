@@ -1,0 +1,63 @@
+import { loadCareState } from "@/lib/storage";
+import { getTodayDate } from "@/lib/date";
+
+export interface CareQuestExport {
+  exportedAt: string;
+  app: {
+    name: string;
+    version: string;
+  };
+  data: {
+    user: ReturnType<typeof loadCareState>["user"];
+    logs: ReturnType<typeof loadCareState>["logs"];
+    note: ReturnType<typeof loadCareState>["note"];
+    customTasks: ReturnType<typeof loadCareState>["customTasks"];
+    energyHistory: ReturnType<typeof loadCareState>["energyHistory"];
+    supportNudgeLastShown: ReturnType<typeof loadCareState>["supportNudgeLastShown"];
+    onboardingShown: ReturnType<typeof loadCareState>["onboardingShown"];
+    goodThingsHistory: ReturnType<typeof loadCareState>["goodThingsHistory"];
+    // v6: バックアップリマインド関連フィールド。
+    // lastExportDate / exportReminderLastShown はこの端末の状態を示すフィールドで、
+    // supportNudgeLastShown と同じ「この端末の状態」扱い。
+    // エクスポートには含めるが、インポート時は端末側の値を維持する(lib/import.ts 参照)。
+    lastExportDate: ReturnType<typeof loadCareState>["lastExportDate"];
+    exportReminderLastShown: ReturnType<typeof loadCareState>["exportReminderLastShown"];
+  };
+}
+
+export function buildExportPayload(): CareQuestExport {
+  const state = loadCareState();
+  return {
+    exportedAt: new Date().toISOString(),
+    app: {
+      name: "Care Quest",
+      version: "0.1.0",
+    },
+    data: {
+      user: state.user,
+      logs: state.logs,
+      note: state.note,
+      customTasks: state.customTasks,
+      energyHistory: state.energyHistory,
+      supportNudgeLastShown: state.supportNudgeLastShown,
+      onboardingShown: state.onboardingShown,
+      goodThingsHistory: state.goodThingsHistory,
+      lastExportDate: state.lastExportDate,
+      exportReminderLastShown: state.exportReminderLastShown,
+    },
+  };
+}
+
+export function downloadAsJson(payload: CareQuestExport): void {
+  const json = JSON.stringify(payload, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  const filename = `carequest-export-${getTodayDate()}.json`;
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+
+  URL.revokeObjectURL(url);
+}
