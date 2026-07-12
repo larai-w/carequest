@@ -10,6 +10,27 @@ export default function AuthPanel() {
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [currentUsername, setCurrentUsername] = useState<string | null>(null);
 
+  // サインインが確認できたときの自動同期(Phase B)。背景で復元→バックアップを実行し、
+  // 結果を穏やかに知らせる。UI はブロックしない・失敗しても記録はローカルに残る。
+  // lib/sync は動的 import(初期バンドルを軽く保つ・T45 の精神)。
+  const runSignInSync = async () => {
+    try {
+      const { syncOnSignIn } = await import("@/lib/sync");
+      const result = await syncOnSignIn();
+      if (result.skipped) {
+        return;
+      }
+      if (result.restoredCount > 0) {
+        setMessage(`クラウドから${result.restoredCount}件の記録を読み込み、バックアップしました。`);
+      } else {
+        setMessage("記録をクラウドにバックアップしました。");
+      }
+    } catch {
+      // 同期に失敗しても記録はこの端末に安全。穏やかに伝える。
+      setMessage("記録はこの端末に安全に保存されています。");
+    }
+  };
+
   const handleSignIn = async () => {
     try {
       // 認証 SDK はこの操作の瞬間に初めて動的 import する(初期バンドルには含めない・T45)。
@@ -20,7 +41,9 @@ export default function AuthPanel() {
       setSignedInFlag(true);
       setIsSignedIn(true);
       setCurrentUsername(email);
-      setMessage("ログインしました。次はデータをクラウドへ保存できます。");
+      setMessage("ログインしました。記録を同期しています…");
+      // サインイン成功をトリガーに自動同期(復元→バックアップ)。
+      void runSignInSync();
     } catch {
       setMessage("ログインに失敗しました。ユーザー情報を確認してください。");
     }
@@ -53,6 +76,9 @@ export default function AuthPanel() {
       setIsSignedIn(true);
       // 実セッションが確認できたので軽量フラグを同期させる。
       setSignedInFlag(true);
+      // 実セッションが確認できたこのタイミングでも自動同期(復元→バックアップ)を試みる。
+      // 前回ログインしたまま戻ってきたユーザーがクラウドの記録を取り込める。
+      void runSignInSync();
     } catch {
       setCurrentUsername(null);
       setMessage("まだログインしていません。");

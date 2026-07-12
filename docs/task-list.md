@@ -21,7 +21,13 @@ Last updated: 2026-07-12 JST
   7. **純関数+ユニットテスト**: マージ/送信対象抽出を DOM 非依存の純関数にしテスト追加(既存 import.ts のテスト構造に倣う)。既存テストを壊さない。
 - 変更許可領域: `app/reflection/page.tsx` / `components/CloudBackupCard.tsx`(新規) / `lib/api.ts` / `lib/import.ts`(logs マージ純関数の切り出し) / `lib/` 配下の新規ヘルパー・テスト。**lib/storage.ts の sanitizeLog は既存を使う(変更しない)。infra は触らない。**
 - 委任: worker(**opus**)。単独タスクなので build まで実行可。
-- ※ Phase B(自動同期)は Phase A リリース・検証後(§5 Phase B / D-6)。
+
+### T10 Phase B. サインイン時の自動同期(US-103)| P1 | 推奨モデル: Opus — **完了(2026-07-12)**
+
+完了メモ: Phase A の関数を再利用してトリガーを追加(新しい同期ロジックは発明しない)。変更: `lib/sync.ts`(新規: `syncOnSignIn` = 復元→バックアップを背景実行・`carequest:synced` イベント発火)/ `components/AuthPanel.tsx`(サインイン成功・状態確認成功で `syncOnSignIn` を背景起動し結果を穏やかに表示)/ `app/quest/page.tsx`(記録ごとの即時 `syncCareLog` を **デバウンス全件バックアップ**に置換 = 失敗分の再送+連続記録のまとめ)/ `app/page.tsx`(`carequest:synced` を購読し復元後にホーム表示を最新化)/ `lib/__tests__/sync.test.ts`(新規)。挙動: 復元は既存優先でローカルを上書きしない・全件冪等 PUT で再送安全(§4.3)・10秒ルール維持(記録は即確定、同期は背景)・T45 維持(amplify は操作時のみ動的 import)。検証: lint green・test 204 passed・build green。
+
+- 背景: US-103 の本来の姿(ユーザーが意識せずバックアップ+端末をまたいで復元)。design-sync §5 Phase B。T27 の冪等 PUT が前提(自動再送で重複行が増えないため)。
+- ※ Phase C(削除の伝播・双方向マージ・note/customTasks 同期)はスコープ外(D-2/D-3/D-4)。
 
 ### 次テーマ候補(オーナー決定・2026-07-12)
 

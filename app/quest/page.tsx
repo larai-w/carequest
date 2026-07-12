@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Layout from "@/components/Layout";
 import TaskCard from "@/components/TaskCard";
 import EncouragementCard from "@/components/EncouragementCard";
@@ -9,11 +9,14 @@ import { getEncouragementMessage } from "@/lib/messages";
 import { loadCareState, saveCareState } from "@/lib/storage";
 import { useHydratedState } from "@/lib/useHydratedState";
 import { getTodayDate } from "@/lib/date";
-import { syncCareLog } from "@/lib/api";
+import { backupCareLogs } from "@/lib/api";
 import type { CareLog, CareTask, EnergyLevel } from "@/lib/types";
 
 const CUSTOM_TASK_POINTS = 10;
 const CUSTOM_TASK_DESCRIPTION = "あなたにしかできない支えです。";
+// 記録後の自動バックアップのデバウンス間隔(Phase B)。連続記録を1回の背景
+// バックアップにまとめ、記録完了の体験に同期を割り込ませない(10秒ルール)。
+const RECORD_BACKUP_DEBOUNCE_MS = 1500;
 
 interface QuestViewState {
   logs: CareLog[];
@@ -79,6 +82,42 @@ export default function QuestPage() {
   };
 
   const [syncStatus, setSyncStatus] = useState("");
+  const backupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 記録後にデバウンスして、ローカルの全 logs を背景で冪等バックアップする(Phase B)。
+  // 全件 PUT なので、以前に送れなかった記録もここでまとめて再送される(§4.3 再送)。
+  // 未サインインなら backupCareLogs が { skipped: true } を返し、文言は出さない。
+  const scheduleBackup = useCallback(() => {
+    if (backupTimerRef.current) {
+      clearTimeout(backupTimerRef.current);
+    }
+    backupTimerRef.current = setTimeout(async () => {
+      try {
+        const result = await backupCareLogs(loadCareState().logs);
+        if (result.skipped) {
+          setSyncStatus("");
+        } else if (result.total === 0 || result.failed === 0) {
+          setSyncStatus("バックアップが完了しました。");
+        } else if (result.succeeded > 0) {
+          setSyncStatus("一部の記録を控えました。残りはこの端末にちゃんと残っています。");
+        } else {
+          setSyncStatus("同期できませんでした。記録はこの端末にちゃんと残っています。");
+        }
+      } catch {
+        setSyncStatus("同期できませんでした。記録はこの端末にちゃんと残っています。");
+      }
+    }, RECORD_BACKUP_DEBOUNCE_MS);
+  }, []);
+
+  // アンマウント時に保留中のタイマーを片づける。
+  useEffect(
+    () => () => {
+      if (backupTimerRef.current) {
+        clearTimeout(backupTimerRef.current);
+      }
+    },
+    [],
+  );
 
   const { saveFailed } = viewState;
 
@@ -86,7 +125,7 @@ export default function QuestPage() {
     setViewState((current) => ({ ...current, saveFailed: false }));
   };
 
-  const handleSelectTask = async (task: CareTask) => {
+  const handleSelectTask = (task: CareTask) => {
     const today = getTodayDate();
     const nextLog: CareLog = {
       id: `${task.id}-${Date.now()}`,
@@ -118,17 +157,8 @@ export default function QuestPage() {
       setViewState((current) => ({ ...current, saveFailed: true }));
     }
 
-    const syncResult = await syncCareLog(nextLog);
-    if (syncResult.skipped) {
-      // 未サインイン: 端末保存のみで完結するのが正常状態。文言は一切表示しない。
-      setSyncStatus("");
-    } else if (syncResult.ok) {
-      // サインイン済み、同期成功: 控えめに表示
-      setSyncStatus("バックアップが完了しました。");
-    } else {
-      // サインイン済み、同期失敗: 記録はローカルに残っていることを穏やかに伝える
-      setSyncStatus("同期できませんでした。記録はこの端末にちゃんと残っています。");
-    }
+    // 記録は上で確定済み。バックアップはデバウンスして背景で行う(10秒ルール)。
+    scheduleBackup();
   };
 
   const handleAddCustomTask = () => {
