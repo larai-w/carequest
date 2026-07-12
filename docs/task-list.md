@@ -1,6 +1,31 @@
 # Care Quest タスクリスト
 
-Last updated: 2026-07-11 JST
+Last updated: 2026-07-12 JST
+
+## 第11バッチ(2026-07-12 立案)【テーマ: R-02 恒久軽減 — ローカル→AWS 同期】
+
+前提充足: T27(冪等 sk)本番デプロイ済み・T31(fetch の sanitize)完了・D-1〜D-6 承認済み(全て選択肢 A)・Cognito スモーク green(ブラウザ+バックエンド)。設計は [design-sync.md](design-sync.md)。
+
+### T10 Phase A. 手動バックアップ/復元ボタン(US-103)| P1 | 推奨モデル: Opus — **完了(2026-07-12)**
+
+完了メモ: opus ワーカーに委任したが実装フェーズで Edit 権限ゲートに阻まれたため、プランナーが受け入れ条件どおりに実装。変更: `lib/import.ts`(logs マージを純関数 `mergeLogs` に切り出し・既存/復元で共用)/ `lib/backup.ts`(新規: `mergeRestoredLogs`・`chunk`)/ `lib/api.ts`(新規: `backupCareLogs` = 冪等 PUT を 5 件チャンク+600ms 間隔で送信)/ `components/CloudBackupCard.tsx`(新規: `useHydratedState` でサインインフラグ判定・amplify 非ロード)/ `app/reflection/page.tsx`(カード配置+穏やかメッセージ)/ `lib/__tests__/backup.test.ts`(新規)。検証: lint green・test 201 passed・build green。教訓: 新規カードの localStorage フラグ判定は `useState`+`useEffect` だと `react-hooks/set-state-in-effect` に抵触するため `useHydratedState`(useSyncExternalStore)を使う(T36 と同じ轍・improvement-log 参照)。
+
+- 背景: R-02(localStorage 消失によるデータ喪失)の恒久軽減の最短経路。localStorage が常に真、AWS はバックアップ(design-sync §1)。手動ボタンなので「勝手に通信」不安がなく、全件冪等 PUT で単純に始められる(§5 Phase A)。
+- 受け入れ条件:
+  1. **配置**: `app/reflection/page.tsx`(データ管理ハブ)に「クラウドにバックアップ」「クラウドから復元」を追加。新規カード `components/CloudBackupCard.tsx` にしてよいが、既存カード(BackupReminderCard/ResetDataCard)のトーン・角丸・穏やかな配色・`importMessage` 方式の穏やかメッセージに揃える。
+  2. **サインイン分岐**: `isSignedIn()`(lib/api.ts の二段判定)でサインイン済みのみ有効。未サインインは控えめに「サインインするとバックアップできます」と案内し**ブロックしない**(§6 E-7)。**T45 を壊さない**: マウント時に amplify を読み込まない(操作時 or 軽量フラグで判定)。
+  3. **バックアップ(ローカル→サーバー)**: ローカル全 `logs` を冪等 PUT。全件 PUT で可(sk=log.id で重複行にならない)。ただし T29 スロットリング(10rps)を超えないよう**逐次 or 小さめ並列でチャンク送信**(数百件を一気に投げない・§6 E-3)。既存 `syncCareLog(log)` を1件ずつ使う形で可。
+  4. **復元(サーバー→ローカル)**: `fetchCareEntries()`(既に sanitize 済み入口)で取得 → **`lib/import.ts` の `mergeStates` と同一のマージ方針**(既存優先・id 重複排除・ローカルを上書きしない)で `logs` だけをマージ → `saveCareState`。マージは**再発明せず**、logs マージ部分を純関数として `lib/import.ts` から切り出して両方から使う。
+  5. **文言**(design-sync §4.2・要 product-tone レビュー): 成功「バックアップが完了しました。」/ 復元「◯件の記録を読み込みました。」「新しく増えた記録はありませんでした。」/ 失敗「同期できませんでした。記録はこの端末にちゃんと残っています。」。赤い警告にしない・急かさない。
+  6. **スコープ厳守**: 同期は `logs` のみ(note/user/energyHistory/customTasks は送らない・取り込まない)。サインアウトや復元で localStorage を**絶対にクリア/上書きしない**(§6 E-5)。記録操作をブロックしない(10秒ルール)。
+  7. **純関数+ユニットテスト**: マージ/送信対象抽出を DOM 非依存の純関数にしテスト追加(既存 import.ts のテスト構造に倣う)。既存テストを壊さない。
+- 変更許可領域: `app/reflection/page.tsx` / `components/CloudBackupCard.tsx`(新規) / `lib/api.ts` / `lib/import.ts`(logs マージ純関数の切り出し) / `lib/` 配下の新規ヘルパー・テスト。**lib/storage.ts の sanitizeLog は既存を使う(変更しない)。infra は触らない。**
+- 委任: worker(**opus**)。単独タスクなので build まで実行可。
+- ※ Phase B(自動同期)は Phase A リリース・検証後(§5 Phase B / D-6)。
+
+### 次テーマ候補(オーナー決定・2026-07-12)
+
+- **サインアップUI(道B)**: オーナー方針で「次の開発テーマ」に決定。一般ユーザーが自分でアカウント登録し、クラウドバックアップを使えるようにする。`signUp` + `confirmSignUp`(確認コード入力)UI を `components/AuthPanel.tsx` 周辺に追加。要 product-tone レビュー、スパム/確認メール到達性/パスワード再設定フローの検討。T10 Phase A の後に着手。
 
 ## 第10バッチ(2026-07-11 立案・同日完了)— **全3タスク完了**
 

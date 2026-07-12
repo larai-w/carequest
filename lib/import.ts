@@ -1,5 +1,6 @@
 import type { CareStorageState } from "@/lib/storage";
 import { sanitizeRawState } from "@/lib/storage";
+import type { CareLog } from "@/lib/types";
 
 // エクスポートファイルが Care Quest のものか判定するための識別子。
 // lib/export.ts の buildExportPayload と対応している。
@@ -19,6 +20,21 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/**
+ * logs を「既存優先・id 重複排除」でマージする純関数。
+ * 既存の記録は必ず残し、まだ無い id の incoming だけを後ろに足す(上書き・全消しはしない)。
+ * ローカル→ファイルインポートと、サーバー→ローカル復元(lib/backup.ts)の両方が
+ * この同一方針を使うため、ロジックをここに一本化する(再発明しない)。
+ */
+export function mergeLogs(
+  existingLogs: CareLog[],
+  incomingLogs: CareLog[],
+): { logs: CareLog[]; newCount: number } {
+  const existingIds = new Set(existingLogs.map((log) => log.id));
+  const newLogs = incomingLogs.filter((log) => !existingIds.has(log.id));
+  return { logs: [...existingLogs, ...newLogs], newCount: newLogs.length };
+}
+
 // マージ方針(「データを壊さない」を最優先):
 // - logs: id で重複排除して統合する。既存の記録は必ず残し、まだ無い id の
 //   インポート記録だけを後ろに足す。上書き・全消しはしない。
@@ -32,9 +48,7 @@ function mergeStates(
   existing: CareStorageState,
   imported: CareStorageState,
 ): { state: CareStorageState; importedLogCount: number } {
-  const existingLogIds = new Set(existing.logs.map((log) => log.id));
-  const newLogs = imported.logs.filter((log) => !existingLogIds.has(log.id));
-  const logs = [...existing.logs, ...newLogs];
+  const { logs, newCount: importedLogCount } = mergeLogs(existing.logs, imported.logs);
 
   const existingTaskIds = new Set(existing.customTasks.map((task) => task.id));
   const newTasks = imported.customTasks.filter((task) => !existingTaskIds.has(task.id));
@@ -71,7 +85,7 @@ function mergeStates(
 
   return {
     state: { user, logs, note, customTasks, energyHistory, supportNudgeLastShown, onboardingShown, goodThingsHistory, lastExportDate, exportReminderLastShown },
-    importedLogCount: newLogs.length,
+    importedLogCount,
   };
 }
 

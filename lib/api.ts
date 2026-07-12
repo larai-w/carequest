@@ -1,5 +1,6 @@
 import type { CareLog } from "@/lib/types";
 import { sanitizeLog } from "@/lib/storage";
+import { chunk } from "@/lib/backup";
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
 const entriesEndpoint = apiBase ? `${apiBase}/entries` : "";
@@ -175,4 +176,55 @@ export async function fetchCareEntries(): Promise<CareLog[]> {
   } catch {
     return [];
   }
+}
+
+export type BackupResult =
+  | { skipped: true } // 未サインイン — バックアップ不要、ローカル保存で完結
+  | { skipped: false; total: number; succeeded: number; failed: number };
+
+// バックアップ送信のチャンク設定。API スロットリング(T29: 10rps / バースト 20)を
+// 超えないよう、小さめのチャンクを送ってからチャンク間に短い間隔を置く。
+const BACKUP_CHUNK_SIZE = 5;
+const BACKUP_CHUNK_PAUSE_MS = 600;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * ローカルの全 logs をクラウドへ冪等 PUT でバックアップする(手動・Phase A)。
+ *
+ * - 未サインインなら { skipped: true }(ローカル保存で完結が正常状態)。
+ * - sk = log.id の冪等 PUT(T27)なので、全件送っても重複行にならない。
+ *   差分最適化は不要で、まず全件送る安全側の実装。
+ * - API スロットリング(T29)を超えないよう小さめチャンク + チャンク間の間隔で送る
+ *   (design-sync.md §6 E-3)。
+ * - 失敗しても記録はローカルに残る。呼び出し側は succeeded/failed で穏やかに通知する。
+ */
+export async function backupCareLogs(logs: CareLog[]): Promise<BackupResult> {
+  if (!(await isSignedIn())) {
+    return { skipped: true };
+  }
+  if (logs.length === 0) {
+    return { skipped: false, total: 0, succeeded: 0, failed: 0 };
+  }
+
+  let succeeded = 0;
+  let failed = 0;
+  const batches = chunk(logs, BACKUP_CHUNK_SIZE);
+  for (let i = 0; i < batches.length; i += 1) {
+    const results = await Promise.all(batches[i].map((log) => syncCareLog(log)));
+    for (const result of results) {
+      if (!result.skipped && result.ok) {
+        succeeded += 1;
+      } else {
+        failed += 1;
+      }
+    }
+    // 最後のチャンク以外は、レート内に収めるため少し待つ。
+    if (i < batches.length - 1) {
+      await delay(BACKUP_CHUNK_PAUSE_MS);
+    }
+  }
+  return { skipped: false, total: logs.length, succeeded, failed };
 }
