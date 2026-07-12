@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { getTodayDate, formatLocalDate, getDateStringDaysAgo } from "@/lib/date";
+import { getTodayDate, formatLocalDate, getDateStringDaysAgo, formatLogWhen } from "@/lib/date";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -104,5 +104,34 @@ describe("getDateStringDaysAgo", () => {
 
   it("30日前を正しく計算する", () => {
     expect(getDateStringDaysAgo("2024-02-29", 30)).toBe("2024-01-30");
+  });
+});
+
+describe("formatLogWhen", () => {
+  it("completedAt があれば「M月D日 HH:MM」(ローカル時刻)を返す", () => {
+    // ローカルで作った時刻を ISO 化 → パースし直しても同じローカル時刻に戻る(TZ 非依存)。
+    const completedAt = new Date(2024, 2, 15, 10, 30).toISOString();
+    expect(formatLogWhen(completedAt, "2024-03-15")).toBe("3月15日 10:30");
+  });
+
+  it("時・分は1桁でもゼロ埋めする", () => {
+    const completedAt = new Date(2024, 8, 3, 9, 5).toISOString();
+    expect(formatLogWhen(completedAt, "2024-09-03")).toBe("9月3日 09:05");
+  });
+
+  it("completedAt が空なら date から「M月D日」を返す(ゼロ埋めしない)", () => {
+    expect(formatLogWhen("", "2024-03-05")).toBe("3月5日");
+  });
+
+  it("completedAt が不正でも date にフォールバックする", () => {
+    expect(formatLogWhen("not-a-date", "2024-12-31")).toBe("12月31日");
+  });
+
+  it("completedAt も date も無ければ空文字", () => {
+    expect(formatLogWhen("", "")).toBe("");
+  });
+
+  it("date が不正形式なら空文字(表示側で出さない)", () => {
+    expect(formatLogWhen("", "2024/03/15")).toBe("");
   });
 });
