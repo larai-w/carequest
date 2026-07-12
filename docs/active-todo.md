@@ -14,7 +14,8 @@ Last verified: 2026-07-12 JST
 
 ## 現在地(2026-07-12)
 
-- ブランチ: `development`(CI green)。本番フロントは `https://veai.jp/carequest/` で配信中
+- ブランチ: `development`(CI green)。main は `ffdfa87`(PR #13 リリース)。本番 `https://veai.jp/carequest/` は**バッチ5〜10 を配信中(2026-07-12 リリース済み)**
+- ⚠️ **本番デプロイ先の注意**: CloudFront `/carequest/*` の実オリジンは `veai-jp-toc-web`。`veai-jp-carequest-prod` は**使われない別バケット**。GitHub Secret `S3_BUCKET` は必ず `veai-jp-toc-web`(2026-07-12 に誤設定を修正済み)
 - **バックエンドを本番デプロイ済み(2026-07-12)**: T6(CORS 限定)/ T14(監視・SNS/CloudWatch アラーム・$10 Budget)/ T27(クロステナント書き込み修正・IDトークン平文ログ除去)/ T29(APIスロットリング 10rps・DynamoDB PITR)。`npm run smoke:backend` green、CORS 3オリジン実機検証済み
 - Cognito **テストユーザー作成済み**: `demo@example.com` / `CareQuest123!`(本番プール・CONFIRMED/Enabled。ブラウザスモーク用)
 - 第1〜10バッチはすべて完了(履歴は task-list.md)
@@ -23,9 +24,10 @@ Last verified: 2026-07-12 JST
 
 ### 人間(あなた)— 詳細は human-todo.md
 1. SNS 購読の確認: `irevail8@gmail.com` に届く AWS メールで「Confirm subscription」(SNS・Budget 両方の可能性)
-2. ブラウザ・スモークテスト: `demo@example.com` でサインイン → 記録 → リロード → 「バックアップが完了しました。」表示・サインアウト後は同期文言なし
-3. リリース判断: CI green を確認して `development → main` マージ(本番フロントのデプロイが走る)
-4. マージ後: `https://veai.jp/carequest/sw.js` が 200 / オフラインでアプリシェル表示
+2. ブラウザ・スモークテスト: `demo@example.com` でサインイン → 記録 → リロード → 「バックアップが完了しました。」表示・サインアウト後は同期文言なし(バックエンド側は自動スモークで green 済み)
+3. SW のオフライン確認: DevTools で activated / オフラインでアプリシェル表示(sw.js 200 は確認済み)
+
+**リリース(main マージ)は 2026-07-12 完了・本番反映確認済み。**
 
 ### AI(プランナー/ワーカー)
 - **T10 Phase A(手動バックアップボタン)** — コード前提(T27 デプロイ済・T31 完了・local-first 承認)はすべて充足。残るゲートは上記②のブラウザスモークのみ。**「T10 を進めて」で opus ワーカーに委任して着手**
