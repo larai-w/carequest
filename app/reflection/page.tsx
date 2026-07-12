@@ -10,7 +10,7 @@ import { loadCareState, saveCareState, resetCareState } from "@/lib/storage";
 import { backupCareLogs, fetchCareEntries, isSignedIn } from "@/lib/api";
 import { mergeRestoredLogs } from "@/lib/backup";
 import { useHydratedState } from "@/lib/useHydratedState";
-import { getTodayDate } from "@/lib/date";
+import { getTodayDate, formatLogWhen } from "@/lib/date";
 import { getRecentDaySummaries, type RecentDaySummary } from "@/lib/stats";
 import { getTodaySummaryBody } from "@/lib/messages";
 import { buildExportPayload, downloadAsJson } from "@/lib/export";
@@ -394,7 +394,12 @@ export default function ReflectionPage() {
             ) : (
               logs.map((log) => (
                 <div key={log.id} className="relative flex items-center rounded-2xl bg-stone-50 px-3 py-3 pr-12 text-sm text-stone-700">
-                  <span className="flex-1">{log.title}</span>
+                  <div className="flex-1">
+                    <span>{log.title}</span>
+                    {formatLogWhen(log.completedAt, log.date) ? (
+                      <span className="mt-0.5 block text-xs text-stone-400">{formatLogWhen(log.completedAt, log.date)}</span>
+                    ) : null}
+                  </div>
                   <span className="ml-2 text-amber-700">+{log.points}pt</span>
                   <button
                     type="button"
