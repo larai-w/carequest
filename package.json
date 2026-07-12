@@ -5,9 +5,17 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postbuild": "node scripts/inject-sw-version.mjs",
     "start": "next start",
     "lint": "eslint",
-    "aws:setup": "bash scripts/aws-setup.sh"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "aws:setup": "bash scripts/aws-setup.sh",
+    "aws:status": "bash scripts/aws-status.sh",
+    "deploy:static": "bash scripts/deploy-static.sh",
+    "smoke:backend": "bash scripts/smoke-backend.sh",
+    "smoke:prod": "bash scripts/smoke-prod.sh"
   },
   "dependencies": {
     "aws-amplify": "^6.18.0",
@@ -16,6 +24,7 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -23,6 +32,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }

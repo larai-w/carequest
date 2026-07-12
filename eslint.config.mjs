@@ -13,6 +13,8 @@ const eslintConfig = defineConfig([
     "build/**",
     "infra/cdk.out/**",
     "infra/dist/**",
+    // Lambda ランタイム用の CommonJS。ルート(Next.js 用)の lint 対象外。
+    "infra/lambda/**",
     "next-env.d.ts",
   ]),
 ]);

@@ -26,7 +26,7 @@ Required secrets:
 AWS_ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY
 AWS_REGION=ap-northeast-1
-S3_BUCKET=veai-jp-carequest-prod
+S3_BUCKET=veai-jp-toc-web
 CLOUDFRONT_DISTRIBUTION_ID=E32Z6UIZTZD6DE
 ```
 
@@ -44,7 +44,7 @@ NEXT_PUBLIC_AWS_REGION=ap-northeast-1
 The workflow uploads the static export to:
 
 ```text
-s3://veai-jp-carequest-prod/carequest/
+s3://veai-jp-toc-web/carequest/
 ```
 
 CloudFront should serve it as:
@@ -63,14 +63,14 @@ E32Z6UIZTZD6DE
 
 Confirm:
 
-- `veai-jp-carequest-prod` is attached as an origin, or the existing `veai.jp` origin can read `carequest/`.
-- `/carequest/*` is routed to the bucket content.
-- The bucket policy allows CloudFront OAC to read objects.
+- The existing default origin `veai-jp-toc-web` contains the `carequest/` prefix.
+- `/carequest/*` falls through to the default behavior and is served from `veai-jp-toc-web`.
+- The existing bucket policy allows CloudFront OAC to read objects from `veai-jp-toc-web`.
 - CloudFront invalidation includes `/carequest/*`.
 
 ## Minimal IAM permissions for deploy key
 
-Scope these permissions to the `veai-jp-carequest-prod` bucket and the `E32Z6UIZTZD6DE` distribution.
+Scope these permissions to the `veai-jp-toc-web` bucket and the `E32Z6UIZTZD6DE` distribution.
 
 ```json
 {
@@ -81,7 +81,7 @@ Scope these permissions to the `veai-jp-carequest-prod` bucket and the `E32Z6UIZ
       "Action": [
         "s3:ListBucket"
       ],
-      "Resource": "arn:aws:s3:::veai-jp-carequest-prod"
+      "Resource": "arn:aws:s3:::veai-jp-toc-web"
     },
     {
       "Effect": "Allow",
@@ -90,7 +90,7 @@ Scope these permissions to the `veai-jp-carequest-prod` bucket and the `E32Z6UIZ
         "s3:GetObject",
         "s3:PutObject"
       ],
-      "Resource": "arn:aws:s3:::veai-jp-carequest-prod/carequest/*"
+      "Resource": "arn:aws:s3:::veai-jp-toc-web/carequest/*"
     },
     {
       "Effect": "Allow",
