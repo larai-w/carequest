@@ -46,7 +46,6 @@ export interface DailyStats {
   date: string;
   totalPoints: number;
   completedTasks: number;
-  participantCount: number;
   taskCounts: Record<string, number>;
   message: string;
 }

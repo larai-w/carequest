@@ -213,7 +213,8 @@ describe('POST /entries – 正常系', () => {
   it('sk が id と一致する (冪等 PUT)', async () => {
     await handler(postEvent({ id: 'idem-42', date: '2024-01-15' }));
     const calls = ddbMock.commandCalls(PutItemCommand);
-    expect(calls).toHaveLength(1);
+    // 2件: 記録本体 + presence マーカー(T54)。記録本体は先(calls[0])。
+    expect(calls).toHaveLength(2);
     const item = calls[0].args[0].input.Item;
     // sk = id
     expect(item.sk).toEqual({ S: 'idem-42' });
@@ -246,7 +247,8 @@ describe('クロステナント書き込み防止 (T27 回帰テスト)', () => 
       )
     );
     const calls = ddbMock.commandCalls(PutItemCommand);
-    expect(calls).toHaveLength(1);
+    // 2件: 記録本体 + presence マーカー(T54)
+    expect(calls).toHaveLength(2);
     const item = calls[0].args[0].input.Item;
     expect(item.pk).toEqual({ S: 'real-user' }); // ボディの 'evil-user' は無視される
   });
@@ -273,6 +275,66 @@ describe('クロステナント書き込み防止 (T27 回帰テスト)', () => 
     const calls = ddbMock.commandCalls(PutItemCommand);
     const item = calls[0].args[0].input.Item;
     expect(item.userId).toEqual({ S: 'cognito-sub-abc' }); // ボディの 'attacker' は無視
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// presence – 今日のともしび (T54)
+// ─────────────────────────────────────────────────────────────────────────────
+describe('presence – 今日のともしび (T54)', () => {
+  it('POST 成功時に presence マーカーを書く (pk=presence#JST日付, sk=64桁hex)', async () => {
+    await handler(postEvent({ id: 'pm-1', date: '2024-01-15' }));
+    const calls = ddbMock.commandCalls(PutItemCommand);
+    expect(calls).toHaveLength(2);
+    const marker = calls[1].args[0].input.Item;
+    expect(marker.pk.S).toMatch(/^presence#\d{4}-\d{2}-\d{2}$/);
+    expect(marker.sk.S).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('同じユーザーの同日2回目も同じ sk (冪等 = distinct カウントの元)', async () => {
+    await handler(postEvent({ id: 'pm-a', date: '2024-01-15' }));
+    await handler(postEvent({ id: 'pm-b', date: '2024-01-15' }));
+    const calls = ddbMock.commandCalls(PutItemCommand);
+    // [entry, marker, entry, marker]
+    expect(calls).toHaveLength(4);
+    expect(calls[1].args[0].input.Item.sk.S).toBe(calls[3].args[0].input.Item.sk.S);
+  });
+
+  it('presence 書き込みが失敗しても 201 (best-effort)', async () => {
+    ddbMock
+      .on(PutItemCommand)
+      .resolvesOnce({}) // 記録本体は成功
+      .rejectsOnce(new Error('presence write failed')); // マーカーは失敗
+    const res = await handler(postEvent({ id: 'pm-fail', date: '2024-01-15' }));
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('GET /presence は Query の Count を count として返す (認証 claims なしで動く)', async () => {
+    ddbMock.on(QueryCommand).resolves({ Count: 7 });
+    const res = await handler(
+      makeEvent({
+        httpMethod: 'GET',
+        resource: '/presence',
+        // 認証なしルート: authorizer を持たない requestContext
+        requestContext: { requestId: 'presence-req' },
+      })
+    );
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.count).toBe(7);
+    expect(body.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    // Query は presence# プレフィックスの pk を対象にする
+    const input = ddbMock.commandCalls(QueryCommand)[0].args[0].input;
+    expect(input.ExpressionAttributeValues[':pk'].S).toMatch(/^presence#/);
+    expect(input.Select).toBe('COUNT');
+  });
+
+  it('GET /presence で DynamoDB エラー時 → 500', async () => {
+    ddbMock.on(QueryCommand).rejects(new Error('DDB Error'));
+    const res = await handler(
+      makeEvent({ httpMethod: 'GET', resource: '/presence', requestContext: { requestId: 'r' } })
+    );
+    expect(res.statusCode).toBe(500);
   });
 });
 

@@ -11,13 +11,11 @@ export function getTodayStats(logs: CareLog[], today: string = getTodayDate()): 
   });
 
   const totalPoints = todayLogs.reduce((sum, log) => sum + log.points, 0);
-  const participantCount = 180 + Math.floor(totalPoints / 8) + Object.values(taskCounts).reduce((sum, count) => sum + count, 0);
 
   return {
     date: today,
     totalPoints,
     completedTasks: todayLogs.length,
-    participantCount,
     taskCounts,
     message: "今日も、少しずつ支え合えています。",
   };

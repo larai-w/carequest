@@ -6,6 +6,7 @@ const {
   QueryCommand,
   BatchWriteItemCommand,
 } = require('@aws-sdk/client-dynamodb');
+const crypto = require('crypto');
 
 const dynamodb = new DynamoDBClient({});
 
@@ -58,6 +59,23 @@ function fromItem(item) {
   return Object.fromEntries(
     Object.entries(item).map(([key, value]) => [key, fromAttributeValue(value)])
   );
+}
+
+// ─── 今日のともしび(presence・T54 / US-401 の最小形)──────────────────────
+// その日に記録を同期した distinct ユーザー数を匿名で数えるためのマーカー。
+// sk は userId の不可逆ハッシュ(PII を保存しない。アカウント削除で掃除不要)。
+
+// JST 基準の日付(YYYY-MM-DD)。Lambda は UTC で動くため +9h してから切り出す。
+function getJstDate(nowMs = Date.now()) {
+  return new Date(nowMs + 9 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
+function presencePk(date) {
+  return `presence#${date}`;
+}
+
+function presenceSk(userId, date) {
+  return crypto.createHash('sha256').update(`${userId}#${date}`).digest('hex');
 }
 
 // ─── CORS ────────────────────────────────────────────────────────────────────
@@ -207,6 +225,26 @@ exports.handler = async (event) => {
     return response(200, corsHeaders, { status: 'ok' });
   }
 
+  // GET /presence は認証なし: 今日(JST)に記録を同期した人数の匿名集計(T54)。
+  // 個人を特定できる情報は返さない(distinct ユーザー数のみ)。
+  if (event.httpMethod === 'GET' && event.resource === '/presence') {
+    try {
+      const date = getJstDate();
+      const result = await dynamodb.send(
+        new QueryCommand({
+          TableName: process.env.TABLE_NAME,
+          KeyConditionExpression: 'pk = :pk',
+          ExpressionAttributeValues: { ':pk': { S: presencePk(date) } },
+          Select: 'COUNT',
+        })
+      );
+      return response(200, corsHeaders, { date, count: result.Count || 0 });
+    } catch (error) {
+      console.error('Presence error:', error.message);
+      return response(500, corsHeaders, { message: 'Error fetching presence' });
+    }
+  }
+
   // Cognito authorizer から userId を抽出(サーバー側でのみ決定する)
   const authorizer = event.requestContext && event.requestContext.authorizer;
   const claims = authorizer && authorizer.claims;
@@ -249,6 +287,22 @@ exports.handler = async (event) => {
       await dynamodb.send(
         new PutItemCommand({ TableName: process.env.TABLE_NAME, Item: toItem(item) })
       );
+
+      // 今日のともしび(T54): その日に記録した人の匿名マーカーを best-effort で残す。
+      // 同一ユーザー・同一日は同じ sk になる冪等 PUT(distinct カウントの元)。
+      // 失敗しても記録保存は成功のまま(catch して握る)。
+      try {
+        const date = getJstDate();
+        await dynamodb.send(
+          new PutItemCommand({
+            TableName: process.env.TABLE_NAME,
+            Item: { pk: { S: presencePk(date) }, sk: { S: presenceSk(userId, date) } },
+          })
+        );
+      } catch (presenceError) {
+        console.error('Presence marker error:', presenceError.message);
+      }
+
       return response(201, corsHeaders, { ok: true, item });
     } catch (error) {
       console.error('Put error:', error.message);
