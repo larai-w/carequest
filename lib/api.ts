@@ -4,6 +4,7 @@ import { chunk } from "@/lib/backup";
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
 const entriesEndpoint = apiBase ? `${apiBase}/entries` : "";
+const presenceEndpoint = apiBase ? `${apiBase}/presence` : "";
 
 // 「サインイン済みかもしれない」ことを示す軽量フラグの localStorage キー。
 // このフラグは amplify を読み込まずに未サインインを即断するための一次判定に使う。
@@ -175,6 +176,33 @@ export async function fetchCareEntries(): Promise<CareLog[]> {
     return items;
   } catch {
     return [];
+  }
+}
+
+/**
+ * 今日(JST)に記録を同期した介護者の人数(匿名の distinct 集計)を取得する(T54)。
+ * 認証不要・素の fetch(amplify を一切読み込まない = T45 維持)。
+ * 失敗・非2xx・不正レスポンスは null を返し、表示側はフォールバック文言に落とす。
+ */
+export async function fetchPresence(): Promise<number | null> {
+  if (!presenceEndpoint) {
+    return null;
+  }
+  try {
+    const response = await fetch(presenceEndpoint);
+    if (!response.ok) {
+      return null;
+    }
+    const raw: unknown = await response.json();
+    if (typeof raw === "object" && raw !== null) {
+      const count = (raw as { count?: unknown }).count;
+      if (typeof count === "number" && Number.isFinite(count)) {
+        return count;
+      }
+    }
+    return null;
+  } catch {
+    return null;
   }
 }
 
