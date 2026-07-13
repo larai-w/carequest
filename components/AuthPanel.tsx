@@ -8,8 +8,9 @@ type SignUpStage = "form" | "confirm";
 type ResetStage = "request" | "confirm";
 
 export default function AuthPanel() {
-  const [email, setEmail] = useState("demo@example.com");
-  const [password, setPassword] = useState("CareQuest123!");
+  // フォームは空で始める(テスト用クレデンシャルのプリフィルは公開シェア前に撤去済み)。
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [message, setMessage] = useState("ログインして、あなたの記録をクラウドへつなぎましょう。");
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [currentUsername, setCurrentUsername] = useState<string | null>(null);
