@@ -45,6 +45,27 @@ Last updated: 2026-07-12 JST
 1. **サインイン後にログインフォームが残る** → `AuthPanel` をサインイン時は「ログイン中: ◯◯ + サインアウト/状態確認」だけに畳む(フォーム・タブを隠す)。
 2. **記録がいつのものか分かりにくい** → `lib/date.ts` に `formatLogWhen`(completedAt があれば「M月D日 HH:MM」、無ければ date から「M月D日」)を追加し、ホーム/ふりかえりの各記録に穏やかに(text-xs stone-400)表示。責めないトーン=「記録がない日」は示さない。テスト追加(`lib/__tests__/date.test.ts`)。検証: lint green・test 210 passed・build green。
 
+### T54. 今日のともしび — 匿名の「気配」表示(US-401 の最小形)| P1 | 推奨モデル: Opus — **完了(2026-07-13)**
+
+完了メモ: opus ワーカーに委任したが **Edit 権限ゲートで2回目の停止**(T10 Phase A と同じ・improvement-log 参照)→ ワーカーの調査済みプランを引き取りプランナーが実装。Lambda に presence マーカー(pk=`presence#JST日付`, sk=SHA-256 hex・best-effort)+ 認証なし GET /presence(Select: COUNT)。CDK に /presence GET。フロントは `fetchPresence`(素の fetch・amplify 非依存)+ `lib/presence.ts` の `presenceMessage`(閾値5・フォールバック「今日も、どこかで誰かが介護しています。」)+ あゆみ画面の先頭に「今日のともしび」カード。あわせて偽 participantCount(lib/stats.ts の 180+…)を削除(未使用確認済み)。検証: frontend 225・infra 51 テスト・lint・build・synth green。
+
+- 背景: オーナー要望(2026-07-13)「他のユーザーも介護している気配がほしい」。T40 で偽コミュニティデータを撤去した続きとして、**実データの匿名集計**で「今日、◯人の介護者が記録しました」を表示する。憲法: 順位・比較を作らない/少人数の日も寂しく見せない/**データを偽らない**。
+- 設計の要点(プランナー決定済み):
+  - **人数=その日に記録を同期した distinct ユーザー数**。POST /entries 成功時に presence マーカーを冪等 PUT: `pk = "presence#<JST日付>"`, `sk = SHA-256(userId + "#" + JST日付) の hex`。ハッシュは不可逆なので **PII にならず、アカウント削除(T52)で掃除する必要がない**(これが userId を生で入れない理由)
+  - 日付は **JST 基準**(Lambda は UTC 動作。`Date.now() + 9*3600*1000` から YYYY-MM-DD を出す)
+  - presence 書き込みは **best-effort**: 失敗しても記録保存(201)は成功のまま(catch して握る)
+  - **GET /presence(認証なし・新規ルート)**: 今日(JST)の `pk = presence#<date>` を `Select: COUNT` で Query し `{ date, count }` を返す。認証不要(みんな画面はサインインなしで見る)。CORS は既存と同じ。スロットリングは既存のステージ設定(10rps)でカバー
+- 受け入れ条件:
+  1. **Lambda**(`infra/lambda/entries/index.js`): 上記 presence マーカー書き込み + GET /presence。SHA-256 は Node 組込み `crypto` を使う(依存追加しない)
+  2. **CDK**(`infra/lib/carequest-stack.ts`): `/presence` リソースに GET(authorizer **なし**)。synth が通ること
+  3. **infra テスト**: presence マーカーの key 形式(pk が presence#日付・sk が 64桁 hex)/ POST は presence 書き込み失敗でも 201 / GET /presence が COUNT を返す / GET /presence は認証 claims が無くても動く
+  4. **フロント `lib/api.ts`**: `fetchPresence(): Promise<number | null>` — 素の fetch(認証ヘッダなし・**amplify を読み込まない**=T45)。失敗・非2xx・不正レスポンスは null
+  5. **表示(`app/community/page.tsx`)**: カードを1枚追加。`count >= 5` なら「今日、◯人の介護者が記録しました。」、**5未満・取得前・失敗時はすべて**「今日も、どこかで誰かが介護しています。」(数字を出さない・エラーやスピナーを見せない)。閾値判定は純関数に切り出しユニットテスト
+  6. 文言は product-tone 準拠(競わせない・押し付けない)。既存カードの stone/amber デザインに揃える
+  7. `lib/stats.ts` の `getTodayStats` 内の **偽 participantCount(180 + …)**: 使用箇所を確認し、未使用なら関数ごと(または該当フィールドを)削除。使用中なら変更せずレポートに報告
+  8. lint / npm test / build / `cd infra && npm run synth` green(deploy はプランナー)
+- 委任: worker(**opus**)。単独タスクなので build まで実行可。
+
 ### T53. 記録の CSV エクスポート(US-503 の残り)| P2 | 推奨モデル: Sonnet — **完了(2026-07-12)**
 
 完了メモ: US-503 の受け入れ条件「JSON/CSV エクスポート」のうち CSV を実装(JSON は実装済み)。`lib/export.ts` に `buildLogsCsv`(純関数・列: 日付/時刻/記録/ポイント・日付時刻昇順・RFC 4180 エスケープ)+ `downloadLogsCsv`(UTF-8 BOM 付きで Excel の文字化け防止)。ふりかえりに「表計算ソフト用に書き出す(CSV)」ボタン追加。非技術者の介護者が表計算で開く・共有・印刷できる形式。CSV は復元不可なので lastExportDate は更新せず**バックアップ扱いにしない**(JSON がバックアップ)。テスト追加(`lib/__tests__/export.test.ts`)。検証: lint green・test 220 passed・build green。

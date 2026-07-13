@@ -104,6 +104,11 @@ export class CareQuestStack extends cdk.Stack {
     const health = api.root.addResource('health');
     health.addMethod('GET', new apigateway.LambdaIntegration(apiHandler));
 
+    // T54: 今日のともしび。匿名の distinct ユーザー数のみを返すため認証なし
+    // (みんな/あゆみ画面はサインインなしで見られる)。
+    const presence = api.root.addResource('presence');
+    presence.addMethod('GET', new apigateway.LambdaIntegration(apiHandler));
+
     const authorizer = new apigateway.CognitoUserPoolsAuthorizer(this, 'CareQuestApiAuthorizer', {
       cognitoUserPools: [userPool],
       authorizerName: 'CareQuestUserPoolAuthorizer',
