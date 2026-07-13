@@ -11,7 +11,7 @@
  *   Phase 2 で本物のコミュニティ(US-401)を設計する際に見直す。
  */
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Layout from "@/components/Layout";
 import EncouragementCard from "@/components/EncouragementCard";
 import StatCard from "@/components/StatCard";
@@ -20,11 +20,29 @@ import { getJourneyMessage } from "@/lib/messages";
 import { loadCareState } from "@/lib/storage";
 import { useHydratedState } from "@/lib/useHydratedState";
 import { getJourneyStats } from "@/lib/stats";
+import { fetchPresence } from "@/lib/api";
+import { presenceMessage } from "@/lib/presence";
 import type { CareLog } from "@/lib/types";
 
 export default function CommunityPage() {
   // サーバー/クライアント初回描画は空配列で一致させ、マウント後に localStorage から読む。
   const [logs] = useHydratedState<CareLog[]>([], () => loadCareState().logs);
+
+  // 今日のともしび(T54): 匿名の人数を背景で取得する。
+  // 取得前・失敗時は presenceMessage(null) のフォールバック文言のまま
+  // (初期描画=フォールバックなので hydration mismatch もスピナーも出ない)。
+  const [presenceCount, setPresenceCount] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetchPresence().then((count) => {
+      if (!cancelled) {
+        setPresenceCount(count);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const stats = useMemo(() => getJourneyStats(logs), [logs]);
 
@@ -38,6 +56,12 @@ export default function CommunityPage() {
   return (
     <Layout>
       <div className="space-y-4">
+        <section className="rounded-[28px] border border-amber-100 bg-amber-50/80 p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-stone-700">今日のともしび</h2>
+          <p className="mt-2 text-sm leading-7 text-stone-700">{presenceMessage(presenceCount)}</p>
+          <p className="mt-1 text-xs text-stone-400">あなたはひとりではありません。</p>
+        </section>
+
         <section className="rounded-[28px] border border-amber-100 bg-white/80 p-4 shadow-sm">
           <p className="text-sm text-stone-500">これまでの累計ポイント</p>
           <p className="mt-2 text-4xl font-semibold text-amber-700">{stats.totalPoints}pt</p>

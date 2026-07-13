@@ -45,7 +45,9 @@ Last updated: 2026-07-12 JST
 1. **サインイン後にログインフォームが残る** → `AuthPanel` をサインイン時は「ログイン中: ◯◯ + サインアウト/状態確認」だけに畳む(フォーム・タブを隠す)。
 2. **記録がいつのものか分かりにくい** → `lib/date.ts` に `formatLogWhen`(completedAt があれば「M月D日 HH:MM」、無ければ date から「M月D日」)を追加し、ホーム/ふりかえりの各記録に穏やかに(text-xs stone-400)表示。責めないトーン=「記録がない日」は示さない。テスト追加(`lib/__tests__/date.test.ts`)。検証: lint green・test 210 passed・build green。
 
-### T54. 今日のともしび — 匿名の「気配」表示(US-401 の最小形)| P1 | 推奨モデル: Opus
+### T54. 今日のともしび — 匿名の「気配」表示(US-401 の最小形)| P1 | 推奨モデル: Opus — **完了(2026-07-13)**
+
+完了メモ: opus ワーカーに委任したが **Edit 権限ゲートで2回目の停止**(T10 Phase A と同じ・improvement-log 参照)→ ワーカーの調査済みプランを引き取りプランナーが実装。Lambda に presence マーカー(pk=`presence#JST日付`, sk=SHA-256 hex・best-effort)+ 認証なし GET /presence(Select: COUNT)。CDK に /presence GET。フロントは `fetchPresence`(素の fetch・amplify 非依存)+ `lib/presence.ts` の `presenceMessage`(閾値5・フォールバック「今日も、どこかで誰かが介護しています。」)+ あゆみ画面の先頭に「今日のともしび」カード。あわせて偽 participantCount(lib/stats.ts の 180+…)を削除(未使用確認済み)。検証: frontend 225・infra 51 テスト・lint・build・synth green。
 
 - 背景: オーナー要望(2026-07-13)「他のユーザーも介護している気配がほしい」。T40 で偽コミュニティデータを撤去した続きとして、**実データの匿名集計**で「今日、◯人の介護者が記録しました」を表示する。憲法: 順位・比較を作らない/少人数の日も寂しく見せない/**データを偽らない**。
 - 設計の要点(プランナー決定済み):
