@@ -17,7 +17,7 @@ export const careTasks: CareTask[] = [
     id: "diaper",
     title: "おむつ交換をした",
     points: 15,
-    description: "楽ではないケアに、しっかり向き合いました。",
+    description: "あなたの手が、尊厳を守っています。",
   },
   {
     id: "hospital",
