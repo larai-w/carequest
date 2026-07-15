@@ -56,6 +56,16 @@
   > あの"覚えておく仕事"を道具に渡す話を書きました。
   > https://veai.jp/ja/blog/yomimono-kusuri-no-jikan/
 
+- [ ] **見えない労働**(公開済み: /ja/blog/yomimono-mienai-roudou/)
+  > 「今日は大したことしてないのに、なんでこんなに疲れてるんだろう」の"大したことない"の中身が、実はフルタイムの管理業務だったりする。
+  > 介護の見えない労働に名前をつける話を書きました。
+  > https://veai.jp/ja/blog/yomimono-mienai-roudou/
+
+- [ ] **ヤングケアラー**(公開済み: /ja/blog/yomimono-young-carer/)
+  > ヤングケアラーだった自分がほしかったのは、同情じゃなくて、「説明しなくても分かる誰か」「同じ人がどこかにいる実感」「自分の生活を持っていい許可」の三つでした。
+  > 全部、機能にしました。
+  > https://veai.jp/ja/blog/yomimono-young-carer/
+
 ## 投稿ログ
 
 | 日付 | 投稿 | 反応メモ |
