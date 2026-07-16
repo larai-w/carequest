@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   description: "家族介護者のためのやさしい支援アプリ",
   icons: {
     // metadata の icons には basePath が付与されないため、本番パスを明示します。
+    icon: [{ url: "/carequest/favicon.png", sizes: "64x64", type: "image/png" }],
     apple: "/carequest/apple-touch-icon.png",
   },
   appleWebApp: {
