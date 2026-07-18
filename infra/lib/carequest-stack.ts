@@ -220,7 +220,13 @@ export class CareQuestStack extends cdk.Stack {
 
     // ─── Outputs ────────────────────────────────────────────────────────────
 
-    new cdk.CfnOutput(this, 'UserPoolId', { value: userPool.userPoolId });
+    // この User Pool は veai.jp 全アプリ共通の「VEAI アカウント」基盤。
+    // 他アプリのスタックは exportName 経由で参照し、アプリごとに別の UserPoolClient を作る
+    // (docs/auth-architecture.md 参照)。exportName があるあいだ Pool は削除できなくなる。
+    new cdk.CfnOutput(this, 'UserPoolId', {
+      value: userPool.userPoolId,
+      exportName: 'VeaiSharedUserPoolId',
+    });
     new cdk.CfnOutput(this, 'UserPoolClientId', { value: userPoolClient.userPoolClientId });
     new cdk.CfnOutput(this, 'ApiUrl', { value: api.url });
     new cdk.CfnOutput(this, 'TableName', { value: entriesTable.tableName });
