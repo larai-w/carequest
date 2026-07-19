@@ -5,6 +5,8 @@ import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as cw_actions from 'aws-cdk-lib/aws-cloudwatch-actions';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as events_targets from 'aws-cdk-lib/aws-events-targets';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as sns from 'aws-cdk-lib/aws-sns';
@@ -179,6 +181,32 @@ export class CareQuestStack extends cdk.Stack {
         new sns_subscriptions.EmailSubscription(alertEmail as string),
       );
     }
+
+    // 週次フィードバックダイジェスト: 毎週月曜 09:00 JST(= 日曜 00:00 UTC の翌日 0時 UTC)に
+    // 直近7日の匿名フィードバックを集計し、既存のアラートメール購読へ送る。
+    const feedbackDigestHandler = new lambda.Function(this, 'CareQuestFeedbackDigestHandler', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(path.join(infraRoot, 'lambda', 'feedback-digest')),
+      environment: {
+        FEEDBACK_TABLE_NAME: feedbackTable.tableName,
+        ALERT_TOPIC_ARN: alertTopic.topicArn,
+      },
+    });
+    feedbackTable.grantReadData(feedbackDigestHandler);
+    alertTopic.grantPublish(feedbackDigestHandler);
+
+    new logs.LogGroup(this, 'CareQuestFeedbackDigestLogGroup', {
+      logGroupName: `/aws/lambda/${feedbackDigestHandler.functionName}`,
+      retention: logs.RetentionDays.THREE_MONTHS,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    new events.Rule(this, 'CareQuestFeedbackDigestSchedule', {
+      // 月曜 00:00 UTC = 月曜 09:00 JST
+      schedule: events.Schedule.cron({ minute: '0', hour: '0', weekDay: 'MON' }),
+      targets: [new events_targets.LambdaFunction(feedbackDigestHandler)],
+    });
 
     // CloudWatch アラーム: Lambda エラー (Errors >= 1、5分間)
     const lambdaErrorAlarm = new cloudwatch.Alarm(this, 'LambdaErrorAlarm', {
