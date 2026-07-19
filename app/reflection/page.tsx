@@ -6,6 +6,7 @@ import EncouragementCard from "@/components/EncouragementCard";
 import BackupReminderCard from "@/components/BackupReminderCard";
 import ResetDataCard from "@/components/ResetDataCard";
 import CloudBackupCard from "@/components/CloudBackupCard";
+import FeedbackWidget from "@/components/FeedbackWidget";
 import { loadCareState, saveCareState, resetCareState } from "@/lib/storage";
 import { backupCareLogs, fetchCareEntries, isSignedIn } from "@/lib/api";
 import { mergeRestoredLogs } from "@/lib/backup";
@@ -603,6 +604,8 @@ export default function ReflectionPage() {
           message={cloudMessage}
           busy={cloudBusy}
         />
+
+        <FeedbackWidget />
 
         {showResetConfirm && (
           <ResetDataCard

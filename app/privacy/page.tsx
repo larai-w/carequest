@@ -24,6 +24,21 @@ export default function PrivacyPage() {
         </section>
 
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
+          <h3 className="text-lg font-semibold text-stone-800">VEAI アカウントについて</h3>
+          <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-7 text-stone-700">
+            <li>
+              Care Quest のアカウントは「VEAI アカウント」です。将来、veai.jp の他のサービスでも同じメールアドレスとパスワードでサインインできるようになります。
+            </li>
+            <li>
+              アカウントは共通でも、記録などのデータはサービスごとに独立して保存され、サービス間で共有されません。
+            </li>
+            <li>
+              他のサービスにあなたのデータが作られるのは、あなたがそのサービスで自分でサインインして同意したときだけです。アカウントを持っているだけでは、どのサービスにもデータは作られません。
+            </li>
+          </ul>
+        </section>
+
+        <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h3 className="text-lg font-semibold text-stone-800">しないこと</h3>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-7 text-stone-700">
             <li>広告のための情報収集や、第三者へのデータ販売は行いません。</li>
@@ -51,7 +66,7 @@ export default function PrivacyPage() {
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h3 className="text-lg font-semibold text-stone-800">このポリシーについて</h3>
           <p className="mt-3 text-sm leading-7 text-stone-700">
-            内容を変更する場合は、このページでお知らせします。最終更新日: 2026年7月12日
+            内容を変更する場合は、このページでお知らせします。最終更新日: 2026年7月19日
           </p>
         </section>
       </div>
