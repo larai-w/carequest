@@ -169,3 +169,24 @@ describe('Lambda – Code.fromAsset', () => {
     expect(Object.keys(functions)).toHaveLength(0);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 匿名フィードバック API
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('匿名フィードバック', () => {
+  it('DynamoDB テーブルが 2 件(entries + feedback)', () => {
+    template.resourceCountIs('AWS::DynamoDB::Table', 2);
+  });
+
+  it('Lambda 関数が 2 件(entries + feedback)', () => {
+    template.resourceCountIs('AWS::Lambda::Function', 2);
+  });
+
+  it('COGNITO 認証付きメソッドは entries の GET/POST/DELETE の 3 件(feedback は匿名)', () => {
+    const cognitoMethods = template.findResources('AWS::ApiGateway::Method', {
+      Properties: { AuthorizationType: 'COGNITO_USER_POOLS' },
+    });
+    expect(Object.keys(cognitoMethods)).toHaveLength(3);
+  });
+});

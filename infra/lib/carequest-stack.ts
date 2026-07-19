@@ -130,6 +130,37 @@ export class CareQuestStack extends cdk.Stack {
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
 
+    // ─── 匿名フィードバック(ご意見)────────────────────────────────────────
+    // 認証なしで受け付ける(匿名性の担保)。ステージ全体のスロットリング
+    // (10 rps)が濫用の防波堤。保存するのは mood と任意の note のみで、
+    // ユーザー識別子・IP は保存しない。
+    const feedbackTable = new dynamodb.Table(this, 'CareQuestFeedbackTable', {
+      partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'sk', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    const feedbackHandler = new lambda.Function(this, 'CareQuestFeedbackHandler', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(path.join(infraRoot, 'lambda', 'feedback')),
+      environment: {
+        FEEDBACK_TABLE_NAME: feedbackTable.tableName,
+      },
+    });
+
+    feedbackTable.grantWriteData(feedbackHandler);
+
+    new logs.LogGroup(this, 'CareQuestFeedbackHandlerLogGroup', {
+      logGroupName: `/aws/lambda/${feedbackHandler.functionName}`,
+      retention: logs.RetentionDays.THREE_MONTHS,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    const feedback = api.root.addResource('feedback');
+    feedback.addMethod('POST', new apigateway.LambdaIntegration(feedbackHandler));
+
     // ─── 監視・アラート (T14) ───────────────────────────────────────────────
 
     // アラート通知用 SNS トピック
@@ -220,10 +251,17 @@ export class CareQuestStack extends cdk.Stack {
 
     // ─── Outputs ────────────────────────────────────────────────────────────
 
-    new cdk.CfnOutput(this, 'UserPoolId', { value: userPool.userPoolId });
+    // この User Pool は veai.jp 全アプリ共通の「VEAI アカウント」基盤。
+    // 他アプリのスタックは exportName 経由で参照し、アプリごとに別の UserPoolClient を作る
+    // (docs/auth-architecture.md 参照)。exportName があるあいだ Pool は削除できなくなる。
+    new cdk.CfnOutput(this, 'UserPoolId', {
+      value: userPool.userPoolId,
+      exportName: 'VeaiSharedUserPoolId',
+    });
     new cdk.CfnOutput(this, 'UserPoolClientId', { value: userPoolClient.userPoolClientId });
     new cdk.CfnOutput(this, 'ApiUrl', { value: api.url });
     new cdk.CfnOutput(this, 'TableName', { value: entriesTable.tableName });
+    new cdk.CfnOutput(this, 'FeedbackTableName', { value: feedbackTable.tableName });
     new cdk.CfnOutput(this, 'AlertTopicArn', {
       value: alertTopic.topicArn,
       description: 'SNS トピック ARN。メール購読は cdk deploy -c alertEmail=YOUR_EMAIL で追加可能。',

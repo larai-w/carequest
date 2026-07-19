@@ -449,9 +449,9 @@ export default function AuthPanel() {
 
   return (
     <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
-      <h2 className="text-lg font-semibold text-stone-800">アカウント</h2>
+      <h2 className="text-lg font-semibold text-stone-800">VEAI アカウント</h2>
       <p className="mt-1 text-sm text-stone-600">
-        クラウドにバックアップするには、ログインまたは新規登録します。使わなくても記録はこの端末に残ります。
+        VEAI アカウントでサインインすると、記録をクラウドにバックアップして、別の端末でも見られるようになります。サインインしなくても、すべての機能を使えます。
       </p>
 
       <div className="mt-3 flex gap-2">
@@ -462,7 +462,6 @@ export default function AuthPanel() {
           新規登録
         </button>
       </div>
-
       <div className="mt-3 space-y-3">
         <input
           value={email}
