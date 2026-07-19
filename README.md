@@ -128,7 +128,7 @@ docs/          Strategy, design principles, runbook, risk register
 
 ## 日本語
 
-Care Quest は、家族介護者が「今日できたこと」をやさしく記録する Web アプリです。登録不要・広告なし・完全無料。記録はデバイスの localStorage に保存され、任意でクラウドバックアップが可能です。詳細なビジョンや設計原則は [docs/strategy.md](docs/strategy.md) および [docs/design-principles.md](docs/design-principles.md) を参照してください。
+Care Quest は、家族介護者が「今日できたこと」をやさしく記録する Web アプリです。登録不要・広告なし・完全無料。記録はデバイスの localStorage に保存され、任意でクラウドバックアップが可能です。詳細なビジョンや設計原則は [docs/design-principles.md](docs/design-principles.md) を参照してください。
 
 ---
 
