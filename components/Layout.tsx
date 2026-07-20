@@ -46,7 +46,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={`flex-1 rounded-full px-2 py-2 text-center text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1 ${
-                  active ? "bg-amber-500 text-white" : "text-stone-600"
+                  active ? "bg-amber-700 text-white" : "text-stone-600"
                 }`}
               >
                 {item.label}
