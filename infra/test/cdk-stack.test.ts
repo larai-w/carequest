@@ -179,8 +179,14 @@ describe('匿名フィードバック', () => {
     template.resourceCountIs('AWS::DynamoDB::Table', 2);
   });
 
-  it('Lambda 関数が 2 件(entries + feedback)', () => {
-    template.resourceCountIs('AWS::Lambda::Function', 2);
+  it('Lambda 関数が 3 件(entries + feedback + weekly digest)', () => {
+    template.resourceCountIs('AWS::Lambda::Function', 3);
+  });
+
+  it('週次ダイジェストのスケジュールが存在する', () => {
+    template.hasResourceProperties('AWS::Events::Rule', {
+      ScheduleExpression: 'cron(0 0 ? * MON *)',
+    });
   });
 
   it('COGNITO 認証付きメソッドは entries の GET/POST/DELETE の 3 件(feedback は匿名)', () => {
