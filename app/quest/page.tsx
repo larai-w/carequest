@@ -61,6 +61,9 @@ export default function QuestPage() {
   const [message, setMessage] = useState("今日の介護に、ちゃんと意味があります。");
   const [customTaskInput, setCustomTaskInput] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  // 同一タスクの連打ガード: 最後に記録した { taskId, 時刻 } を保持し、
+  // 500ms 以内の同一タスク再タップを無視する(誤操作による重複記録・バースト送信の防止)。
+  const lastTapRef = useRef<{ taskId: string; at: number } | null>(null);
   const { logs, energyLevel, todayPoints, restMode, customTasks } = viewState;
 
   const completedCount = useMemo(() => logs.filter((log) => log.date === getTodayDate()).length, [logs]);
@@ -126,6 +129,14 @@ export default function QuestPage() {
   };
 
   const handleSelectTask = (task: CareTask) => {
+    // 連打ガード: 同一タスクを 500ms 以内に再タップしたら無視する。
+    const now = Date.now();
+    const last = lastTapRef.current;
+    if (last && last.taskId === task.id && now - last.at < 500) {
+      return;
+    }
+    lastTapRef.current = { taskId: task.id, at: now };
+
     const today = getTodayDate();
     const nextLog: CareLog = {
       id: `${task.id}-${Date.now()}`,
