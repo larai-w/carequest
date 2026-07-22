@@ -54,3 +54,15 @@ docs-private/
 
 # blog drafts kept private (see veai-jp-web/docs-private/drafts)
 drafts/
+
+# --- 非公開の作業ドキュメント（公開フォルダに置いても追跡しない安全策）---
+docs-private/
+.private/
+private/
+*-private.md
+**/WORKLOG*.md
+**/*_HANDOFF.md
+**/PROJECT_HANDOFF*.md
+**/*-todo.md
+**/human-todo.md
+**/active-todo.md
