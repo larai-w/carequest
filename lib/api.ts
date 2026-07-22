@@ -241,8 +241,11 @@ export async function backupCareLogs(logs: CareLog[]): Promise<BackupResult> {
   let failed = 0;
   const batches = chunk(logs, BACKUP_CHUNK_SIZE);
   for (let i = 0; i < batches.length; i += 1) {
-    const results = await Promise.all(batches[i].map((log) => syncCareLog(log)));
-    for (const result of results) {
+    // チャンク内は逐次送信(連打によるバーストで API Gateway に 5XX が
+    // 出るのを防ぐ。Promise.all で同時送信するとコールドスタート中の
+    // 並行リクエストが API Gateway 層でエラーになることがある)。
+    for (const log of batches[i]) {
+      const result = await syncCareLog(log);
       if (!result.skipped && result.ok) {
         succeeded += 1;
       } else {
