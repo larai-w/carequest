@@ -15,7 +15,8 @@
     "aws:status": "bash scripts/aws-status.sh",
     "deploy:static": "bash scripts/deploy-static.sh",
     "smoke:backend": "bash scripts/smoke-backend.sh",
-    "smoke:prod": "bash scripts/smoke-prod.sh"
+    "smoke:prod": "bash scripts/smoke-prod.sh",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "dependencies": {
     "aws-amplify": "^6.18.0",
