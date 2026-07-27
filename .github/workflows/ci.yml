@@ -34,8 +34,10 @@ jobs:
 
       # high 以上のみ fail にする。
       # moderate は個人開発で警報疲れを起こさないため意図的にスキップ。
+      # 本番出荷物の脆弱性のみを対象にする(--omit=dev)。eslint 等の
+      # 開発ツールの脆弱性は出荷されないため audit の fail 対象外とする。
       - name: Security audit (high+ only)
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=high --omit=dev
 
       - name: Lint
         run: npm run lint
