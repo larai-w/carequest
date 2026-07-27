@@ -8,13 +8,13 @@
     "synth": "cdk synth"
   },
   "dependencies": {
-    "aws-cdk-lib": "^2.262.0",
+    "aws-cdk-lib": "^2.262.1",
     "constructs": "^10.7.1"
   },
   "devDependencies": {
-    "@aws-sdk/client-dynamodb": "^3.1093.0",
+    "@aws-sdk/client-dynamodb": "^3.1095.0",
     "@types/node": "^20",
-    "aws-cdk": "^2.1132.1",
+    "aws-cdk": "^2.1133.0",
     "aws-sdk-client-mock": "^4.1.0",
     "aws-sdk-client-mock-vitest": "^7.1.0",
     "ts-node": "^10.9.2",
