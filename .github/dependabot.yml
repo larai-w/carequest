@@ -13,6 +13,11 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    # メジャー更新は破壊的で CI が落ち、通知メールを量産するため自動 PR を止める
+    # (必要なメジャー更新は手動で対応。セキュリティ更新は ignore の影響を受けない)
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # インフラ (CDK)
   - package-ecosystem: "npm"
@@ -26,6 +31,9 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
@@ -35,7 +43,9 @@ updates:
       day: "monday"
     open-pull-requests-limit: 5
     groups:
-      actions-minor-and-patch:
+      # メジャーも含め 1 本の PR にまとめて通知を減らす
+      actions-all:
         update-types:
+          - "major"
           - "minor"
           - "patch"
