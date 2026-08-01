@@ -68,7 +68,7 @@ export class CareQuestStack extends cdk.Stack {
     const lambdaEntriesPath = path.join(infraRoot, 'lambda', 'entries');
 
     const apiHandler = new lambda.Function(this, 'CareQuestApiHandler', {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       handler: 'index.handler',
       code: lambda.Code.fromAsset(lambdaEntriesPath),
       environment: {
@@ -144,7 +144,7 @@ export class CareQuestStack extends cdk.Stack {
     });
 
     const feedbackHandler = new lambda.Function(this, 'CareQuestFeedbackHandler', {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       handler: 'index.handler',
       code: lambda.Code.fromAsset(path.join(infraRoot, 'lambda', 'feedback')),
       environment: {
@@ -185,7 +185,7 @@ export class CareQuestStack extends cdk.Stack {
     // 週次フィードバックダイジェスト: 毎週月曜 09:00 JST(= 日曜 00:00 UTC の翌日 0時 UTC)に
     // 直近7日の匿名フィードバックを集計し、既存のアラートメール購読へ送る。
     const feedbackDigestHandler = new lambda.Function(this, 'CareQuestFeedbackDigestHandler', {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       handler: 'index.handler',
       code: lambda.Code.fromAsset(path.join(infraRoot, 'lambda', 'feedback-digest')),
       environment: {
