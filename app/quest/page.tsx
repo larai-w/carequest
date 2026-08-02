@@ -10,7 +10,6 @@ import { loadCareState, saveCareState } from "@/lib/storage";
 import { useHydratedState } from "@/lib/useHydratedState";
 import { getTodayDate } from "@/lib/date";
 import { backupCareLogs } from "@/lib/api";
-import { createRecordTimeTracker } from "@/lib/record-time";
 import type { CareLog, CareTask, EnergyLevel } from "@/lib/types";
 
 const CUSTOM_TASK_POINTS = 10;
@@ -65,10 +64,6 @@ export default function QuestPage() {
   // 同一タスクの連打ガード: 最後に記録した { taskId, 時刻 } を保持し、
   // 500ms 以内の同一タスク再タップを無視する(誤操作による重複記録・バースト送信の防止)。
   const lastTapRef = useRef<{ taskId: string; at: number } | null>(null);
-  // BEN-004: 「記録時間 < 10秒」を実測するトラッカー。
-  // ページ表示(記録の意思を持ってクエストを開いた時点)から記録タップ完了までを計る。
-  // 未サインインなら送信しない。記録フローには一切影響しない(fire & forget)。
-  const recordTimeTrackerRef = useRef(createRecordTimeTracker());
   const { logs, energyLevel, todayPoints, restMode, customTasks } = viewState;
 
   const completedCount = useMemo(() => logs.filter((log) => log.date === getTodayDate()).length, [logs]);
@@ -129,12 +124,6 @@ export default function QuestPage() {
 
   const { saveFailed } = viewState;
 
-  // BEN-004: ページ表示を記録開始点として計測を開始する。
-  // マウント時の一度だけ。StrictMode の二重マウントでも start は冪等(上書き)。
-  useEffect(() => {
-    recordTimeTrackerRef.current.start();
-  }, []);
-
   const dismissSaveFailedNotice = () => {
     setViewState((current) => ({ ...current, saveFailed: false }));
   };
@@ -182,11 +171,6 @@ export default function QuestPage() {
     // 記録は上で確定済み。バックアップはデバウンスして背景で行う(10秒ルール)。
     scheduleBackup();
 
-    // BEN-004: ページ表示→記録完了の所要時間を送信する(未サインインなら何もしない)。
-    // 送信結果は記録体験に影響させない。次の記録に備えて計測を再開する。
-    void recordTimeTrackerRef.current.stop("quick").then(() => {
-      recordTimeTrackerRef.current.start();
-    });
   };
 
   const handleAddCustomTask = () => {
