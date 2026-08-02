@@ -163,40 +163,6 @@ export class CareQuestStack extends cdk.Stack {
     const feedback = api.root.addResource('feedback');
     feedback.addMethod('POST', new apigateway.LambdaIntegration(feedbackHandler));
 
-    // ─── BEN-004: 記録時間測定基盤 (PM-02) ──────────────────────────────────
-    // 介護ケア記録プログラム「記録時間 < 10秒」を実測するための基盤。
-    // 1回の記録操作にかかった時間(ms)を Cognito 認証済みユーザー単位で保存。
-    // 個人を特定できるのは sub のみ。IP・User-Agent は保存しない。
-    const recordTimeTable = new dynamodb.Table(this, 'CareQuestRecordTimeTable', {
-      partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'sk', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-    });
-
-    const recordTimeHandler = new lambda.Function(this, 'CareQuestRecordTimeHandler', {
-      runtime: lambda.Runtime.NODEJS_24_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(infraRoot, 'lambda', 'record-time')),
-      environment: {
-        RECORD_TIME_TABLE_NAME: recordTimeTable.tableName,
-      },
-    });
-
-    recordTimeTable.grantWriteData(recordTimeHandler);
-
-    new logs.LogGroup(this, 'CareQuestRecordTimeHandlerLogGroup', {
-      logGroupName: `/aws/lambda/${recordTimeHandler.functionName}`,
-      retention: logs.RetentionDays.THREE_MONTHS,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-    });
-
-    const recordTime = api.root.addResource('record-time');
-    recordTime.addMethod('POST', new apigateway.LambdaIntegration(recordTimeHandler), {
-      authorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
-
     // ─── 監視・アラート (T14) ───────────────────────────────────────────────
 
     // アラート通知用 SNS トピック
@@ -324,7 +290,6 @@ export class CareQuestStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'ApiUrl', { value: api.url });
     new cdk.CfnOutput(this, 'TableName', { value: entriesTable.tableName });
     new cdk.CfnOutput(this, 'FeedbackTableName', { value: feedbackTable.tableName });
-    new cdk.CfnOutput(this, 'RecordTimeTableName', { value: recordTimeTable.tableName });
     new cdk.CfnOutput(this, 'AlertTopicArn', {
       value: alertTopic.topicArn,
       description: 'SNS トピック ARN。メール購読は cdk deploy -c alertEmail=YOUR_EMAIL で追加可能。',

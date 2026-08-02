@@ -42,6 +42,7 @@ export default function PrivacyPage() {
           <h3 className="text-lg font-semibold text-stone-800">しないこと</h3>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-7 text-stone-700">
             <li>広告のための情報収集や、第三者へのデータ販売は行いません。</li>
+            <li>記録内容・操作時間・利用経路などの行動分析データを収集しません。</li>
             <li>介護されているご本人の氏名・病名などの入力を求めません。</li>
             <li>記録の内容を、あなたの同意なく他のユーザーに公開しません。「みんな」画面に表示されるのは、個人が特定されない集計のみです。</li>
           </ul>
@@ -66,7 +67,7 @@ export default function PrivacyPage() {
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h3 className="text-lg font-semibold text-stone-800">このポリシーについて</h3>
           <p className="mt-3 text-sm leading-7 text-stone-700">
-            内容を変更する場合は、このページでお知らせします。最終更新日: 2026年7月19日
+            内容を変更する場合は、このページでお知らせします。最終更新日: 2026年8月2日
           </p>
         </section>
       </div>
