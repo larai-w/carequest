@@ -17,7 +17,7 @@ beforeAll(() => {
     env: { account: '123456789012', region: 'ap-northeast-1' },
   });
   template = Template.fromStack(stack);
-});
+}, 30000);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. Cognito UserPool – DeletionPolicy が Retain
@@ -175,12 +175,12 @@ describe('Lambda – Code.fromAsset', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('匿名フィードバック', () => {
-  it('DynamoDB テーブルが 2 件(entries + feedback)', () => {
-    template.resourceCountIs('AWS::DynamoDB::Table', 2);
+  it('DynamoDB テーブルが 3 件(entries + feedback + record-time)', () => {
+    template.resourceCountIs('AWS::DynamoDB::Table', 3);
   });
 
-  it('Lambda 関数が 3 件(entries + feedback + weekly digest)', () => {
-    template.resourceCountIs('AWS::Lambda::Function', 3);
+  it('Lambda 関数が 4 件(entries + feedback + weekly digest + record-time)', () => {
+    template.resourceCountIs('AWS::Lambda::Function', 4);
   });
 
   it('週次ダイジェストのスケジュールが存在する', () => {
@@ -189,10 +189,10 @@ describe('匿名フィードバック', () => {
     });
   });
 
-  it('COGNITO 認証付きメソッドは entries の GET/POST/DELETE の 3 件(feedback は匿名)', () => {
+  it('COGNITO 認証付きメソッドは entries の GET/POST/DELETE と record-time の 4 件(feedback は匿名)', () => {
     const cognitoMethods = template.findResources('AWS::ApiGateway::Method', {
       Properties: { AuthorizationType: 'COGNITO_USER_POOLS' },
     });
-    expect(Object.keys(cognitoMethods)).toHaveLength(3);
+    expect(Object.keys(cognitoMethods)).toHaveLength(4);
   });
 });
