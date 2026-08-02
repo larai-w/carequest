@@ -43,6 +43,7 @@ export default function PrivacyPage() {
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-7 text-stone-700">
             <li>広告のための情報収集や、第三者へのデータ販売は行いません。</li>
             <li>記録内容・操作時間・利用経路などの行動分析データを収集しません。</li>
+            <li>veai.jp全体のページビュー計測と、Care Questアプリ内の利用計測は別です。Care Quest内ではPV以外の利用計測を行いません。</li>
             <li>介護されているご本人の氏名・病名などの入力を求めません。</li>
             <li>記録の内容を、あなたの同意なく他のユーザーに公開しません。「みんな」画面に表示されるのは、個人が特定されない集計のみです。</li>
           </ul>
