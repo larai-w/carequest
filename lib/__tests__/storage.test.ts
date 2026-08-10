@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type { CareStorageState } from "@/lib/storage";
+import type { CareLog } from "@/lib/types";
 
 // node 環境では window が未定義。
 // loadCareState は typeof window === "undefined" の場合にデフォルトを返す。
@@ -94,6 +95,10 @@ describe("loadCareState (window モックあり)", () => {
       ],
       energyHistory: [{ date: "2024-03-15", energyLevel: "energetic" }],
       supportNudgeLastShown: "",
+      onboardingShown: true,
+      goodThingsHistory: [],
+      lastExportDate: "",
+      exportReminderLastShown: "",
     };
     mockLocalStorage.setItem("carequest-state-v1", JSON.stringify(saved));
 
@@ -171,7 +176,7 @@ describe("loadCareState (window モックあり)", () => {
   // T19: スキーマバージョン + マイグレーション + フィールド単位の救済
   // -------------------------------------------------------------------------
 
-  function validLog(overrides: Record<string, unknown> = {}) {
+  function validLog(overrides: Record<string, unknown> = {}): CareLog {
     return {
       id: "log-1",
       taskId: "medicine",
@@ -181,7 +186,7 @@ describe("loadCareState (window モックあり)", () => {
       date: "2024-03-15",
       energyLevel: "normal",
       ...overrides,
-    };
+    } as CareLog;
   }
 
   it("version なしの旧データを v2 へ移行し、保存で version が付与される", async () => {
@@ -287,7 +292,7 @@ describe("loadCareState (window モックあり)", () => {
 
   it("往復(save → load)で健全データが完全に一致する", async () => {
     const { saveCareState, loadCareState, createInitialUser } = await import("@/lib/storage");
-    const original = {
+    const original: CareStorageState = {
       user: {
         ...createInitialUser(),
         name: "往復太郎",
@@ -678,7 +683,7 @@ describe("loadCareState (window モックあり)", () => {
 
   it("往復(save → load)で v6 フィールドを含むデータが完全に一致する", async () => {
     const { saveCareState, loadCareState, createInitialUser } = await import("@/lib/storage");
-    const original = {
+    const original: CareStorageState = {
       user: {
         ...createInitialUser(),
         name: "v6往復テスト",

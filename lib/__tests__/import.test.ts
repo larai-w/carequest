@@ -26,6 +26,8 @@ function makeState(overrides: Partial<CareStorageState> = {}): CareStorageState 
     supportNudgeLastShown: "",
     onboardingShown: false,
     goodThingsHistory: [],
+    lastExportDate: "",
+    exportReminderLastShown: "",
     ...overrides,
   };
 }
