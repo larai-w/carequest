@@ -16,6 +16,11 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
 
+    # OIDC でロールを引き受けるために必要。長期キーは使わない。
+    permissions:
+      id-token: write
+      contents: read
+
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -40,8 +45,12 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          # 長期アクセスキーから OIDC へ移行（2026-08-17）。
+          # ロールは main ブランチ / production environment からのみ引き受け可能で、
+          # 権限は veai-careready-frontend/carequest/* と veai.jp の無効化に限定。
+          # 同バケットを careready(/ready/) と共有しており、双方が --delete する
+          # ため、prefix を絞らないと相手の領域を消せてしまう。
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Sync static files to S3
