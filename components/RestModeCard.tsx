@@ -20,7 +20,7 @@ export default function RestModeCard({ onExit }: RestModeCardProps) {
           ここにいるだけで、十分です。
         </p>
 
-        <p className="text-sm text-stone-400">
+        <p className="text-sm text-stone-600">
           記録したいときは、いつでもクエストへ。
         </p>
 

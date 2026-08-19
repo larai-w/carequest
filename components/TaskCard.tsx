@@ -35,7 +35,7 @@ export default function TaskCard({ task, onSelect, onDelete, disabled = false }:
           type="button"
           onClick={() => onDelete(task)}
           aria-label={`${task.title}を削除`}
-          className="absolute right-1 top-1 flex h-11 w-11 items-center justify-center rounded-full text-stone-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 hover:text-stone-600"
+          className="absolute right-1 top-1 flex h-11 w-11 items-center justify-center rounded-full text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 hover:text-stone-800"
         >
           ×
         </button>
