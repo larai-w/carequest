@@ -359,7 +359,7 @@ export default function HomePage() {
                   <div className="flex-1">
                     <span>{log.title}</span>
                     {formatLogWhen(log.completedAt, log.date) ? (
-                      <span className="mt-0.5 block text-xs text-stone-400">{formatLogWhen(log.completedAt, log.date)}</span>
+                      <span className="mt-0.5 block text-xs text-stone-600">{formatLogWhen(log.completedAt, log.date)}</span>
                     ) : null}
                   </div>
                   <span className="ml-2 text-amber-700">+{log.points}pt</span>
@@ -367,7 +367,7 @@ export default function HomePage() {
                     type="button"
                     onClick={() => handleDeleteLog(log.id)}
                     aria-label={`${log.title}の記録を取り消す`}
-                    className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-stone-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 hover:text-stone-600"
+                    className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 hover:text-stone-800"
                   >
                     ×
                   </button>

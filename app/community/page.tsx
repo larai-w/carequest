@@ -59,7 +59,7 @@ export default function CommunityPage() {
         <section className="rounded-[28px] border border-amber-100 bg-amber-50/80 p-4 shadow-sm">
           <h2 className="text-sm font-semibold text-stone-700">今日のともしび</h2>
           <p className="mt-2 text-sm leading-7 text-stone-700">{presenceMessage(presenceCount)}</p>
-          <p className="mt-1 text-xs text-stone-400">あなたはひとりではありません。</p>
+          <p className="mt-1 text-xs text-stone-600">あなたはひとりではありません。</p>
         </section>
 
         <section className="rounded-[28px] border border-amber-100 bg-white/80 p-4 shadow-sm">
@@ -93,7 +93,7 @@ export default function CommunityPage() {
             <p className="mt-1 text-2xl font-semibold text-stone-800">
               {stats.daysSinceFirst}日
             </p>
-            <p className="mt-1 text-xs text-stone-400">その日その日の支えが、積み重なっています。</p>
+            <p className="mt-1 text-xs text-stone-600">その日その日の支えが、積み重なっています。</p>
           </section>
         )}
 

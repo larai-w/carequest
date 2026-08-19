@@ -283,7 +283,7 @@ export default function QuestPage() {
               onChange={(e) => setCustomTaskInput(e.target.value)}
               onKeyDown={handleCustomTaskKeyDown}
               placeholder="自分のケアを追加する（例: 夜中に3回起きた）"
-              className="min-w-0 flex-1 rounded-[20px] border border-stone-200 bg-white/90 px-4 py-2 text-sm text-stone-800 placeholder:text-stone-400 focus:border-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+              className="min-w-0 flex-1 rounded-[20px] border border-stone-200 bg-white/90 px-4 py-2 text-sm text-stone-800 placeholder:text-stone-600 focus:border-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
             />
             <button
               type="button"

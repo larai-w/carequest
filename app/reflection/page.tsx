@@ -421,7 +421,7 @@ export default function ReflectionPage() {
                   <div className="flex-1">
                     <span>{log.title}</span>
                     {formatLogWhen(log.completedAt, log.date) ? (
-                      <span className="mt-0.5 block text-xs text-stone-400">{formatLogWhen(log.completedAt, log.date)}</span>
+                      <span className="mt-0.5 block text-xs text-stone-600">{formatLogWhen(log.completedAt, log.date)}</span>
                     ) : null}
                   </div>
                   <span className="ml-2 text-amber-700">+{log.points}pt</span>
@@ -429,7 +429,7 @@ export default function ReflectionPage() {
                     type="button"
                     onClick={() => handleDeleteLog(log.id)}
                     aria-label={`${log.title}の記録を取り消す`}
-                    className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-stone-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 hover:text-stone-600"
+                    className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 hover:text-stone-800"
                   >
                     ×
                   </button>
@@ -471,7 +471,7 @@ export default function ReflectionPage() {
                       >
                         <span>
                           {day.label}
-                          <span className="ml-2 text-xs text-stone-400">{expanded ? "とじる" : "ひらく"}</span>
+                          <span className="ml-2 text-xs text-stone-600">{expanded ? "とじる" : "ひらく"}</span>
                         </span>
                         <span>
                           {day.completedTasks}件の支え
@@ -485,7 +485,7 @@ export default function ReflectionPage() {
                               <div className="flex-1">
                                 <span>{log.title}</span>
                                 {formatLogWhen(log.completedAt, log.date) ? (
-                                  <span className="mt-0.5 block text-xs text-stone-400">{formatLogWhen(log.completedAt, log.date)}</span>
+                                  <span className="mt-0.5 block text-xs text-stone-600">{formatLogWhen(log.completedAt, log.date)}</span>
                                 ) : null}
                               </div>
                               <span className="ml-2 text-amber-700">+{log.points}pt</span>
@@ -590,7 +590,7 @@ export default function ReflectionPage() {
                 type="button"
                 onClick={handleShowResetConfirm}
                 aria-label="すべての記録を削除する"
-                className="rounded-full px-3 py-1.5 text-xs text-stone-400 underline-offset-2 hover:text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+                className="rounded-full px-3 py-1.5 text-xs text-stone-600 underline-offset-2 hover:text-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
               >
                 すべての記録を削除する
               </button>
