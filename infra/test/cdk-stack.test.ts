@@ -28,6 +28,13 @@ describe('Cognito UserPool', () => {
       DeletionPolicy: 'Retain',
     });
   });
+
+  it('MFA は OPTIONAL で TOTP のみ有効', () => {
+    template.hasResourceProperties('AWS::Cognito::UserPool', {
+      MfaConfiguration: 'OPTIONAL',
+      EnabledMfas: ['SOFTWARE_TOKEN_MFA'],
+    });
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -181,6 +188,13 @@ describe('匿名フィードバック', () => {
 
   it('Lambda 関数が 3 件(entries + feedback + weekly digest)', () => {
     template.resourceCountIs('AWS::Lambda::Function', 3);
+  });
+
+  it('廃止した record-time API リソースが存在しない', () => {
+    const recordTimeResources = template.findResources('AWS::ApiGateway::Resource', {
+      Properties: { PathPart: 'record-time' },
+    });
+    expect(Object.keys(recordTimeResources)).toHaveLength(0);
   });
 
   it('週次ダイジェストのスケジュールが存在する', () => {
