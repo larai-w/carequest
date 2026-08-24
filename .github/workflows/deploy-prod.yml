@@ -5,6 +5,15 @@ on:
     branches:
       - main
   workflow_dispatch:
+  # ⚠️ push だけでは取りこぼす。
+  # Dependabot の auto-merge は GITHUB_TOKEN で push するため、
+  # **他のワークフローを起動しない**（GitHub のループ防止仕様）。
+  # 2026-08-17 に実際に踏み、main にあるのに未デプロイの状態が
+  # 33.3時間続いた（手動 dispatch で解消）。DORA の Lead p95 を
+  # 24h ガードレール超過にした唯一の要因。
+  # 定期的に主従を突き合わせ、ずれていたときだけ流す。
+  schedule:
+    - cron: '0 */6 * * *'
 
 concurrency:
   group: deploy-production
@@ -25,23 +34,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup Node
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build static site
-        env:
-          NEXT_PUBLIC_COGNITO_USER_POOL_ID: ${{ secrets.NEXT_PUBLIC_COGNITO_USER_POOL_ID }}
-          NEXT_PUBLIC_COGNITO_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_COGNITO_CLIENT_ID }}
-          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
-          NEXT_PUBLIC_AWS_REGION: ${{ secrets.NEXT_PUBLIC_AWS_REGION }}
-        run: npm run build
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
@@ -53,7 +45,57 @@ jobs:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      # 定期実行では、本当にずれているときだけ流す。
+      # 毎回流すと無駄なビルドと CloudFront 無効化が積み上がる。
+      # push / 手動のときは必ず流す（判定を挟まない）。
+      - name: Check deployed revision
+        id: drift
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "reason=event=${{ github.event_name }}" >> "$GITHUB_OUTPUT"
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          deployed=$(aws s3 cp "s3://${{ secrets.S3_BUCKET }}/carequest/.deployed-sha" - 2>/dev/null | tr -d '[:space:]' || true)
+          echo "deployed=${deployed:-（未記録）}"
+          echo "main=${GITHUB_SHA}"
+          if [ "$deployed" = "$GITHUB_SHA" ]; then
+            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+            echo "一致。デプロイは不要"
+          else
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            echo "reason=drift" >> "$GITHUB_OUTPUT"
+            echo "⚠️ ずれている。デプロイする"
+          fi
+
+      - name: Setup Node
+        if: steps.drift.outputs.should_deploy == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.drift.outputs.should_deploy == 'true'
+        run: npm ci
+
+      - name: Build static site
+        if: steps.drift.outputs.should_deploy == 'true'
+        env:
+          NEXT_PUBLIC_COGNITO_USER_POOL_ID: ${{ secrets.NEXT_PUBLIC_COGNITO_USER_POOL_ID }}
+          NEXT_PUBLIC_COGNITO_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_COGNITO_CLIENT_ID }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_AWS_REGION: ${{ secrets.NEXT_PUBLIC_AWS_REGION }}
+        run: npm run build
+
+      # デプロイした版を S3 に残す。定期実行の突き合わせに使う。
+      # out/ の中に置くので --delete で消えない。
+      - name: Record deployed revision
+        if: steps.drift.outputs.should_deploy == 'true'
+        run: echo "${GITHUB_SHA}" > out/.deployed-sha
+
       - name: Sync static files to S3
+        if: steps.drift.outputs.should_deploy == 'true'
         run: |
           aws s3 sync out/ "s3://${{ secrets.S3_BUCKET }}/carequest/" \
             --delete \
@@ -61,12 +103,14 @@ jobs:
             --cache-control "public,max-age=300"
 
       - name: Set immutable cache for build assets
+        if: steps.drift.outputs.should_deploy == 'true'
         run: |
           aws s3 sync out/_next/ "s3://${{ secrets.S3_BUCKET }}/carequest/_next/" \
             --delete \
             --cache-control "public,max-age=31536000,immutable"
 
       - name: Invalidate CloudFront cache
+        if: steps.drift.outputs.should_deploy == 'true'
         run: |
           aws cloudfront create-invalidation \
             --distribution-id "${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}" \
