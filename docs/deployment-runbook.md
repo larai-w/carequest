@@ -111,16 +111,37 @@ npm test
 # Step 5: ビルド確認
 npm run build
 
-# Step 6: CDK差分確認
+# Step 6: CDK差分確認（alertEmail を必ず付ける。下の警告を参照）
 cd infra
-npx cdk diff
+npx cdk diff -c alertEmail=<オーナーのメールアドレス>
 
 # Step 7: デプロイ（確認あり）
-npx cdk deploy CareQuestStack
+npx cdk deploy CareQuestStack -c alertEmail=<オーナーのメールアドレス>
 
 # Step 8: デプロイ確認
 aws cloudformation describe-stacks --stack-name CareQuestStack --query 'Stacks[0].StackStatus'
 ```
+
+> ⚠️ **`-c alertEmail=...` を付け忘れると、監視が黙って止まる。**
+>
+> スタックはこの context がある時だけ SNS のメール購読と予算通知を作る
+> （`carequest-stack.ts` の `tryGetContext('alertEmail') ?? process.env.ALERT_EMAIL`）。
+> **付けずにデプロイすると、既にある購読が「差分」として削除される。**
+>
+> 2026-08-24 の `cdk diff` で実際に出た差分:
+>
+> ```
+> [-] AWS::SNS::Subscription CareQuestAlertTopic/<owner-email>  destroy
+> [~] AWS::Budgets::Budget  NotificationsWithSubscribers  (80%閾値の通知が [] になる)
+> ```
+>
+> Lambda エラーと API Gateway 5XX のアラーム、月額予算の超過通知が
+> **すべて誰にも届かなくなる。** アラームは「存在するのに宛先が無い」状態に
+> なるので、コンソールを見ない限り気づけない。
+>
+> **必ず `cdk diff` を先に実行し、`AWS::SNS::Subscription` の `[-]` が
+> 出ていないことを確認してからデプロイする。**
+> 環境変数 `ALERT_EMAIL` でも同じことができる。
 
 ### 3.2 自動デプロイ（GitHub Actions）
 
@@ -142,8 +163,16 @@ jobs:
           node-version: '20'
       - run: npm ci
       - run: npm test
+      # ⚠️ ALERT_EMAIL が無いと SNS 購読と予算通知が消える（§3.1 の警告）
       - run: npx cdk deploy --require-approval never
+        env:
+          ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
 ```
+
+> **この例をそのまま使う場合、`ALERT_EMAIL` を Secrets に登録してから
+> 有効にすること。** 未登録のまま動かすと監視が消える。
+> なお現在の `deploy-prod.yml` は静的サイトの S3 同期だけで
+> `cdk deploy` を含まない（CDK デプロイは手動）。
 
 ### 3.3 デプロイフロー
 
@@ -183,7 +212,7 @@ npm test
 
 # 3. 直接デプロイ（レビュー省略可）
 cd infra
-npx cdk deploy CareQuestStack --require-approval never
+npx cdk deploy CareQuestStack --require-approval never -c alertEmail=<オーナーのメールアドレス>
 
 # 4. 事後PR作成
 git push origin hotfix/issue-xxx
