@@ -57,6 +57,22 @@ describe('DynamoDB Table', () => {
       },
     });
   });
+
+  // hasResourceProperties は「どれか1つ」で通る。feedbackTable は本番で
+  // PITR が有効なのにコードに無く、次の deploy で無効へ戻りうる状態
+  // だった(2026-08-24 の実測)。全テーブルを個別に見る。
+  it('すべてのテーブルで PITR と削除保護が有効', () => {
+    const tables = template.findResources('AWS::DynamoDB::Table');
+    const ids = Object.keys(tables);
+    expect(ids.length).toBeGreaterThan(0);
+    for (const id of ids) {
+      const props = tables[id].Properties ?? {};
+      expect(props.PointInTimeRecoverySpecification).toEqual({
+        PointInTimeRecoveryEnabled: true,
+      });
+      expect(props.DeletionProtectionEnabled).toBe(true);
+    }
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
