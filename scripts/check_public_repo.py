@@ -64,6 +64,13 @@ SECRET_PATTERNS = (
     ("GitHub token", re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}\b|\bgh[opusr]_[A-Za-z0-9]{20,}\b")),
 )
 
+# Public documentation may name the private repository, but implementation paths reveal
+# internal operating material and do not belong in a public repository.
+PRIVATE_REPO_PATH = re.compile(
+    r"(?i)(?:~/Developer/)?veai-private/"
+    r"(?:governance|knowledge|security|carequest|setup|strategy|marketing|career)(?:/|\b)"
+)
+
 # Strong, multi-word strategy phrases: a single hit blocks. These are deliberately specific so
 # they essentially never appear in code, config, blog copy, or design docs — only in the kind of
 # business/growth planning that must stay private. (Single ambiguous words like "戦略" or acronyms
@@ -112,6 +119,8 @@ def content_reasons(path: str, content: bytes) -> list[str]:
     lower = text.lower()
     reasons = ["private classification marker" for p in PRIVATE_MARKERS if p.search(text)]
     reasons.extend(label for label, p in SECRET_PATTERNS if p.search(text))
+    if PRIVATE_REPO_PATH.search(text):
+        reasons.append("internal private-repository path")
 
     if ALLOW_TOKEN not in text:
         hits = sorted({term for term in STRATEGY_STRONG if term in lower})
@@ -142,6 +151,10 @@ def main() -> int:
 
     errors: list[str] = []
     for path in paths:
+        # `git ls-files` still lists working-tree deletions until they are staged. A deleted file
+        # has no content left to inspect and should not make local preflight checks unusable.
+        if not args.staged and not (ROOT / path).is_file():
+            continue
         if reason := private_path_reason(path):
             errors.append(f"{path}: {reason}")
             continue
