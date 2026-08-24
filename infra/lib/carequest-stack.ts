@@ -66,6 +66,9 @@ export class CareQuestStack extends cdk.Stack {
       pointInTimeRecoverySpecification: {
         pointInTimeRecoveryEnabled: true,
       },
+      // OPS-04 (PGB 2026-08-12 承認): 誤削除の保護。CLI で入れると次の
+      // cdk deploy で戻るため、IaC 側に置く
+      deletionProtection: true,
     });
 
     // Lambda コードは infra/lambda/entries/ に切り出し済み。
@@ -149,6 +152,13 @@ export class CareQuestStack extends cdk.Stack {
       sortKey: { name: 'sk', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
+      // 本番では PITR が有効なのにコードに無く、次の deploy で無効へ
+      // 戻りうる状態だった(2026-08-24 の実測で判明)。実態に合わせる
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: true,
+      },
+      // OPS-04 (PGB 2026-08-12 承認): 誤削除の保護
+      deletionProtection: true,
     });
 
     const feedbackHandler = new lambda.Function(this, 'CareQuestFeedbackHandler', {
