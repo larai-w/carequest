@@ -36,6 +36,14 @@ export class CareQuestStack extends cdk.Stack {
         requireDigits: true,
         requireSymbols: false,
       },
+      // SEC-2026-0818: MFA 有効化（TOTP のみ、SMS はコスト・信頼性の問題で無効）
+      // 段階的導入: まず OPTIONAL で開始し、周知後に REQUIRED に変更可能
+      // REQUIRED にする場合: mfa: cognito.Mfa.REQUIRED
+      mfa: cognito.Mfa.OPTIONAL,
+      mfaSecondFactor: {
+        sms: false,
+        otp: true, // TOTP (Google Authenticator, Authy 等)
+      },
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
