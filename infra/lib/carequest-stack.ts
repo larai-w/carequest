@@ -203,6 +203,27 @@ export class CareQuestStack extends cdk.Stack {
       alertTopic.addSubscription(
         new sns_subscriptions.EmailSubscription(alertEmail as string),
       );
+    } else if (!this.node.tryGetContext('allowNoAlertEmail')) {
+      // ⚠️ ここが無いと、監視が黙って止まる。
+      //
+      // 購読は alertEmail がある時だけ作られる。**付けずにデプロイすると、
+      // 既にある購読が差分として削除される。** 2026-08-24 の cdk diff で実際に出た:
+      //
+      //   [-] AWS::SNS::Subscription CareQuestAlertTopic/<owner>  destroy
+      //   [~] AWS::Budgets::Budget   NotificationsWithSubscribers → []
+      //
+      // Lambda エラーと API Gateway 5XX のアラーム、月額予算の超過通知が
+      // すべて誰にも届かなくなる。**アラーム自体は残るので、コンソールを
+      // 見ない限り気づけない。**
+      //
+      // synth を止めない（CI の synth チェックは context を渡さない）。
+      // 代わりに deploy の出力へ必ず出す。意図的に外すなら
+      // `-c allowNoAlertEmail=true` を渡す。
+      cdk.Annotations.of(this).addWarning(
+        'alertEmail が未指定です。このままデプロイすると既存のメール購読と予算通知が削除され、' +
+          'アラートが誰にも届かなくなります。`-c alertEmail=<address>` または環境変数 ALERT_EMAIL を指定してください。' +
+          '意図的に購読なしで進める場合は `-c allowNoAlertEmail=true` を付けてください。',
+      );
     }
 
     // 週次フィードバックダイジェスト: 毎週月曜 09:00 JST(= 日曜 00:00 UTC の翌日 0時 UTC)に

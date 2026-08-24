@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as cdk from 'aws-cdk-lib';
-import { Template, Match } from 'aws-cdk-lib/assertions';
+import { Annotations, Template, Match } from 'aws-cdk-lib/assertions';
 import { CareQuestStack } from '../lib/carequest-stack';
 
 let template: Template;
@@ -80,6 +80,54 @@ describe('DynamoDB Table', () => {
       });
       expect(props.DeletionProtectionEnabled).toBe(true);
     }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 3.5 アラート購読 — alertEmail を渡し忘れると監視が消える
+//
+// 購読は alertEmail がある時だけ作られる。付けずにデプロイすると
+// **既にある購読が差分として削除される**（2026-08-24 の cdk diff で実測）。
+// アラーム自体は残るので、コンソールを見ない限り誰も気づけない。
+// 手順書は消えても、この2件が消えれば気づけるようにしておく。
+// ─────────────────────────────────────────────────────────────────────────────
+describe('アラートメール購読', () => {
+  it('alertEmail を渡せば SNS のメール購読が作られる', () => {
+    const app = new cdk.App({ context: { alertEmail: 'ops@example.com' } });
+    const stack = new CareQuestStack(app, 'WithEmailStack', {
+      env: { account: '123456789012', region: 'ap-northeast-1' },
+    });
+    Template.fromStack(stack).hasResourceProperties('AWS::SNS::Subscription', {
+      Protocol: 'email',
+      Endpoint: 'ops@example.com',
+    });
+  });
+
+  it('alertEmail が無いと購読が作られず、警告が出る', () => {
+    const app = new cdk.App();
+    const stack = new CareQuestStack(app, 'NoEmailStack', {
+      env: { account: '123456789012', region: 'ap-northeast-1' },
+    });
+    const template = Template.fromStack(stack);
+    template.resourceCountIs('AWS::SNS::Subscription', 0);
+
+    const warnings = Annotations.fromStack(stack).findWarning(
+      '*',
+      Match.stringLikeRegexp('alertEmail'),
+    );
+    expect(warnings.length).toBeGreaterThan(0);
+  });
+
+  it('意図的に外すときは警告を消せる', () => {
+    const app = new cdk.App({ context: { allowNoAlertEmail: true } });
+    const stack = new CareQuestStack(app, 'OptOutStack', {
+      env: { account: '123456789012', region: 'ap-northeast-1' },
+    });
+    const warnings = Annotations.fromStack(stack).findWarning(
+      '*',
+      Match.stringLikeRegexp('alertEmail'),
+    );
+    expect(warnings.length).toBe(0);
   });
 });
 
