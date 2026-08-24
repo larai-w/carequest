@@ -35,6 +35,14 @@ describe('Cognito UserPool', () => {
       EnabledMfas: ['SOFTWARE_TOKEN_MFA'],
     });
   });
+
+  // 本番は DeletionProtection=INACTIVE だった(2026-08-24 実測)。
+  // User Pool が消えると全アカウントが失われる。
+  it('削除保護が有効', () => {
+    template.hasResourceProperties('AWS::Cognito::UserPool', {
+      DeletionProtection: 'ACTIVE',
+    });
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

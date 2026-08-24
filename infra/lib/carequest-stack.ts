@@ -44,6 +44,11 @@ export class CareQuestStack extends cdk.Stack {
         sms: false,
         otp: true, // TOTP (Google Authenticator, Authy 等)
       },
+      // OPS-04: 本番の User Pool は DeletionProtection=INACTIVE だった
+      // (2026-08-24 実測)。消えると全アカウントが失われ、記録の持ち主が
+      // 二度と入れない。removalPolicy はスタック削除時の話で、
+      // 誤操作による直接削除はこちらで止める
+      deletionProtection: true,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
