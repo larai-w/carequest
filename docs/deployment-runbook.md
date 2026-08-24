@@ -227,7 +227,7 @@ git push origin hotfix/issue-xxx
 
 ```bash
 # 自動復旧スクリプト使用
-~/Developer/veai-private/governance/scripts/auto-recovery/lambda-rollback.sh CareQuestStack
+<私有リポジトリの運用スクリプト>/lambda-rollback.sh CareQuestStack
 
 # 手動ロールバック
 aws lambda update-function-code \
@@ -249,7 +249,7 @@ aws cloudformation rollback-stack --stack-name CareQuestStack
 
 ```bash
 # 特定時点への復旧
-~/Developer/veai-private/governance/scripts/auto-recovery/dynamodb-pitr-restore.sh \
+<私有リポジトリの運用スクリプト>/dynamodb-pitr-restore.sh \
   carequest-records \
   "2026-08-02T12:00:00Z"
 ```
@@ -342,8 +342,8 @@ aws cloudtrail lookup-events \
 |-------------|------|
 | 運用ガイド | `docs/operations-guide.md` |
 | 認証アーキテクチャ | `docs/auth-architecture.md` |
-| LambdaロールバックRunbook | `veai-private/knowledge/runbooks/RB-0002-lambda-rollback.md` |
-| DynamoDB PITR復旧 | `veai-private/knowledge/runbooks/RB-0001-dynamodb-pitr-recovery.md` |
+| LambdaロールバックRunbook | 私有リポジトリ（オーナーに確認） |
+| DynamoDB PITR復旧 | 私有リポジトリ（オーナーに確認） |
 
 ---
 

@@ -4,7 +4,7 @@
 **作成者:** Cline
 **対象:** CareQuest運用担当者 / インシデント対応者
 **バージョン:** 1.0
-**関連:** `operations-guide.md` / `veai-private/governance/incident-management.md`
+**関連:** `operations-guide.md` / 私有リポジトリの該当文書（オーナーに確認）
 
 ---
 
@@ -103,7 +103,7 @@ WriteThrottleEvents > 0 検知
 **復旧コマンド:**
 ```bash
 # DynamoDB PITR復旧
-~/Developer/veai-private/governance/scripts/auto-recovery/dynamodb-pitr-restore.sh \
+<私有リポジトリの運用スクリプト>/dynamodb-pitr-restore.sh \
   carequest-records \
   "$(date -u -v-1H +%Y-%m-%dT%H:%M:%SZ)"
 ```
@@ -214,7 +214,7 @@ aws cloudwatch get-metric-statistics \
 
 **ロールバック:**
 ```bash
-~/Developer/veai-private/governance/scripts/auto-recovery/lambda-rollback.sh CareQuestStack
+<私有リポジトリの運用スクリプト>/lambda-rollback.sh CareQuestStack
 ```
 
 ---
@@ -378,11 +378,11 @@ VEAI CareQuest運用チーム
 |-------------|------|
 | 運用ガイド | `docs/operations-guide.md` |
 | デプロイ手順書 | `docs/deployment-runbook.md` |
-| インシデント管理（全体） | `veai-private/governance/incident-management.md` |
-| エスカレーションマトリクス | `veai-private/governance/escalation-matrix.md` |
-| DynamoDB PITR復旧 | `veai-private/knowledge/runbooks/RB-0001-dynamodb-pitr-recovery.md` |
-| Lambdaロールバック | `veai-private/knowledge/runbooks/RB-0002-lambda-rollback.md` |
-| ポストモーテムテンプレート | `veai-private/knowledge/postmortems/TEMPLATE.md` |
+| インシデント管理（全体） | 私有リポジトリ（オーナーに確認） |
+| エスカレーションマトリクス | 私有リポジトリ（オーナーに確認） |
+| DynamoDB PITR復旧 | 私有リポジトリ（オーナーに確認） |
+| Lambdaロールバック | 私有リポジトリ（オーナーに確認） |
+| ポストモーテムテンプレート | 私有リポジトリ（オーナーに確認） |
 
 ---
 

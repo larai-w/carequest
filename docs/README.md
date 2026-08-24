@@ -51,19 +51,12 @@ CareQuest Docs
 
 ---
 
-## 🔗 関連ドキュメント（veai-private）
+## 🔗 関連ドキュメント
 
-| カテゴリ | ドキュメント | 場所 |
-|---------|-------------|------|
-| SLO定義 | CareQuest SLO | `governance/slo/carequest.md` |
-| エラーバジェット | エラーバジェットポリシー | `governance/error-budget-policy.md` |
-| インシデント管理 | 全体インシデント管理 | `governance/incident-management.md` |
-| エスカレーション | エスカレーションマトリクス | `governance/escalation-matrix.md` |
-| Runbook | DynamoDB PITR復旧 | `knowledge/runbooks/RB-0001-dynamodb-pitr-recovery.md` |
-| Runbook | Lambdaロールバック | `knowledge/runbooks/RB-0002-lambda-rollback.md` |
-| ポストモーテム | テンプレート | `knowledge/postmortems/TEMPLATE.md` |
-| パイロット | 施設候補 | `governance/pilot-facility-candidates.md` |
-| 共創 | 共創プレイブック | `governance/co-creation-playbook.md` |
+SLO 定義、エラーバジェットポリシー、インシデント管理、エスカレーション、
+復旧 Runbook、ポストモーテムのテンプレート、パイロット関連は**私有リポジトリ**に
+ある。**内部のディレクトリ構成は公開しない**ため、ここには一覧を置かない。
+場所はオーナーに確認すること。
 
 ---
 

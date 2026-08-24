@@ -149,10 +149,10 @@ npx cdk deploy CareQuestStack --require-approval never
 
 ```bash
 # Lambdaロールバック
-~/Developer/veai-private/governance/scripts/auto-recovery/lambda-rollback.sh CareQuestStack
+<私有リポジトリの運用スクリプト>/lambda-rollback.sh CareQuestStack
 
 # DynamoDB復旧（PITR）
-~/Developer/veai-private/governance/scripts/auto-recovery/dynamodb-pitr-restore.sh carequest-records "2026-08-02T12:00:00Z"
+<私有リポジトリの運用スクリプト>/dynamodb-pitr-restore.sh carequest-records "2026-08-02T12:00:00Z"
 ```
 
 ---
@@ -171,8 +171,8 @@ npx cdk deploy CareQuestStack --require-approval never
 
 | タスク | 実行方法 |
 |--------|---------|
-| DORA指標測定 | `~/Developer/veai-private/governance/scripts/dora-metrics-measure.sh` |
-| コストレポート | `~/Developer/veai-private/governance/scripts/cost-report.sh` |
+| DORA指標測定 | 私有リポジトリ（オーナーに確認） |
+| コストレポート | 私有リポジトリ（オーナーに確認） |
 | セキュリティスキャン | GitHub Actions自動実行 |
 
 ### 5.3 月次タスク
@@ -270,7 +270,7 @@ npx cdk deploy CareQuestStack --require-approval never
 
 導入前チェックリスト・トレーニング日程・サポート体制・フィードバック収集は
 パイロット計画に当たるため、私有リポジトリで管理する
-（`veai-private/carequest/pilot-onboarding-plan.md`）。
+（私有リポジトリの該当文書（オーナーに確認））。
 
 ---
 
@@ -279,13 +279,13 @@ npx cdk deploy CareQuestStack --require-approval never
 | ドキュメント | 場所 |
 |-------------|------|
 | 認証アーキテクチャ | `docs/auth-architecture.md` |
-| SLO定義 | `veai-private/governance/slo/carequest.md` |
-| エラーバジェットポリシー | `veai-private/governance/error-budget-policy.md` |
-| インシデント管理 | `veai-private/governance/incident-management.md` |
-| パイロット施設候補 | `veai-private/governance/pilot-facility-candidates.md` |
-| 共創プレイブック | `veai-private/governance/co-creation-playbook.md` |
-| DynamoDB復旧Runbook | `veai-private/knowledge/runbooks/RB-0001-dynamodb-pitr-recovery.md` |
-| Lambdaロールバック | `veai-private/knowledge/runbooks/RB-0002-lambda-rollback.md` |
+| SLO定義 | 私有リポジトリ（オーナーに確認） |
+| エラーバジェットポリシー | 私有リポジトリ（オーナーに確認） |
+| インシデント管理 | 私有リポジトリ（オーナーに確認） |
+| パイロット施設候補 | 私有リポジトリ（オーナーに確認） |
+| 共創プレイブック | 私有リポジトリ（オーナーに確認） |
+| DynamoDB復旧Runbook | 私有リポジトリ（オーナーに確認） |
+| Lambdaロールバック | 私有リポジトリ（オーナーに確認） |
 
 ---
 
