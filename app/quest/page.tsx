@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Layout from "@/components/Layout";
+import TaskReadingCard from "@/components/TaskReadingCard";
+import { readingForTask, alreadyShownToday, markShownToday, type Reading } from "@/lib/taskReading";
 import TaskCard from "@/components/TaskCard";
 import EncouragementCard from "@/components/EncouragementCard";
 import { careTasks } from "@/lib/tasks";
@@ -67,6 +69,8 @@ export default function QuestPage() {
   const { logs, energyLevel, todayPoints, restMode, customTasks } = viewState;
 
   const completedCount = useMemo(() => logs.filter((log) => log.date === getTodayDate()).length, [logs]);
+
+  const [reading, setReading] = useState<Reading | null>(null);
 
   const handleRestModeToggle = () => {
     const nextRestMode = !restMode;
@@ -171,6 +175,16 @@ export default function QuestPage() {
     // 記録は上で確定済み。バックアップはデバウンスして背景で行う(10秒ルール)。
     scheduleBackup();
 
+    // 関連する読みものを、**1日1回まで**そっと出す。
+    // ⚠️ 記録の成否には一切関わらせない。ここで例外が出ても記録は済んでいる。
+    if (!alreadyShownToday(today)) {
+      const r = readingForTask(task.title, today);
+      if (r) {
+        setReading(r);
+        markShownToday(today);
+      }
+    }
+
   };
 
   const handleAddCustomTask = () => {
@@ -231,6 +245,8 @@ export default function QuestPage() {
           <p className="mt-2 text-4xl font-semibold text-amber-700">{todayPoints}pt</p>
           <p className="mt-2 text-sm text-stone-600">{message}</p>
         </section>
+
+        {reading && <TaskReadingCard reading={reading} onDismiss={() => setReading(null)} />}
 
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
