@@ -27,7 +27,7 @@ export default function QuestionFinderCard() {
   };
 
   return (
-    <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
+    <section id="question-finder" className="scroll-mt-4 rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
       <h2 className="text-sm font-medium text-stone-700">介護のことで、調べたいことはありますか</h2>
       <p className="mt-1 text-xs leading-6 text-stone-500">
         近い読みものをお探しします。入力した内容はこの端末から出ません。
