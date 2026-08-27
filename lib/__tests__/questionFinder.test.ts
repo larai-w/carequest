@@ -131,7 +131,7 @@ describe("タグが、読者の語と書き手の語を橋渡しする", () => {
       headings: ["予期悲嘆という呼び名"],
       tags: ["ホスピス"], // 題名にも説明にも見出しにも無く、他の記事にも無い語
     };
-    const r = findArticles("ホスピスについて知りたいです", [...ALL, tagged]);
+    const r = findArticles("ホスピスとはなんですか", [...ALL, tagged]);
     expect(r.kind).toBe("hits");
     if (r.kind === "hits") expect(r.hits[0].article.slug).toBe("only-tag");
   });
@@ -147,6 +147,26 @@ describe("タグが、読者の語と書き手の語を橋渡しする", () => {
       }
     },
   );
+});
+
+describe("公開されている本数で測る", () => {
+  // ⚠️ **閾値を全93記事で決めていた。本番で使われるのは公開済みの分だけ。**
+  // 2026-08-27 の投入時点では 38本しか公開されておらず、
+  // **16問中7問で無関係な記事を1位に返していた**（閾値33のとき）。
+  // 記事が少ないと競争相手が減り、弱い一致がそのまま1位になる。
+  // → 閾値を45に上げて、今日の本数でも外れが出ないようにした。
+  it("公開済みだけでも、無関係な記事を1位に返さない", () => {
+    const NOW = publishedArticles(new Date().toISOString().slice(0, 10));
+    expect(NOW.length).toBeGreaterThan(0);
+    // 答えの記事がまだ公開されていない問い。**沈黙するのが正解。**
+    // （誤嚥の記事は 2026-09-06 公開）
+    const r = findArticles("食事でむせるようになりました", NOW.filter((a) => a.pubDate < "2026-09-06"));
+    if (r.kind === "hits") {
+      for (const h of r.hits) {
+        expect(h.score).toBeGreaterThanOrEqual(45);
+      }
+    }
+  });
 });
 
 describe("公開日", () => {
