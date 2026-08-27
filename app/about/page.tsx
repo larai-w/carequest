@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Layout from "@/components/Layout";
 import { supportContacts } from "@/lib/contacts";
+import QuestionFinderCard from "@/components/QuestionFinderCard";
 
 export default function AboutPage() {
   return (
@@ -37,6 +38,8 @@ export default function AboutPage() {
             このアプリは医療アドバイスを提供するものではありません。医療判断については、医師・看護師・介護専門職に相談してください。
           </p>
         </section>
+
+        <QuestionFinderCard />
 
         <section className="rounded-[28px] border border-amber-100 bg-amber-50/80 p-4 shadow-sm">
           <h3 className="text-lg font-semibold text-stone-800">つらいとき、頼れる窓口</h3>
