@@ -23,6 +23,7 @@ export type Article = {
   description: string;
   pubDate: string;
   headings: string[];
+  tags: string[];
 };
 
 export type Outcome =
@@ -133,7 +134,9 @@ const bigrams = (s: string): Set<string> => {
 };
 
 const articleText = (a: Article) =>
-  a.title.repeat(3) + a.description.repeat(2) + a.headings.join("");
+  // タグは短いので、繰り返して重みを持たせる。
+  // **読者の語（看取り）と書き手の語（人生会議）を橋渡しするのがタグの役割。**
+  a.title.repeat(3) + a.description.repeat(2) + a.headings.join("") + (a.tags ?? []).join("").repeat(2);
 
 // ⚠️ **重みを下げるだけでは足りない。** 機能語は分母に残り続ける。
 // 実測: 「住宅改修に助成はありますか」で `に・は・あり・ます・すか` が効き、

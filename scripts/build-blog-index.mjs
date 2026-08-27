@@ -40,12 +40,22 @@ for (const file of readdirSync(BLOG_DIR).filter((f) => /\.mdx?$/.test(f))) {
   // (索引が肥大し、関係の薄い語で当たるようになる)。
   const headings = [...body.matchAll(/^#+\s*(.+)$/gm)].map((m) => m[1]);
 
+  // ⚠️ **タグを入れる。** 2026-08-27、終末期の記事4本のうち3本は
+  // 題名・説明・見出しのどこにも「看取り」が出てこなかった。
+  // 読者は「看取り」で探すのに、書き手は「人生会議」「予期悲嘆」と書く。
+  // **タグはその橋渡しをするためにある。**
+  const tags = (head.match(/^tags:\s*\[(.*?)\]\s*$/m)?.[1] ?? "")
+    .split(",")
+    .map((t) => t.trim().replace(/^'|'$/g, ""))
+    .filter(Boolean);
+
   articles.push({
     slug: file.replace(/\.mdx?$/, ""),
     title,
     description,
     pubDate,
     headings,
+    tags,
   });
 }
 

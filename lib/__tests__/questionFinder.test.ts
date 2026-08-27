@@ -107,6 +107,48 @@ describe("一致度", () => {
   });
 });
 
+describe("タグが、読者の語と書き手の語を橋渡しする", () => {
+  // ⚠️ 2026-08-27 の実測: 終末期の記事4本のうち**3本は題名・説明・見出しの
+  // どこにも「看取り」が出てこなかった。** 読者は「看取り」で探すのに、
+  // 書き手は「人生会議」「予期悲嘆」と書く。**記事を増やしても見つからない。**
+  // → タグを索引に入れて橋渡しする。
+  it("看取りのタグが索引に入っている", () => {
+    const tagged = ALL.filter((a) => (a.tags ?? []).includes("看取り"));
+    expect(tagged.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("題名・説明・見出しに無い語でも、タグに有れば見つかる", () => {
+    // ⚠️ **実データで測ろうとしたら、ガードにならなかった。**
+    // 「最期をどこで迎えるか」はタグを索引から外しても通ってしまう
+    // (別の語で当たっていた)。**通ることと効いていることは別。**
+    // → タグ以外に手がかりが無い記事を、実データに1本混ぜて測る。
+    //   1本だけの索引では IDF が成立しないので、実データと一緒に入れる。
+    const tagged = {
+      slug: "only-tag",
+      title: "決めたあとも、気持ちは決まらない",
+      description: "終わりが見えてきたときのこと。",
+      pubDate: "2020-01-01",
+      headings: ["予期悲嘆という呼び名"],
+      tags: ["ホスピス"], // 題名にも説明にも見出しにも無く、他の記事にも無い語
+    };
+    const r = findArticles("ホスピスについて知りたいです", [...ALL, tagged]);
+    expect(r.kind).toBe("hits");
+    if (r.kind === "hits") expect(r.hits[0].article.slug).toBe("only-tag");
+  });
+
+  it.each(["最期をどこで迎えるか決めたい", "終末期について家族と話したい"])(
+    "%s → 看取りを扱う記事が出る",
+    (q) => {
+      const r = findArticles(q, ALL);
+      expect(r.kind).toBe("hits");
+      if (r.kind === "hits") {
+        const anyTagged = r.hits.some((h) => (h.article.tags ?? []).includes("看取り"));
+        expect(anyTagged).toBe(true);
+      }
+    },
+  );
+});
+
 describe("公開日", () => {
   it("予約公開の記事は、公開日まで候補に入らない", () => {
     // ⚠️ **未公開の記事へリンクすると 404 になる。**
