@@ -246,9 +246,26 @@ exports.handler = async (event) => {
   }
 
   // Cognito authorizer から userId を抽出(サーバー側でのみ決定する)
+  //
+  // ⚠️ **クレームが無いときに固定文字列へ落とさない。**
+  //
+  // 以前は `|| 'anonymous'` だった。/entries は Cognito 必須なので当時は
+  // 到達しなかったが、**認可を外したり、この handler を公開経路で使い回すと、
+  // 全員が同じ区画（anonymous）に入る。** 読みも書きも混ざる。
+  //
+  // 2026-08-27 に GutPacer で実際にそれが起きた（同意記録が世帯で分かれておらず、
+  // 他所帯の同意で通る状態だった）。エコシステムの他製品は例外で止めている:
+  //   CareReady          → raise _Unauthorized("missing identity claims")
+  //   Medication Promise → throw new ConsentSubjectError()
+  // ここも揃える。**誰の記録か決められないなら、触らない。**
   const authorizer = event.requestContext && event.requestContext.authorizer;
   const claims = authorizer && authorizer.claims;
-  const userId = (claims && (claims['cognito:username'] || claims.sub)) || 'anonymous';
+  const userId = claims && (claims['cognito:username'] || claims.sub);
+
+  if (!userId) {
+    console.error('AUTH_MISSING_CLAIMS resource=%s method=%s', event.resource, event.httpMethod);
+    return response(401, corsHeaders, { message: 'Unauthorized' });
+  }
 
   if (event.httpMethod === 'GET' && event.resource === '/entries') {
     try {

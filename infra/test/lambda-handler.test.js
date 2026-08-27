@@ -455,3 +455,76 @@ describe('CORS ヘッダー', () => {
     expect(res.headers['Access-Control-Allow-Origin']).toBe('https://veai.jp');
   });
 });
+
+// ── 身元が無いときは触らない（2026-08-27）────────────────────────────────
+//
+// 以前は `|| 'anonymous'` で固定文字列へ落ちていた。
+// /entries は Cognito 必須なので当時は到達しなかったが、
+// **認可を外したり、この handler を公開経路で使い回すと、
+// 全員が同じ区画（anonymous）に入る。** 読みも書きも混ざる。
+//
+// 2026-08-27 に GutPacer で実際にそれが起きた（同意記録が世帯で
+// 分かれておらず、他所帯の同意で通る状態だった）。
+// **誰の記録か決められないなら、触らない。**
+
+describe('身元が無いリクエスト', () => {
+  const cases = [
+    ['authorizer ごと無い', { requestContext: { requestId: 'r' } }],
+    ['claims が無い', { requestContext: { requestId: 'r', authorizer: {} } }],
+    ['claims が空', { requestContext: { requestId: 'r', authorizer: { claims: {} } } }],
+  ];
+
+  for (const [name, ctx] of cases) {
+    it(`${name} → 401 で、DynamoDB に触らない`, async () => {
+      const res = await handler({
+        httpMethod: 'GET',
+        resource: '/entries',
+        headers: { origin: 'https://veai.jp' },
+        body: null,
+        ...ctx,
+      });
+      expect(res.statusCode).toBe(401);
+      // **読みにも行かない。** anonymous 区画を作らない。
+      expect(ddbMock.commandCalls(QueryCommand).length).toBe(0);
+    });
+  }
+
+  it('書き込みも 401 で、何も保存しない', async () => {
+    const res = await handler({
+      httpMethod: 'POST',
+      resource: '/entries',
+      headers: { origin: 'https://veai.jp' },
+      body: JSON.stringify({ date: '2026-08-27', energyLevel: 3 }),
+      requestContext: { requestId: 'r', authorizer: { claims: {} } },
+    });
+    expect(res.statusCode).toBe(401);
+    expect(ddbMock.commandCalls(PutItemCommand).length).toBe(0);
+  });
+
+  it('固定文字列の区画をコードが持たない', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync(
+      new URL('../lambda/entries/index.js', import.meta.url),
+      'utf8',
+    );
+    // コメント行を除いて `'anonymous'` が残っていないこと
+    const code = src
+      .split('\n')
+      .filter((line) => !line.trim().startsWith('//'))
+      .join('\n');
+    expect(code).not.toContain("'anonymous'");
+  });
+
+  it('公開の /presence は身元が無くても動く（巻き込まない）', async () => {
+    // 認証を厳しくした結果、公開経路まで止めてしまわないこと。
+    ddbMock.on(QueryCommand).resolves({ Count: 3 });
+    const res = await handler({
+      httpMethod: 'GET',
+      resource: '/presence',
+      headers: { origin: 'https://veai.jp' },
+      body: null,
+      requestContext: { requestId: 'r' },
+    });
+    expect(res.statusCode).toBe(200);
+  });
+});
