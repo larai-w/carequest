@@ -416,6 +416,18 @@ export default function HomePage() {
         >
           今日の介護を記録する
         </Link>
+
+        {/* 読みもの検索の入口。**主目的（記録）と競合させない。**
+            ホーム上部に検索窓を置くと「まず調べる場所」に見えてしまう。
+            記録のボタンの下に、1行だけ置く。
+            置き場所を作った理由: 機能を /about の中に入れたが、
+            **About を開く人はほとんどいない**（ナビの一番端で、さらにスクロールの先）。 */}
+        <Link
+          href="/about#question-finder"
+          className="block py-2 text-center text-sm text-stone-500 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+        >
+          介護のことで調べたいことがあれば
+        </Link>
       </div>
     </Layout>
   );
