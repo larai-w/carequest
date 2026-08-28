@@ -27,7 +27,7 @@ export default function AboutPage() {
             </li>
             <li>
               <span className="font-semibold text-stone-800">記録は、まずこの端末の中だけ。</span>
-              外には送られません。サインインしたときだけ、日本国内の AWS にもバックアップできます。
+              外には送られません。サインインしたときだけ、日本国内のサーバーにもバックアップできます。
             </li>
           </ul>
         </section>
