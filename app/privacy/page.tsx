@@ -18,7 +18,7 @@ export default function PrivacyPage() {
               介護の記録・ふりかえりメモ・エネルギーレベルなどのアプリ内データは、あなたの端末(ブラウザの localStorage)に保存されます。
             </li>
             <li>
-              アカウント登録をした場合は、メールアドレスと介護の記録を、日本国内リージョンの AWS(Amazon Cognito / DynamoDB)に保存します。
+              アカウント登録をした場合は、メールアドレスと介護の記録を、日本国内にあるサーバーに保存します(Amazon Web Services の東京リージョン。Amazon Cognito / DynamoDB を使用)。
             </li>
           </ul>
         </section>
