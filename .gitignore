@@ -66,3 +66,6 @@ private/
 **/*-todo.md
 **/human-todo.md
 **/active-todo.md
+
+# Python のバイトコード（scripts/ のガードとそのテストを走らせると出る）
+__pycache__/
