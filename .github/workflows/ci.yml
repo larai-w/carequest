@@ -39,6 +39,11 @@ jobs:
       - name: Check public repository boundary
         run: python3 scripts/check_public_repo.py --tracked
 
+      # ガード自体のテスト。パターンを書き間違えても「OK」と出てしまうため、
+      # 全パターンが実際に検出することを確かめる。
+      - name: Test public boundary guard
+        run: python3 -m unittest scripts.check_public_repo_test -v
+
       # high 以上のみ fail にする。
       # moderate は個人開発で警報疲れを起こさないため意図的にスキップ。
       # 本番出荷物の脆弱性のみを対象にする(--omit=dev)。eslint 等の
