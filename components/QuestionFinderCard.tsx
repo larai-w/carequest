@@ -50,7 +50,17 @@ export default function QuestionFinderCard() {
         </button>
       </form>
 
-      {result && <Result result={result} />}
+      {result && (
+        <div
+          id="question-finder-result"
+          className="mt-3"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <Result result={result} />
+        </div>
+      )}
     </section>
   );
 }
@@ -77,7 +87,11 @@ function Result({ result }: { result: Outcome }) {
   }
 
   return (
-    <ul className="mt-3 space-y-2">
+    <div>
+      <div className="mb-2 rounded-[16px] border border-stone-200 bg-stone-50 px-3 py-2 text-xs leading-6 text-stone-600">
+        入力内容とことばが近い、関連する読みものの候補です。質問への答えを確定するものではありません。
+      </div>
+      <ul className="space-y-2">
       {result.hits.map(({ article }) => (
         <li key={article.slug}>
           <a
@@ -95,6 +109,7 @@ function Result({ result }: { result: Outcome }) {
         これは読みものの候補です。制度の判断はケアマネジャーやお住まいの市区町村へ、
         体調に関わることは主治医にご相談ください。
       </li>
-    </ul>
+      </ul>
+    </div>
   );
 }

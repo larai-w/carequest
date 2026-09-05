@@ -27,7 +27,7 @@ export default function FeedbackWidget() {
       <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
         <h2 className="text-lg font-semibold text-stone-800">ありがとうございます</h2>
         <p className="mt-1 text-sm leading-6 text-stone-600">
-          いただいた声は、CareQuest をよくするためにそのまま使わせていただきます。
+          いただいた声は、CareQuest をよくするための検討に使います。内容を公開することはありません。
         </p>
       </section>
     );
