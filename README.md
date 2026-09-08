@@ -8,11 +8,22 @@ Records a care session in under 10 seconds with no account required. Data lives 
 
 ## What it does
 
-Care Quest lets family caregivers log daily care activities through a single tap — no typing required. It tracks energy levels, rest-mode days, and a weekly look-back, and surfaces a gentle prompt to a support helpline when low-energy days accumulate. The "Tomoshibi" (Candlelight) widget shows how many caregivers recorded today, using live aggregated data, so no caregiver feels alone.
+Care Quest lets family caregivers log daily care activities through a single tap — no typing required. It tracks energy levels, rest-mode days, and a weekly look-back, and surfaces a gentle prompt to a support helpline when low-energy days accumulate. The "Tomoshibi" (Candlelight) widget shows an aggregate count of caregivers who synced records today, without displaying their individual records.
 
 **Status:** Live — https://veai.jp/carequest/
 
 ---
+
+## Keeping a copy of records
+
+Logging and looking back at records work without an account. Cloud backup and cross-device restore
+require signing in. For a local copy, export JSON from the reflection screen; that file can be
+imported into CareQuest on another device. CSV is for reviewing records in a spreadsheet and is
+not an app-restore format. Check that a cloud backup completed or keep a JSON copy before switching devices.
+
+Browser storage can be lost when its data is cleared or the device is lost. Keep a backup somewhere
+accessible outside that device. Exported files contain your records; clearing browser data does not
+remove those files or copies you have shared.
 
 ## Architecture
 
