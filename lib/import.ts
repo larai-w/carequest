@@ -20,6 +20,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+// Keep existing entries intact; an incoming key may be appended only once.
+function mergeUnique<T>(existing: T[], incoming: T[], keyOf: (entry: T) => string): T[] {
+  const seen = new Set(existing.map(keyOf));
+  const additions = incoming.filter((entry) => {
+    const key = keyOf(entry);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return [...existing, ...additions];
+}
+
 /**
  * logs を「既存優先・id 重複排除」でマージする純関数。
  * 既存の記録は必ず残し、まだ無い id の incoming だけを後ろに足す(上書き・全消しはしない)。
@@ -30,9 +42,8 @@ export function mergeLogs(
   existingLogs: CareLog[],
   incomingLogs: CareLog[],
 ): { logs: CareLog[]; newCount: number } {
-  const existingIds = new Set(existingLogs.map((log) => log.id));
-  const newLogs = incomingLogs.filter((log) => !existingIds.has(log.id));
-  return { logs: [...existingLogs, ...newLogs], newCount: newLogs.length };
+  const logs = mergeUnique(existingLogs, incomingLogs, (log) => log.id);
+  return { logs, newCount: logs.length - existingLogs.length };
 }
 
 // マージ方針(「データを壊さない」を最優先):
@@ -50,9 +61,7 @@ function mergeStates(
 ): { state: CareStorageState; importedLogCount: number } {
   const { logs, newCount: importedLogCount } = mergeLogs(existing.logs, imported.logs);
 
-  const existingTaskIds = new Set(existing.customTasks.map((task) => task.id));
-  const newTasks = imported.customTasks.filter((task) => !existingTaskIds.has(task.id));
-  const customTasks = [...existing.customTasks, ...newTasks];
+  const customTasks = mergeUnique(existing.customTasks, imported.customTasks, (task) => task.id);
 
   const note = existing.note.trim() === "" ? imported.note : existing.note;
 
@@ -62,9 +71,7 @@ function mergeStates(
   const user = { ...existing.user, goodThings };
 
   // energyHistory: 日付で重複排除して統合。既存の端末の記録を優先して残す。
-  const existingEnergyDates = new Set(existing.energyHistory.map((e) => e.date));
-  const newEnergy = imported.energyHistory.filter((e) => !existingEnergyDates.has(e.date));
-  const energyHistory = [...existing.energyHistory, ...newEnergy];
+  const energyHistory = mergeUnique(existing.energyHistory, imported.energyHistory, (entry) => entry.date);
 
   // supportNudgeLastShown はこの端末の表示履歴を維持する(インポートで乱さない)。
   const supportNudgeLastShown = existing.supportNudgeLastShown;
@@ -74,9 +81,7 @@ function mergeStates(
 
   // goodThingsHistory: 日付で重複排除して統合。既存優先(energyHistory と同じ方針)。
   // 同じ日付のエントリが両方に存在する場合は既存を残し、インポート側は足さない。
-  const existingGoodThingsDates = new Set(existing.goodThingsHistory.map((g) => g.date));
-  const newGoodThings = imported.goodThingsHistory.filter((g) => !existingGoodThingsDates.has(g.date));
-  const goodThingsHistory = [...existing.goodThingsHistory, ...newGoodThings];
+  const goodThingsHistory = mergeUnique(existing.goodThingsHistory, imported.goodThingsHistory, (entry) => entry.date);
 
   // lastExportDate / exportReminderLastShown はこの端末の状態を維持する。
   // supportNudgeLastShown と同じ「この端末の状態」扱い(インポートで乱さない)。

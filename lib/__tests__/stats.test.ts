@@ -72,6 +72,32 @@ describe("getTodayStats", () => {
 });
 
 describe("getRecentDaySummaries", () => {
+  it("よかったことだけの日も返し、今日と8日前と空の日は含めない", () => {
+    const history = [
+      { date: "2024-03-15", items: ["今日"] },
+      { date: "2024-03-14", items: ["休憩できた"] },
+      { date: "2024-03-13", items: [] },
+      { date: "2024-03-08", items: ["7日前"] },
+      { date: "2024-03-07", items: ["8日前"] },
+    ];
+    const before = structuredClone(history);
+    const result = getRecentDaySummaries([], 7, "2024-03-15", history);
+    expect(result.map((day) => day.date)).toEqual(["2024-03-14", "2024-03-08"]);
+    expect(result[0].goodThings).toEqual(["休憩できた"]);
+    expect(result[0].completedTasks).toBe(0);
+    result[0].goodThings.push("表示側での変更");
+    expect(history).toEqual(before);
+  });
+
+  it("同じ日の介護記録とよかったことを一つの日にまとめる", () => {
+    const logs = [makeLog({ date: "2024-03-14", taskId: "medicine", points: 5 })];
+    const result = getRecentDaySummaries(logs, 7, "2024-03-15", [
+      { date: "2024-03-14", items: ["家族と安心できた"] },
+    ]);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ completedTasks: 1, totalPoints: 5, goodThings: ["家族と安心できた"] });
+  });
+
   it("ログが空のとき空配列を返す(記録なし日はスキップ)", () => {
     const result = getRecentDaySummaries([], 7, "2024-03-15");
     expect(result).toEqual([]);

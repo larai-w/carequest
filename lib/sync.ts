@@ -49,8 +49,7 @@ export async function syncOnSignIn(): Promise<SignInSyncResult> {
   try {
     const fetched = await fetchCareEntries();
     const { state, importedLogCount } = mergeRestoredLogs(loadCareState(), fetched);
-    if (importedLogCount > 0) {
-      saveCareState(state);
+    if (importedLogCount > 0 && saveCareState(state)) {
       restoredCount = importedLogCount;
       // 復元で表示すべき記録が増えたので、マウント中のページに再読込を促す。
       notifySynced();

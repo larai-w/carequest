@@ -26,6 +26,7 @@ export interface RecentDaySummary {
   label: string;
   totalPoints: number;
   completedTasks: number;
+  goodThings: string[];
 }
 
 // 記録がある日だけを返します。記録がない日を「0件」と見せて介護者を責めないためです。
@@ -33,14 +34,16 @@ export function getRecentDaySummaries(
   logs: CareLog[],
   days = 7,
   today: string = getTodayDate(),
+  goodThingsHistory: { date: string; items: string[] }[] = [],
 ): RecentDaySummary[] {
   const summaries: RecentDaySummary[] = [];
 
   for (let offset = 1; offset <= days; offset += 1) {
     const date = getDateStringDaysAgo(today, offset);
     const dayLogs = logs.filter((log) => log.date === date);
+    const goodThings = goodThingsHistory.filter((entry) => entry.date === date).flatMap((entry) => entry.items);
 
-    if (dayLogs.length === 0) {
+    if (dayLogs.length === 0 && goodThings.length === 0) {
       continue;
     }
 
@@ -55,6 +58,7 @@ export function getRecentDaySummaries(
       label,
       totalPoints: dayLogs.reduce((sum, log) => sum + log.points, 0),
       completedTasks: dayLogs.length,
+      goodThings,
     });
   }
 
