@@ -16,11 +16,13 @@ import { getRecentDaySummaries, type RecentDaySummary } from "@/lib/stats";
 import { getTodaySummaryBody } from "@/lib/messages";
 import { buildExportPayload, downloadAsJson, downloadLogsCsv } from "@/lib/export";
 import { parseAndMergeImport } from "@/lib/import";
+import { getTodayGoodThings, setTodayGoodThings } from "@/lib/goodThings";
 import { removeLog, recalcTodayStats } from "@/lib/logs";
 import { shouldShowBackupReminder } from "@/lib/backup-reminder";
 import type { CareLog } from "@/lib/types";
 
 interface ReflectionViewState {
+  allLogs: CareLog[];
   logs: CareLog[];
   recentDays: RecentDaySummary[];
   note: string;
@@ -44,6 +46,7 @@ interface ReflectionViewState {
 
 // サーバー/クライアント初回描画で使う既定状態。localStorage を読まない。
 const serverReflectionViewState: ReflectionViewState = {
+  allLogs: [],
   logs: [],
   recentDays: [],
   note: "",
@@ -58,42 +61,15 @@ const serverReflectionViewState: ReflectionViewState = {
   resetFailed: false,
 };
 
-/**
- * goodThingsHistory から今日の items を取り出す純関数。
- * 当日のエントリがなければ空配列(まっさらな状態)を返す。
- */
-export function getTodayGoodThings(
-  goodThingsHistory: { date: string; items: string[] }[],
-  today: string,
-): string[] {
-  const entry = goodThingsHistory.find((g) => g.date === today);
-  return entry ? [...entry.items] : [];
-}
-
-/**
- * goodThingsHistory の今日分を更新した新しい配列を返す純関数。
- * items が空になった日はエントリごと削除して空エントリを溜めない。
- */
-export function setTodayGoodThings(
-  goodThingsHistory: { date: string; items: string[] }[],
-  today: string,
-  items: string[],
-): { date: string; items: string[] }[] {
-  const without = goodThingsHistory.filter((g) => g.date !== today);
-  if (items.length === 0) {
-    // items が空になった日はエントリを残さない
-    return without;
-  }
-  return [...without, { date: today, items }];
-}
 
 function loadReflectionViewState(): ReflectionViewState {
   const state = loadCareState();
   const today = getTodayDate();
 
   return {
+    allLogs: state.logs,
     logs: state.logs.filter((log) => log.date === today),
-    recentDays: getRecentDaySummaries(state.logs),
+    recentDays: getRecentDaySummaries(state.logs, 7, today, state.goodThingsHistory),
     note: state.note,
     goodThings: getTodayGoodThings(state.goodThingsHistory, today),
     saveFailed: false,
@@ -119,20 +95,11 @@ export default function ReflectionPage() {
   // T10 Phase A: クラウドバックアップ/復元の穏やかな結果メッセージと実行中フラグ。
   const [cloudMessage, setCloudMessage] = useState("");
   const [cloudBusy, setCloudBusy] = useState(false);
-  // 「ここ7日間のあゆみ」で開いている日と、その日の記録(タップで展開)。
+  // 展開内容は最新の表示状態から取得し、復元後の件数と明細を一致させる。
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
-  const [expandedLogs, setExpandedLogs] = useState<CareLog[]>([]);
-
-  // 過去の日をタップして、その日の記録を見る/閉じる。記録は localStorage から都度読む。
+  const expandedLogs = viewState.allLogs.filter((log) => log.date === expandedDate);
   const toggleDay = (date: string) => {
-    if (expandedDate === date) {
-      setExpandedDate(null);
-      setExpandedLogs([]);
-      return;
-    }
-    const dayLogs = loadCareState().logs.filter((log) => log.date === date);
-    setExpandedDate(date);
-    setExpandedLogs(dayLogs);
+    setExpandedDate((current) => current === date ? null : date);
   };
 
   const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -157,7 +124,10 @@ export default function ReflectionPage() {
       return;
     }
 
-    saveCareState(result.state);
+    if (!saveCareState(result.state)) {
+      setImportMessage("保存できませんでした。今ある記録はそのままです。端末の空き容量などを確認して、もう一度読み込んでください。");
+      return;
+    }
     setViewState(loadReflectionViewState());
     setImportMessage(result.message);
   };
@@ -199,7 +169,10 @@ export default function ReflectionPage() {
       // fetchCareEntries は sanitize 済みの入口(T31)。生 JSON を信用しない。
       const fetched = await fetchCareEntries();
       const { state, importedLogCount } = mergeRestoredLogs(loadCareState(), fetched);
-      saveCareState(state);
+      if (!saveCareState(state)) {
+        setCloudMessage("保存できませんでした。今ある記録はそのままです。端末の空き容量などを確認して、もう一度復元してください。");
+        return;
+      }
       setViewState(loadReflectionViewState());
       setCloudMessage(
         importedLogCount > 0
@@ -310,8 +283,9 @@ export default function ReflectionPage() {
 
       setViewState((current) => ({
         ...current,
+        allLogs: nextLogs,
         logs: nextTodayLogs,
-        recentDays: getRecentDaySummaries(nextLogs),
+        recentDays: getRecentDaySummaries(nextLogs, 7, today, state.goodThingsHistory),
       }));
 
       const ok = saveCareState({
@@ -474,12 +448,21 @@ export default function ReflectionPage() {
                           <span className="ml-2 text-xs text-stone-600">{expanded ? "とじる" : "ひらく"}</span>
                         </span>
                         <span>
-                          {day.completedTasks}件の支え
-                          <span className="ml-2 text-amber-700">+{day.totalPoints}pt</span>
+                          {day.completedTasks > 0 ? (
+                            <>{day.completedTasks}件の支え<span className="ml-2 text-amber-700">+{day.totalPoints}pt</span></>
+                          ) : "よかったこと"}
                         </span>
                       </button>
                       {expanded ? (
                         <div className="mt-2 space-y-2 pl-3">
+                          {day.goodThings.length > 0 && (
+                            <div className="rounded-2xl bg-amber-50 px-3 py-2 text-sm text-stone-700">
+                              <p className="font-semibold">この日のよかったこと</p>
+                              <ul className="mt-1 list-inside list-disc">
+                                {day.goodThings.map((item, index) => <li key={index}>{item}</li>)}
+                              </ul>
+                            </div>
+                          )}
                           {expandedLogs.map((log) => (
                             <div key={log.id} className="flex items-center rounded-2xl bg-white px-3 py-2 text-sm text-stone-700">
                               <div className="flex-1">

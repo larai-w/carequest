@@ -105,6 +105,21 @@ describe("syncOnSignIn", () => {
     expect(saved.logs.map((l: CareLog) => l.id)).toEqual(["local-1", "server-1"]);
   });
 
+  it("復元の保存に失敗したら件数を増やさず、同期通知も送らない", async () => {
+    const store = mockWindow("1", [makeLog("local-1")]);
+    const before = store.get(STORAGE_KEY);
+    vi.mocked(fetchAuthSession).mockResolvedValue(signedInSession());
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true, json: vi.fn().mockResolvedValue([makeLog("server-1")]),
+    }));
+    window.localStorage.setItem = () => { throw new Error("quota"); };
+    const { syncOnSignIn } = await import("@/lib/sync");
+    const result = await syncOnSignIn();
+    expect(result.restoredCount).toBe(0);
+    expect(window.dispatchEvent).not.toHaveBeenCalled();
+    expect(store.get(STORAGE_KEY)).toBe(before);
+  });
+
   it("サインイン済みでサーバーに新規が無ければ restoredCount 0(既存は保持)", async () => {
     mockWindow("1", [makeLog("same")]);
     vi.mocked(fetchAuthSession).mockResolvedValue(signedInSession());

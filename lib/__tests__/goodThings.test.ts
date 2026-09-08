@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getTodayGoodThings, setTodayGoodThings } from "@/app/reflection/page";
+import { getTodayGoodThings, setTodayGoodThings } from "@/lib/goodThings";
 
 // T39: 「今日のよかったこと」の日付紐づけロジックのユニットテスト。
 // getTodayGoodThings / setTodayGoodThings は pure function なので DOM 不要で検証できる。

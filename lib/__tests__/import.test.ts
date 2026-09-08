@@ -214,3 +214,21 @@ describe("parseAndMergeImport", () => {
     expect(result.state!.goodThingsHistory).toEqual([{ date: "2024-03-15", items: ["小さな介護ができた"] }]);
   });
 });
+
+it("取り込みファイル内の同じID・日付は最初の1件だけを足し、再取り込みでも増えない", () => {
+  const first = makeLog({ id: "incoming" });
+  const task = { id: "custom-one", title: "テスト項目", description: "", points: 3 };
+  const file = makeExportFile({
+    logs: [first, { ...first, title: "重複側" }],
+    customTasks: [task, { ...task, title: "重複側" }],
+    energyHistory: [{ date: "2024-03-15", energyLevel: "low" }, { date: "2024-03-15", energyLevel: "normal" }],
+    goodThingsHistory: [{ date: "2024-03-15", items: ["最初"] }, { date: "2024-03-15", items: ["重複側"] }],
+  });
+  const result = parseAndMergeImport(file, makeState());
+  expect(result.importedLogCount).toBe(1);
+  expect(result.state?.logs).toEqual([first]);
+  expect(result.state?.customTasks).toEqual([task]);
+  expect(result.state?.energyHistory).toEqual([{ date: "2024-03-15", energyLevel: "low" }]);
+  expect(result.state?.goodThingsHistory).toEqual([{ date: "2024-03-15", items: ["最初"] }]);
+  expect(parseAndMergeImport(file, result.state!).state).toEqual(result.state);
+});
