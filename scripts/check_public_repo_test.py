@@ -64,3 +64,46 @@ class TestSecretPatterns(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestReviewedFalsePositive(unittest.TestCase):
+    """確認済みトークンが「ファイル名の推測」にも効くこと。**効きすぎないこと。**
+
+    2026-09-09: ファイル名による判定は中身を読む前に打ち切っていたため、
+    **一番よく出る誤検知にトークンが届かなかった**。social-system-debugger の
+    `docs/session-handoff.md`（手順の文書）や `scripts/handoff-check.sh`（ツール）が
+    これに当たり、ガードを入れると恒久的に止まる状態だった。
+    """
+
+    TOKEN = guard.ALLOW_TOKEN
+
+    def test_filename_convention_still_blocks_without_the_token(self):
+        """トークンが無ければ、従来どおり止める。"""
+        got = guard.file_reasons("docs/session-handoff.md", "ふつうの本文".encode())
+        self.assertEqual(got, ["private filename convention"])
+
+    def test_filename_convention_is_cleared_by_the_token(self):
+        """確認済みなら通す。**これが今回足した動き。**"""
+        got = guard.file_reasons("docs/session-handoff.md", f"手順の文書。{self.TOKEN}".encode())
+        self.assertEqual(got, [])
+
+    def test_the_token_never_clears_a_secret(self):
+        """名前を許しても、**秘密情報は必ず止める。**"""
+        secret = "AKIA" + "A" * 16
+        got = guard.file_reasons("docs/session-handoff.md", f"{self.TOKEN}\n{secret}\n".encode())
+        self.assertTrue(got, "秘密情報が素通りしてはいけない")
+        self.assertNotIn("private filename convention", got)
+
+    def test_a_private_path_component_is_not_escapable_here(self):
+        """`private/` 配下は**意図的な置き場所**なので、この関数では扱わない。
+
+        呼び出し側が中身を読む前に止める。ここでトークンに反応しないことを固定する。
+        """
+        self.assertEqual(guard.private_path_reason("private/plan.md"), "private path component")
+        self.assertEqual(guard.private_path_reason("docs/session-handoff.md"),
+                         "private filename convention")
+
+    def test_clean_file_with_a_neutral_name_is_untouched(self):
+        """関係のないファイルの挙動を変えていないこと。"""
+        self.assertEqual(guard.file_reasons("src/app.ts", b"export const a = 1;"), [])
+
