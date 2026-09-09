@@ -6,7 +6,9 @@ path/name, carries an explicit private marker, contains secrets, OR reads like b
 strategy by content (even if the filename is neutral).
 
 Escape hatch for a reviewed false positive: put the literal token `check-public-repo: allow`
-somewhere in the file. That skips only the strategy-content check (secrets are still blocked).
+somewhere in the file. That clears the strategy-content check and the private *filename*
+convention (a substring guess such as `handoff`). It never clears a private *path component*
+(`private/`, `.private/`) and never clears secrets.
 Do not use `--no-verify`; keep strategy material in docs-private/ (gitignored) instead.
 """
 
@@ -110,6 +112,30 @@ def tracked_content(path: str) -> bytes:
     return (ROOT / path).read_bytes()
 
 
+def file_reasons(path: str, content: bytes) -> list[str]:
+    """Policy reasons for a file whose content could be read.
+
+    The private *path component* case is handled by the caller: it must not depend on
+    content at all, and it is never escapable.
+
+    A private *filename convention* is a substring guess (`handoff`, `strategy`, …) and is
+    the most common false positive: a repository may legitimately ship tooling called
+    `handoff-check.sh`, or a doc named `session-handoff.md` that is a procedure rather than
+    private material. Before 2026-09-09 the reviewed-false-positive token could not reach
+    this case, because the check returned before the content was read. Secrets are still
+    scanned when the token clears the name, so the token never lets a credential through.
+    """
+    name_reason = private_path_reason(path)
+    if name_reason and name_reason != "private path component":
+        # `content` is bytes here, like everywhere else in this script. Decode before
+        # looking for the token: comparing a str token against bytes raises TypeError,
+        # and this branch only runs for files whose *name* matched, so a repository
+        # without such names would never hit it in local testing.
+        if ALLOW_TOKEN not in content.decode("utf-8", errors="replace"):
+            return [name_reason]
+    return content_reasons(path, content)
+
+
 def private_path_reason(path: str) -> str | None:
     normalised = PurePosixPath(path)
     lower_parts = {part.lower() for part in normalised.parts}
@@ -166,15 +192,18 @@ def main() -> int:
         # has no content left to inspect and should not make local preflight checks unusable.
         if not args.staged and not (ROOT / path).is_file():
             continue
-        if reason := private_path_reason(path):
-            errors.append(f"{path}: {reason}")
+        # A private *path component* (`private/`, `.private/`) is a deliberate location.
+        # There is no reviewed-false-positive case for it, so it is decided without
+        # reading the file and is never escapable.
+        if private_path_reason(path) == "private path component":
+            errors.append(f"{path}: private path component")
             continue
         try:
             content = read_content(path)
         except (OSError, subprocess.CalledProcessError) as error:
             errors.append(f"{path}: cannot inspect content ({error})")
             continue
-        errors.extend(f"{path}: {reason}" for reason in content_reasons(path, content))
+        errors.extend(f"{path}: {reason}" for reason in file_reasons(path, content))
 
     if errors:
         print("Public repository policy violation:", file=sys.stderr)
