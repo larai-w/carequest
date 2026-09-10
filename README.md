@@ -4,6 +4,11 @@
 
 Records a care session in under 10 seconds with no account required. Data lives in `localStorage`; cloud backup is opt-in via Amazon Cognito.
 
+> **Care Quest is not a medical device.** It records what a family caregiver chooses to
+> log. It does not diagnose, does not decide whether care or medication is needed, and is
+> not a substitute for professional judgement. For anything urgent, contact a healthcare
+> provider or emergency services.
+
 ---
 
 ## What it does

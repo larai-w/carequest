@@ -10,6 +10,17 @@ Thank you for contributing. Before opening anything, please read this repository
 
 ## Getting started
 
+### Run it locally
+
+```bash
+npm install
+npm run dev        # http://localhost:3000
+npm test
+```
+
+Node 20+ recommended. **No AWS credentials are needed for local development** —
+cloud backup is opt-in and the app works entirely on `localStorage` without it.
+
 - Start from a small issue: define the expected behavior and one acceptance check.
 - Fork or create a focused branch from the base branch.
 - Keep changes narrow and reproducible.
