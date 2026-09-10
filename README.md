@@ -22,6 +22,9 @@ Care Quest lets family caregivers log daily care activities through a single tap
 
 Contributions are welcome. See [CONTRIBUTING](./CONTRIBUTING.md).
 
+- Quick start for first contributions: open an issue with the [Good first issue](https://github.com/larai-w/carequest/issues/new/choose) template.
+- For code changes, open a pull request from [Compare changes](https://github.com/larai-w/carequest/compare).
+
 ---
 
 ## Keeping a copy of records
