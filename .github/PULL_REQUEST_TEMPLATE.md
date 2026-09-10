@@ -1,11 +1,11 @@
 ## Outcome
 
-What user/operational outcome does this change support?
+What user outcome, reliability, or operational outcome does this change support?
 
 ## Link / Context
 
 - Related issue(s): Closes #
-- Decision or risk:
+- Context or decision notes:
 
 ## Scope
 
@@ -14,15 +14,22 @@ What user/operational outcome does this change support?
 
 ## Verification
 
-- [ ] `npm test` (or relevant test command) ran and passed
-- [ ] Manual verification for UI/API behavior was done where automated tests do not cover
-- [ ] `python3 scripts/check_public_repo.py --staged` was run (no violations)
+- [ ] Command-based checks were run (or test plan is documented)
+- [ ] `python3 scripts/check_public_repo.py --staged` was run (if the script exists in this repo)
+- [ ] Manual verification was done for non-automated behavior changes
 
-## Boundary / Safety
+## Safety / Boundary
 
-- [ ] No credentials, personal data, or facility-identifying details are included
-- [ ] No commercial strategy or unpublished handoff notes are included
+- [ ] No credentials, personal data, phone numbers, or facility-identifying details are included
+- [ ] No internal strategy / pricing / unpublished handoff notes are included
+- [ ] No unsupported medical/treatment/emergency claims were introduced
 
-## Notes
+## Risk and rollback
 
-- Screenshot, log, or behavior evidence:
+- Privacy / security impact:
+- Operational impact:
+- Rollback or containment plan:
+
+## Evidence
+
+- Screenshot, logs, test output, or links to relevant documentation:
