@@ -1,0 +1,36 @@
+name: Good first issue
+description: Small, safe tasks that are suitable for first-time contributors.
+title: "[Good first] "
+labels:
+  - good first issue
+  - help wanted
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This template is for small, reviewable improvements that are safe for a first contribution.
+        Avoid personal data, facility-identifying information, and secrets.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Task summary
+      description: What should be changed and why?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+      description: How will we know this is done?
+      value: |
+        - [ ] Implement the change
+        - [ ] Add or update minimal verification
+        - [ ] Confirm no public policy boundary is violated
+    validations:
+      required: true
+  - type: input
+    id: estimate
+    attributes:
+      label: Suggested time
+      description: Rough estimate (e.g., 15m, 1h, 2h)
+      placeholder: 30m
