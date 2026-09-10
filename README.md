@@ -4,6 +4,11 @@
 
 Records a care session in under 10 seconds with no account required. Data lives in `localStorage`; cloud backup is opt-in via Amazon Cognito.
 
+> **Care Quest is not a medical device.** It records what a family caregiver chooses to
+> log. It does not diagnose, does not decide whether care or medication is needed, and is
+> not a substitute for professional judgement. For anything urgent, contact a healthcare
+> provider or emergency services.
+
 ---
 
 ## What it does
@@ -11,6 +16,19 @@ Records a care session in under 10 seconds with no account required. Data lives 
 Care Quest lets family caregivers log daily care activities through a single tap — no typing required. It tracks energy levels, rest-mode days, and a weekly look-back, and surfaces a gentle prompt to a support helpline when low-energy days accumulate. The "Tomoshibi" (Candlelight) widget shows an aggregate count of caregivers who synced records today, without displaying their individual records.
 
 **Status:** Live — https://veai.jp/carequest/
+
+### Open-source collaboration
+
+- **Home Assistant** — **Merged** PR: [Accessible names for analytics consent switches](https://github.com/home-assistant/frontend/pull/54083)
+- **Microduck** — **In review** PR: [Fresh camera snapshots through robotctl and console HTTP](https://github.com/pollen-robotics/microduck/pull/241)
+- **stack-chan** — **In review** PR: [Deterministic sample sync for gallery output](https://github.com/stack-chan/stack-chan/pull/702)
+
+### Contributing
+
+Contributions are welcome. See [CONTRIBUTING](./CONTRIBUTING.md).
+
+- Quick start for first contributions: open an issue with the [Good first issue](https://github.com/larai-w/carequest/issues/new/choose) template.
+- For code changes, open a pull request from [Compare changes](https://github.com/larai-w/carequest/compare).
 
 ---
 
