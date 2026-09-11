@@ -69,3 +69,6 @@ private/
 
 # Python のバイトコード（scripts/ のガードとそのテストを走らせると出る）
 __pycache__/
+
+# Private local working material
+personal/
