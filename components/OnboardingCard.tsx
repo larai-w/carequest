@@ -19,9 +19,9 @@ export default function OnboardingCard({ onStart }: OnboardingCardProps) {
         頑張らなくて大丈夫。記録すること自体が、もうケアです。
       </p>
       <ul className="mt-3 space-y-1.5 text-sm text-stone-600">
-        <li>📱 記録はこの端末にだけ保存されます。アカウントは不要です</li>
+        <li>📱 記録はまずこの端末に保存されます。アカウントは不要です</li>
         <li>📤 大切な記録はふりかえり画面からいつでも書き出せます</li>
-        <li>🙅 データが外部のサーバーに送られることはありません</li>
+        <li>☁️ クラウドに控えるのは、あとでサインインして選んだときだけです</li>
       </ul>
       <button
         type="button"

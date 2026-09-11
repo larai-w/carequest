@@ -9,8 +9,9 @@ import EncouragementCard from "@/components/EncouragementCard";
 import { careTasks } from "@/lib/tasks";
 import { getEncouragementMessage } from "@/lib/messages";
 import { loadCareState, saveCareState } from "@/lib/storage";
+import { removeLog, recalcTodayStats } from "@/lib/logs";
 import { useHydratedState } from "@/lib/useHydratedState";
-import { getTodayDate } from "@/lib/date";
+import { formatLogWhen, getTodayDate } from "@/lib/date";
 import { backupCareLogs } from "@/lib/api";
 import type { CareLog, CareTask, EnergyLevel } from "@/lib/types";
 
@@ -26,6 +27,8 @@ interface QuestViewState {
   todayPoints: number;
   restMode: boolean;
   customTasks: CareTask[];
+  // この画面で保存に成功した直前の記録。確認と取り消しだけに使う。
+  lastRecordedLog: CareLog | null;
   // 保存失敗の通知を表示するかどうか。
   saveFailed: boolean;
 }
@@ -37,6 +40,7 @@ const serverQuestViewState: QuestViewState = {
   todayPoints: 0,
   restMode: false,
   customTasks: [],
+  lastRecordedLog: null,
   saveFailed: false,
 };
 
@@ -51,6 +55,7 @@ function loadQuestViewState(): QuestViewState {
       .filter((log) => log.date === getTodayDate())
       .reduce((sum, log) => sum + log.points, 0),
     customTasks: state.customTasks ?? [],
+    lastRecordedLog: null,
     saveFailed: false,
   };
 }
@@ -66,7 +71,7 @@ export default function QuestPage() {
   // 同一タスクの連打ガード: 最後に記録した { taskId, 時刻 } を保持し、
   // 500ms 以内の同一タスク再タップを無視する(誤操作による重複記録・バースト送信の防止)。
   const lastTapRef = useRef<{ taskId: string; at: number } | null>(null);
-  const { logs, energyLevel, todayPoints, restMode, customTasks } = viewState;
+  const { logs, energyLevel, todayPoints, restMode, customTasks, lastRecordedLog } = viewState;
 
   const completedCount = useMemo(() => logs.filter((log) => log.date === getTodayDate()).length, [logs]);
 
@@ -155,8 +160,6 @@ export default function QuestPage() {
     const nextLogs = [...logs, nextLog];
     const nextPoints = todayPoints + task.points;
 
-    setViewState((current) => ({ ...current, logs: nextLogs, todayPoints: nextPoints }));
-    setMessage(getEncouragementMessage(energyLevel, nextPoints, nextLogs.filter((log) => log.date === today).length, task.title));
     const state = loadCareState();
     const saveOk = saveCareState({
       ...state,
@@ -168,6 +171,13 @@ export default function QuestPage() {
       },
       logs: nextLogs,
     });
+    setViewState((current) => ({
+      ...current,
+      logs: nextLogs,
+      todayPoints: nextPoints,
+      lastRecordedLog: saveOk ? nextLog : null,
+    }));
+    setMessage(getEncouragementMessage(energyLevel, nextPoints, nextLogs.filter((log) => log.date === today).length, task.title));
     if (!saveOk) {
       setViewState((current) => ({ ...current, saveFailed: true }));
     }
@@ -185,6 +195,35 @@ export default function QuestPage() {
       }
     }
 
+  };
+
+  const handleUndoLastRecord = () => {
+    if (!lastRecordedLog) {
+      return;
+    }
+
+    const state = loadCareState();
+    const nextLogs = removeLog(state.logs, lastRecordedLog.id);
+    const { todayPoints: nextPoints } = recalcTodayStats(nextLogs, getTodayDate());
+    const saveOk = saveCareState({
+      ...state,
+      logs: nextLogs,
+      user: { ...state.user, todayPoints: nextPoints },
+    });
+
+    if (!saveOk) {
+      setViewState((current) => ({ ...current, saveFailed: true }));
+      return;
+    }
+
+    setViewState((current) => ({
+      ...current,
+      logs: nextLogs,
+      todayPoints: nextPoints,
+      lastRecordedLog: null,
+    }));
+    setMessage("記録を取り消しました。今日のことは、必要なときにまた残せます。");
+    scheduleBackup();
   };
 
   const handleAddCustomTask = () => {
@@ -245,6 +284,28 @@ export default function QuestPage() {
           <p className="mt-2 text-4xl font-semibold text-amber-700">{todayPoints}pt</p>
           <p className="mt-2 text-sm text-stone-600">{message}</p>
         </section>
+
+        {lastRecordedLog && (
+          <section
+            aria-label="直前に記録した内容"
+            aria-live="polite"
+            className="rounded-[28px] border border-amber-200 bg-amber-50/80 p-4 shadow-sm"
+          >
+            <p className="text-sm font-semibold text-amber-800">記録しました</p>
+            <p className="mt-1 text-base font-semibold text-stone-800">{lastRecordedLog.title}</p>
+            <p className="mt-1 text-sm text-stone-600">
+              {formatLogWhen(lastRecordedLog.completedAt, lastRecordedLog.date)}に、この端末へ保存しました。
+            </p>
+            <button
+              type="button"
+              onClick={handleUndoLastRecord}
+              aria-label="直前の記録を取り消す"
+              className="mt-3 min-h-[44px] rounded-full bg-white px-3 py-2 text-sm font-semibold text-stone-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+            >
+              取り消す
+            </button>
+          </section>
+        )}
 
         {reading && <TaskReadingCard reading={reading} onDismiss={() => setReading(null)} />}
 
@@ -320,7 +381,7 @@ export default function QuestPage() {
         {saveFailed && (
           <section className="rounded-[28px] border border-stone-200 bg-stone-50/80 p-4 shadow-sm">
             <p className="text-sm leading-6 text-stone-600">
-              記録を保存できませんでした。端末の空き容量をご確認ください。今日の記録はこのままご利用いただけます。
+              記録を端末に保存できませんでした。この画面には表示されていますが、再読み込みすると残らない可能性があります。端末の空き容量をご確認のうえ、もう一度記録してください。
             </p>
             <button
               type="button"

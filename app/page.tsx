@@ -327,6 +327,13 @@ export default function HomePage() {
 
         {showSupportNudge && <SupportNudgeCard onDismiss={dismissSupportNudge} />}
 
+        <Link
+          href="/quest"
+          className="flex min-h-[52px] items-center justify-center rounded-[24px] bg-stone-800 px-4 py-3 text-sm font-semibold text-white shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+        >
+          今日の介護を記録する
+        </Link>
+
         <section className="rounded-[28px] border border-amber-100 bg-white/80 p-4 shadow-sm">
           <p className="text-sm text-stone-500">今日の自分のポイント</p>
           <p className="mt-2 text-4xl font-semibold text-amber-700">{todayPoints}pt</p>
@@ -409,13 +416,6 @@ export default function HomePage() {
             accent="text-stone-800"
           />
         </div>
-
-        <Link
-          href="/quest"
-          className="flex items-center justify-center rounded-[24px] bg-stone-800 px-4 py-3 text-sm font-semibold text-white shadow-sm"
-        >
-          今日の介護を記録する
-        </Link>
 
         {/* 読みもの検索の入口。**主目的（記録）と競合させない。**
             ホーム上部に検索窓を置くと「まず調べる場所」に見えてしまう。

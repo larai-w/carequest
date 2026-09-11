@@ -39,12 +39,31 @@ test("クエストで記録したタスクがリロード後も残る", async ({
   // クエスト画面に「1件の介護を記録しました」と表示されるまで待つ
   await expect(page.locator("text=1件の介護を記録しました")).toBeVisible();
 
+  // 記録した項目と取り消し操作が、その場で分かる。
+  const confirmation = page.locator('[aria-label="直前に記録した内容"]');
+  await expect(confirmation).toContainText("薬を渡した");
+  await expect(confirmation.getByRole("button", { name: "直前の記録を取り消す" })).toBeVisible();
+
   // ホームへ移動してリロードする
   await page.goto(`${BASE}/`);
   await page.reload();
 
   // リロード後もホームに記録が残っている
   await expect(page.locator("text=1件の介護を記録しました")).toBeVisible();
+});
+
+test("直前の記録を同じ画面で取り消せる", async ({ page }) => {
+  await page.goto(`${BASE}/quest/`);
+
+  await page.getByRole("button", { name: /薬を渡した/ }).click();
+  const confirmation = page.locator('[aria-label="直前に記録した内容"]');
+  await expect(confirmation).toContainText("薬を渡した");
+
+  await confirmation.getByRole("button", { name: "直前の記録を取り消す" }).click();
+  await expect(confirmation).not.toBeVisible();
+
+  await page.goto(`${BASE}/`);
+  await expect(page.locator("text=まだ記録はありません。小さな一歩でも大丈夫です。")).toBeVisible();
 });
 
 test("ホームから休息モードをオン/オフできる", async ({ page }) => {
