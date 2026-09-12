@@ -17,6 +17,12 @@ Care Quest lets family caregivers log daily care activities through a single tap
 
 **Status:** Live — https://veai.jp/carequest/
 
+### Product metadata
+
+[`product.json`](./product.json) is the public product manifest consumed by VEAI.jp. Update it when
+CareQuest's public availability, URLs, descriptions, capabilities, or boundaries change. The unit
+test suite verifies the manifest's core contract.
+
 ### Open-source collaboration
 
 - **Home Assistant** — **Merged** PR: [Accessible names for analytics consent switches](https://github.com/home-assistant/frontend/pull/54083)
