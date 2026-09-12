@@ -1,0 +1,101 @@
+{
+	"$schema": "https://raw.githubusercontent.com/larai-w/veai-jp-web/main/schemas/product.schema.json",
+	"schemaVersion": 1,
+	"slug": "carequest",
+	"name": "CareQuest",
+	"portfolioRole": "daily-care-recording",
+	"audiences": [
+		"family-caregiver",
+		"care-recipient",
+		"technical-reviewer"
+	],
+	"availability": {
+		"stage": "public-mvp",
+		"access": "public",
+		"summary": {
+			"en": "A public local-first care record for family caregivers. Logging works without an account; cloud backup and cross-device restore are optional after sign-in.",
+			"ja": "家族介護者のための公開中・ローカル優先の介護記録です。登録なしで記録でき、クラウドバックアップと端末間の復元はサインイン後に任意で使えます。"
+		},
+		"liveUrl": "https://veai.jp/carequest/"
+	},
+	"evidenceLevel": "implemented",
+	"canonicalRepository": "https://github.com/larai-w/carequest",
+	"publicUrls": {
+		"productPage": "https://veai.jp/apps/carequest/",
+		"project": "https://github.com/users/larai-w/projects/7",
+		"app": "https://veai.jp/carequest/"
+	},
+	"lastVerified": "2026-09-12",
+	"site": {
+		"status": "released",
+		"order": 1,
+		"icon": "🌙",
+		"themeColor": "#ece7fa",
+		"techStack": [
+			"Next.js",
+			"TypeScript",
+			"AWS Serverless",
+			"AWS CDK",
+			"PWA"
+		],
+		"liveUrl": "https://veai.jp/carequest/",
+		"en": {
+			"name": "CareQuest",
+			"tagline": "A local-first care-record PWA with opt-in AWS serverless sync",
+			"description": "A local-first PWA for family caregivers. Log a care session in under 10 seconds without an account; cloud backup and cross-device restore are opt-in."
+		},
+		"ja": {
+			"name": "CareQuest",
+			"kana": "ケアクエスト",
+			"tagline": "今日できたことを、やさしく記録",
+			"description": "家族介護者が「今日できたこと」をやさしく残せる Web アプリ。登録なしで記録でき、必要なときだけクラウドにバックアップできます。"
+		}
+	},
+	"capabilities": [
+		{
+			"id": "local-first-care-recording",
+			"label": {
+				"en": "Local-first, account-free care recording",
+				"ja": "ローカル優先・登録不要の介護記録"
+			},
+			"status": "implemented",
+			"evidenceUrls": [
+				"https://github.com/larai-w/carequest#what-it-does"
+			]
+		},
+		{
+			"id": "optional-cloud-backup",
+			"label": {
+				"en": "Optional cloud backup and cross-device restore",
+				"ja": "任意のクラウドバックアップと端末間の復元"
+			},
+			"status": "implemented",
+			"evidenceUrls": [
+				"https://github.com/larai-w/carequest#keeping-a-copy-of-records"
+			]
+		},
+		{
+			"id": "json-csv-export",
+			"label": {
+				"en": "JSON and CSV export",
+				"ja": "JSON・CSVエクスポート"
+			},
+			"status": "implemented",
+			"evidenceUrls": [
+				"https://github.com/larai-w/carequest#keeping-a-copy-of-records"
+			]
+		}
+	],
+	"boundaries": {
+		"en": [
+			"CareQuest records what a family caregiver chooses to log; it does not diagnose or decide whether care or medication is needed.",
+			"Without sign-in, records remain in browser storage and can be lost if browser data is cleared or the device is lost.",
+			"CareQuest is not a medical device and is not a substitute for professional judgement or urgent care."
+		],
+		"ja": [
+			"CareQuestは家族介護者が選んで残す内容を記録するものであり、診断や介護・服薬の要否を判断しません。",
+			"サインインしない場合、記録はブラウザ内に保存され、ブラウザデータの削除や端末の紛失で失われることがあります。",
+			"CareQuestは医療機器ではなく、専門家の判断や緊急時の対応に代わるものではありません。"
+		]
+	}
+}
