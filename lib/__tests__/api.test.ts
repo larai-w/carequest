@@ -412,3 +412,67 @@ describe("deleteCloudEntries / deleteAccount", () => {
     expect(store.has(SIGNED_IN_FLAG_KEY)).toBe(false);
   });
 });
+
+// deleteCloudEntry: 取り消した1件だけをクラウドから消す(2026-09-14 /hci-check 候補 #3)
+describe("deleteCloudEntry", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "https://example.com/api");
+  });
+
+  function signedInSession() {
+    return {
+      tokens: {
+        idToken: { toString: () => "valid-token" } as unknown as NonNullable<Awaited<ReturnType<typeof fetchAuthSession>>["tokens"]>["idToken"],
+        accessToken: undefined as unknown as NonNullable<Awaited<ReturnType<typeof fetchAuthSession>>["tokens"]>["accessToken"],
+      },
+      credentials: undefined,
+      identityId: undefined,
+      userSub: undefined,
+    };
+  }
+
+  it("未サインインなら通信せず { skipped: true }", async () => {
+    mockLocalStorage(null);
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const { deleteCloudEntry } = await import("@/lib/api");
+    await expect(deleteCloudEntry("log-1")).resolves.toEqual({ skipped: true });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("サインイン済みなら /entries/<id> へ DELETE し、成功を返す", async () => {
+    mockLocalStorage("1");
+    vi.mocked(fetchAuthSession).mockResolvedValue(signedInSession());
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: vi.fn().mockResolvedValue({ ok: true }) }));
+    const { deleteCloudEntry } = await import("@/lib/api");
+    await expect(deleteCloudEntry("medicine-1726")).resolves.toEqual({ skipped: false, ok: true });
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(url).toBe("https://example.com/api/entries/medicine-1726");
+    expect((init as RequestInit).method).toBe("DELETE");
+  });
+
+  it("id に / などが含まれてもパスを壊さない(エンコードする)", async () => {
+    mockLocalStorage("1");
+    vi.mocked(fetchAuthSession).mockResolvedValue(signedInSession());
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: vi.fn().mockResolvedValue({}) }));
+    const { deleteCloudEntry } = await import("@/lib/api");
+    await deleteCloudEntry("a/b c");
+    expect(vi.mocked(fetch).mock.calls[0][0]).toBe("https://example.com/api/entries/a%2Fb%20c");
+  });
+
+  it("レスポンスが ok でない・通信が失敗したら { skipped: false, ok: false }", async () => {
+    mockLocalStorage("1");
+    vi.mocked(fetchAuthSession).mockResolvedValue(signedInSession());
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, json: vi.fn().mockResolvedValue({}) }));
+    let mod = await import("@/lib/api");
+    await expect(mod.deleteCloudEntry("log-1")).resolves.toEqual({ skipped: false, ok: false });
+
+    vi.resetModules();
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+    mod = await import("@/lib/api");
+    await expect(mod.deleteCloudEntry("log-1")).resolves.toEqual({ skipped: false, ok: false });
+  });
+});

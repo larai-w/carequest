@@ -275,10 +275,25 @@ describe('匿名フィードバック', () => {
     });
   });
 
-  it('COGNITO 認証付きメソッドは entries の GET/POST/DELETE の 3 件(feedback は匿名)', () => {
+  it('COGNITO 認証付きメソッドは entries の GET/POST/DELETE と entries/{id} の DELETE の 4 件(feedback は匿名)', () => {
     const cognitoMethods = template.findResources('AWS::ApiGateway::Method', {
       Properties: { AuthorizationType: 'COGNITO_USER_POOLS' },
     });
-    expect(Object.keys(cognitoMethods)).toHaveLength(3);
+    expect(Object.keys(cognitoMethods)).toHaveLength(4);
+  });
+
+  it('/entries/{id} に COGNITO 付きの DELETE がある(取り消した1件だけをクラウドから消す)', () => {
+    const idResources = template.findResources('AWS::ApiGateway::Resource', {
+      Properties: { PathPart: '{id}' },
+    });
+    const idResourceKeys = Object.keys(idResources);
+    expect(idResourceKeys).toHaveLength(1);
+    const methods = template.findResources('AWS::ApiGateway::Method', {
+      Properties: { HttpMethod: 'DELETE', AuthorizationType: 'COGNITO_USER_POOLS' },
+    });
+    const onIdResource = Object.values(methods).filter(
+      (m) => (m as { Properties: { ResourceId?: { Ref?: string } } }).Properties.ResourceId?.Ref === idResourceKeys[0],
+    );
+    expect(onIdResource).toHaveLength(1);
   });
 });

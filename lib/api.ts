@@ -292,6 +292,30 @@ export async function deleteCloudEntries(): Promise<{ ok: boolean; deleted?: num
 }
 
 /**
+ * 端末で取り消した記録を、クラウドからも1件だけ削除する(2026-09-14 /hci-check 候補 #3)。
+ * - 未サインインなら通信せず { skipped: true }(クラウドに控えが無いので消すものも無い)。
+ * - サーバー側で pk = userId(トークン由来)に固定するので、他人の記録は消えない。
+ * - 無い記録を消しても成功(冪等)。失敗は呼び出し側が控えて次の同期で再送する。
+ */
+export async function deleteCloudEntry(id: string): Promise<SyncResult> {
+  if (!(await isSignedIn())) {
+    return { skipped: true };
+  }
+  if (!entriesEndpoint) {
+    return { skipped: false, ok: false };
+  }
+  try {
+    const response = await fetch(`${entriesEndpoint}/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: await getAuthHeaders(),
+    });
+    return { skipped: false, ok: response.ok };
+  } catch {
+    return { skipped: false, ok: false };
+  }
+}
+
+/**
  * アカウントを削除する(US-503 / design-sync E-6)。
  * 1. 先にクラウドの記録を削除する(アカウント削除後は sub が変わり孤児データになるため)。
  *    データ削除に失敗したら、孤児 PII を残さないためアカウント削除には進まない。

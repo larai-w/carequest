@@ -1,6 +1,7 @@
 import { loadCareState, saveCareState } from "@/lib/storage";
-import { backupCareLogs, fetchCareEntries, isSignedIn } from "@/lib/api";
+import { backupCareLogs, deleteCloudEntry, fetchCareEntries, isSignedIn } from "@/lib/api";
 import { mergeRestoredLogs } from "@/lib/backup";
+import { flushPendingCloudDeletes, withoutPendingDeletes } from "@/lib/cloudDeletes";
 
 // サインイン時の自動同期(Phase B)。Phase A の関数(復元・バックアップ)を
 // オーケストレーションするだけで、新しい同期ロジックは発明しない。
@@ -47,7 +48,8 @@ export async function syncOnSignIn(): Promise<SignInSyncResult> {
   //    既存優先マージなのでローカルの記録は上書きされない。
   let restoredCount = 0;
   try {
-    const fetched = await fetchCareEntries();
+    // 端末で取り消した記録は、クラウドに残っていても戻さない(2026-09-14 /hci-check 候補 #3)。
+    const fetched = withoutPendingDeletes(await fetchCareEntries());
     const { state, importedLogCount } = mergeRestoredLogs(loadCareState(), fetched);
     if (importedLogCount > 0 && saveCareState(state)) {
       restoredCount = importedLogCount;
@@ -66,6 +68,13 @@ export async function syncOnSignIn(): Promise<SignInSyncResult> {
     backedUp = !result.skipped && result.total > 0 && result.failed === 0;
   } catch {
     // バックアップ失敗も握る。次トリガーで再送。
+  }
+
+  // 3. 取り消した記録をクラウドからも消す。消せなかった分は控えに残り、次回また消す。
+  try {
+    await flushPendingCloudDeletes(deleteCloudEntry);
+  } catch {
+    // 失敗は握る。次トリガーで再送。
   }
 
   return { skipped: false, restoredCount, backedUp };

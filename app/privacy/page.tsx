@@ -58,7 +58,7 @@ export default function PrivacyPage() {
             削除の前にふりかえり画面から記録を JSON または CSV ファイルとして手元に持ち出すこともできます。
           </p>
           <p className="mt-2 text-sm leading-7 text-stone-700">
-            アカウント登録をした場合は、ホーム画面の「アカウント」から、クラウドに保存した記録の削除や、アカウントそのものの削除ができます。どちらの場合も、この端末に保存された記録は残ります。
+            アカウント登録をした場合は、ホーム画面の「アカウント」から、クラウドに保存した記録の削除や、アカウントそのものの削除ができます。どちらの場合も、この端末に保存された記録は残ります。記録を1件ずつ取り消したとき（×や「取り消す」）は、クラウドに控えた同じ記録も削除します。通信できないときは、次にクラウドとやりとりしたときに削除します。
           </p>
           <p className="mt-2 text-sm leading-7 text-stone-500">
             ブラウザのサイトデータ削除でも端末内のデータを消すことができます。ご不明な点は About ページ記載の運営元までご連絡ください。
@@ -68,7 +68,7 @@ export default function PrivacyPage() {
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h3 className="text-lg font-semibold text-stone-800">このポリシーについて</h3>
           <p className="mt-3 text-sm leading-7 text-stone-700">
-            内容を変更する場合は、このページでお知らせします。最終更新日: 2026年8月2日
+            内容を変更する場合は、このページでお知らせします。最終更新日: 2026年9月14日
           </p>
         </section>
       </div>

@@ -5,6 +5,7 @@ const {
   PutItemCommand,
   QueryCommand,
   BatchWriteItemCommand,
+  DeleteItemCommand,
 } = require('@aws-sdk/client-dynamodb');
 const crypto = require('crypto');
 
@@ -367,6 +368,29 @@ exports.handler = async (event) => {
     } catch (error) {
       console.error('Delete error:', error.message);
       return response(500, corsHeaders, { message: 'Error deleting entries' });
+    }
+  }
+
+  // DELETE /entries/{id}: 端末で取り消した記録を1件だけクラウドから消す(2026-09-14 /hci-check 候補 #3)。
+  // 以前は取り消しても、バックアップ済みの記録がクラウドに残り続けていた。
+  // pk はトークン由来の userId で固定。他ユーザーの記録は id を知っていても消せない。
+  // 無い記録を消しても 200(再送しても失敗扱いにしない)。
+  if (event.httpMethod === 'DELETE' && event.resource === '/entries/{id}') {
+    const id = event.pathParameters && event.pathParameters.id;
+    if (typeof id !== 'string' || id.length === 0 || id.length > MAX_STRING_LENGTH) {
+      return response(400, corsHeaders, { message: 'id is required' });
+    }
+    try {
+      await dynamodb.send(
+        new DeleteItemCommand({
+          TableName: process.env.TABLE_NAME,
+          Key: { pk: { S: userId }, sk: { S: id } },
+        })
+      );
+      return response(200, corsHeaders, { ok: true });
+    } catch (error) {
+      console.error('Delete one error:', error.message);
+      return response(500, corsHeaders, { message: 'Error deleting entry' });
     }
   }
 

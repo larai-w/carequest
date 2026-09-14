@@ -9,7 +9,13 @@ import UndoNotice from "@/components/UndoNotice";
 import CloudBackupCard from "@/components/CloudBackupCard";
 import FeedbackWidget from "@/components/FeedbackWidget";
 import { loadCareState, saveCareState, resetCareState } from "@/lib/storage";
-import { backupCareLogs, fetchCareEntries, isSignedIn } from "@/lib/api";
+import { backupCareLogs, deleteCloudEntry, fetchCareEntries, isSignedIn, syncCareLog } from "@/lib/api";
+import {
+  flushPendingCloudDeletes,
+  markDeletedForCloud,
+  unmarkDeletedForCloud,
+  withoutPendingDeletes,
+} from "@/lib/cloudDeletes";
 import { mergeRestoredLogs } from "@/lib/backup";
 import { useHydratedState } from "@/lib/useHydratedState";
 import { getTodayDate, formatLogWhen } from "@/lib/date";
@@ -148,6 +154,8 @@ export default function ReflectionPage() {
     setCloudMessage("クラウドにバックアップしています…");
     try {
       const result = await backupCareLogs(loadCareState().logs);
+      // 取り消した記録がクラウドに残っていれば、ここで消し直す(候補 #3)。
+      await flushPendingCloudDeletes(deleteCloudEntry).catch(() => undefined);
       if (result.skipped) {
         setCloudMessage("サインインすると、この端末の記録をクラウドに控えておけます。");
       } else if (result.total === 0) {
@@ -176,8 +184,10 @@ export default function ReflectionPage() {
         return;
       }
       // fetchCareEntries は sanitize 済みの入口(T31)。生 JSON を信用しない。
-      const fetched = await fetchCareEntries();
+      // 取り消した記録は、クラウドに残っていても戻さない(候補 #3)。
+      const fetched = withoutPendingDeletes(await fetchCareEntries());
       const { state, importedLogCount } = mergeRestoredLogs(loadCareState(), fetched);
+      void flushPendingCloudDeletes(deleteCloudEntry).catch(() => undefined);
       if (!saveCareState(state)) {
         setCloudMessage("保存できませんでした。今ある記録はそのままです。端末の空き容量などを確認して、もう一度復元してください。");
         return;
@@ -317,6 +327,11 @@ export default function ReflectionPage() {
         lastRemovedLog: removed,
         logNotice: "",
       }));
+      // クラウドに控えていた分も消す(候補 #3)。通信できなければ控えを残し、次の同期で消す。
+      if (removed) {
+        markDeletedForCloud(removed.id);
+        void flushPendingCloudDeletes(deleteCloudEntry).catch(() => undefined);
+      }
     },
     [setViewState],
   );
@@ -341,6 +356,9 @@ export default function ReflectionPage() {
       }));
       return;
     }
+    // 戻した記録は消しに行かない。すでにクラウドから消えていれば控え直す(候補 #3)。
+    unmarkDeletedForCloud(lastRemovedLog.id);
+    void syncCareLog(lastRemovedLog).catch(() => undefined);
     setViewState((current) => ({
       ...current,
       allLogs: nextLogs,

@@ -136,3 +136,54 @@ describe("syncOnSignIn", () => {
     expect(result.backedUp).toBe(true);
   });
 });
+
+// 2026-09-14 /hci-check 候補 #3: 端末で取り消した記録を、同期でクラウドから戻さず、クラウドからも消す。
+describe("syncOnSignIn と取り消した記録", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "https://example.com/api");
+  });
+
+  it("取り消した記録はクラウドに残っていても戻さず、クラウドから消して控えを外す", async () => {
+    const store = mockWindow("1", [makeLog("local-1")]);
+    store.set("carequest-pending-cloud-deletes-v1", JSON.stringify(["undone-1"]));
+    vi.mocked(fetchAuthSession).mockResolvedValue(signedInSession());
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue([makeLog("undone-1"), makeLog("server-1")]),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { syncOnSignIn } = await import("@/lib/sync");
+    const result = await syncOnSignIn();
+
+    expect(result.restoredCount).toBe(1);
+    const saved = JSON.parse(store.get(STORAGE_KEY)!);
+    expect(saved.logs.map((l: CareLog) => l.id)).toEqual(["local-1", "server-1"]);
+
+    const deletes = fetchMock.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method === "DELETE");
+    expect(deletes.map(([url]) => url)).toEqual(["https://example.com/api/entries/undone-1"]);
+    expect(store.has("carequest-pending-cloud-deletes-v1")).toBe(false);
+  });
+
+  it("クラウドから消せなければ控えを残す(次の同期でまた消す)", async () => {
+    const store = mockWindow("1", []);
+    store.set("carequest-pending-cloud-deletes-v1", JSON.stringify(["undone-1"]));
+    vi.mocked(fetchAuthSession).mockResolvedValue(signedInSession());
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (_url: string, init?: RequestInit) =>
+        init?.method === "DELETE"
+          ? { ok: false, json: vi.fn().mockResolvedValue({}) }
+          : { ok: true, json: vi.fn().mockResolvedValue([]) },
+      ),
+    );
+
+    const { syncOnSignIn } = await import("@/lib/sync");
+    await syncOnSignIn();
+
+    expect(JSON.parse(store.get("carequest-pending-cloud-deletes-v1")!)).toEqual(["undone-1"]);
+  });
+});
