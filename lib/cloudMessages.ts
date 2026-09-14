@@ -12,6 +12,11 @@ const PAUSED_SUFFIX = "自動でクラウドへ控えるのは止めています
 const UNREACHABLE_AUTO =
   "通信できず、クラウドへ控えられませんでした。記録はこの端末に残っています。次に記録したときに、もう一度控えます。";
 
+// 自動の控えを止めている間、記録するたびに確認カードで言う(2026-09-14 /hci-check「直した後」#4)。
+// 止めた記憶は端末にしか無く、機種変更の日に初めて気づくことがないように。
+export const AUTO_BACKUP_PAUSED_NOTE =
+  "自動でクラウドへ控えるのは止めています。再開するときは、ふりかえりの「クラウドにバックアップ」を押してください。";
+
 export const SESSION_LOST_MESSAGE =
   "ログインが切れたため、クラウドへ控えられませんでした。記録はこの端末に残っています。ホームでもう一度ログインすると、また控えます。";
 
@@ -68,7 +73,20 @@ export function lastBackupLine(lastIso: string | null, paused: boolean): string 
   return paused ? `${base}${PAUSED_SUFFIX}` : base;
 }
 
-export function backupStatusMessage(result: BackupResult, mode: "manual" | "auto"): string {
+export function backupStatusMessage(
+  result: BackupResult,
+  mode: "manual" | "auto",
+  // resumedAuto: 手動のバックアップで、止めていた自動の控えを再開した(「直した後」#5)。黙って再開しない。
+  options: { resumedAuto?: boolean } = {},
+): string {
+  const base = backupStatusBase(result, mode);
+  if (!result.skipped && options.resumedAuto) {
+    return `${base}自動でクラウドへ控えるのも再開しました。`;
+  }
+  return base;
+}
+
+function backupStatusBase(result: BackupResult, mode: "manual" | "auto"): string {
   if (result.skipped) {
     if (result.reason === "unreachable") {
       return mode === "manual"
