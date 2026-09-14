@@ -1,5 +1,5 @@
 import { loadCareState, saveCareState } from "@/lib/storage";
-import { backupCareLogs, deleteCloudEntry, fetchCareEntries, isSignedIn } from "@/lib/api";
+import { backupCareLogs, checkCurrentDeviceOwner, deleteCloudEntry, fetchCareEntries, isSignedIn } from "@/lib/api";
 import { mergeRestoredLogs } from "@/lib/backup";
 import { flushPendingCloudDeletes, withoutPendingDeletes } from "@/lib/cloudDeletes";
 
@@ -12,6 +12,7 @@ import { flushPendingCloudDeletes, withoutPendingDeletes } from "@/lib/cloudDele
 // - すべて背景で静かに。失敗は握りつぶし、次のトリガー(次回サインイン・次回記録)で
 //   再送する。冪等 PUT(T27)なので単純再送で安全。指数バックオフ等は入れない。
 // - ローカルは source of truth。復元は「既存優先」でローカルを上書きしない。
+// - 結果は事実どおりに返す。画面は「試みた」を「できた」と言わない(2026-09-14 /hci-check クラウド控え #2)。
 
 // 背景同期で localStorage を更新したことを画面へ知らせるイベント名。
 // マウント中のページ(特にホーム = AuthPanel + 今日の記録を表示)が
@@ -33,6 +34,12 @@ export interface SignInSyncResult {
   restoredCount: number;
   // バックアップが(全件)成功したか。失敗しても記録はローカルに残る。
   backedUp: boolean;
+  // 送ろうとした記録の件数。0件のときに「控えました」と言わないために使う(#2)。
+  backupTotal: number;
+  // 自動で控えるのを止めている(クラウドの記録を削除した後など・#4)。
+  paused: boolean;
+  // クラウドとのやりとりを止めた理由(#1)。null なら止めていない。
+  blocked: null | "other-account" | "unknown";
 }
 
 /**
@@ -41,7 +48,19 @@ export interface SignInSyncResult {
  */
 export async function syncOnSignIn(): Promise<SignInSyncResult> {
   if (!(await isSignedIn())) {
-    return { skipped: true, restoredCount: 0, backedUp: false };
+    return { skipped: true, restoredCount: 0, backedUp: false, backupTotal: 0, paused: false, blocked: null };
+  }
+
+  // 0. 端末の記録の持ち主を確かめる(#1)。別のアカウントの記録がある端末では、
+  //    読み込みも送信もしない(家族の記録が混ざらないように)。
+  let owner: "ok" | "other-account" | "unknown";
+  try {
+    owner = await checkCurrentDeviceOwner();
+  } catch {
+    owner = "unknown";
+  }
+  if (owner !== "ok") {
+    return { skipped: false, restoredCount: 0, backedUp: false, backupTotal: 0, paused: false, blocked: owner };
   }
 
   // 1. 復元(サーバー→ローカル)。fetchCareEntries は sanitize 済みの入口(T31)。
@@ -62,10 +81,18 @@ export async function syncOnSignIn(): Promise<SignInSyncResult> {
 
   // 2. バックアップ(ローカル→サーバー)。復元後の和集合(全 logs)を冪等 PUT。
   //    以前に送信できなかった記録もここでまとめて再送される。
+  //    クラウドの記録を削除した後など、自動で控えるのを止めているときは送らない(#4)。
   let backedUp = false;
+  let backupTotal = 0;
+  let paused = false;
   try {
-    const result = await backupCareLogs(loadCareState().logs);
-    backedUp = !result.skipped && result.total > 0 && result.failed === 0;
+    const result = await backupCareLogs(loadCareState().logs, { auto: true });
+    if (result.skipped) {
+      paused = result.reason === "paused";
+    } else {
+      backupTotal = result.total;
+      backedUp = result.total > 0 && result.failed === 0;
+    }
   } catch {
     // バックアップ失敗も握る。次トリガーで再送。
   }
@@ -77,5 +104,5 @@ export async function syncOnSignIn(): Promise<SignInSyncResult> {
     // 失敗は握る。次トリガーで再送。
   }
 
-  return { skipped: false, restoredCount, backedUp };
+  return { skipped: false, restoredCount, backedUp, backupTotal, paused, blocked: null };
 }

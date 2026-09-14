@@ -2,6 +2,8 @@
 
 import { SIGNED_IN_FLAG_KEY } from "@/lib/api";
 import { useHydratedState } from "@/lib/useHydratedState";
+import { getLastCloudBackupAt, isAutoBackupPaused } from "@/lib/cloudState";
+import { lastBackupLine } from "@/lib/cloudMessages";
 
 // localStorage の軽量サインインフラグを読む(amplify は読み込まない・T45)。
 // window が無い(SSR/プリレンダー)・localStorage 不可なら安全側の false。
@@ -43,7 +45,11 @@ export default function CloudBackupCard({ onBackup, onRestore, message, busy }: 
     <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
       <h3 className="text-base font-semibold text-stone-700">クラウドに控えておく</h3>
       <p className="mt-2 text-sm leading-6 text-stone-600">
-        サインインしておくと、この端末の記録をクラウドに控えておけます。別の端末でも読み込めます。
+        ログインしておくと、この端末のケアの記録をクラウドに控えておけます。別の端末でも読み込めます。
+      </p>
+      {/* 何が控えられて何が控えられないか(2026-09-14 /hci-check クラウド控え #5) */}
+      <p className="mt-1 text-xs leading-5 text-stone-500">
+        控えるのは、ケアの記録（いつ・何をしたか）だけです。ふりかえりのメモ、よかったこと、自分で足したケアは控えません。全部を別の端末へ移すときは、上の「自分の記録を保存する（JSON）」を使ってください。
       </p>
       <p className="mt-1 text-xs leading-5 text-stone-500">
         これはあくまで記録の控えです。うまくいかなくても、記録はこの端末にそのまま残ります。
@@ -68,9 +74,14 @@ export default function CloudBackupCard({ onBackup, onRestore, message, busy }: 
       </div>
       {!maybeSignedIn ? (
         <p className="mt-2 text-xs leading-5 text-stone-500">
-          サインインするとバックアップできます。ホーム画面からサインインできます。
+          ログインするとバックアップできます。ホーム画面の「アカウント」からログインできます。
         </p>
-      ) : null}
+      ) : (
+        // 最後に控えた日時(#3)。hydration 後にだけ描くので、端末の値を読んでよい。
+        <p className="mt-2 text-xs leading-5 text-stone-500">
+          {lastBackupLine(getLastCloudBackupAt(), isAutoBackupPaused())}
+        </p>
+      )}
       {message ? (
         <p className="mt-3 rounded-2xl bg-amber-50 px-3 py-3 text-sm leading-6 text-stone-700">
           {message}

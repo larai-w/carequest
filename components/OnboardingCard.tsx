@@ -21,7 +21,7 @@ export default function OnboardingCard({ onStart }: OnboardingCardProps) {
       <ul className="mt-3 space-y-1.5 text-sm text-stone-600">
         <li>📱 記録はまずこの端末に保存されます。アカウントは不要です</li>
         <li>📤 大切な記録はふりかえり画面からいつでも書き出せます</li>
-        <li>☁️ クラウドに控えるのは、あとでサインインして選んだときだけです</li>
+        <li>☁️ クラウドに控えるのは、あとでログインして選んだときだけです</li>
       </ul>
       <button
         type="button"

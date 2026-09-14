@@ -15,6 +15,8 @@ import { useHydratedState } from "@/lib/useHydratedState";
 import { formatLogWhen, getTodayDate } from "@/lib/date";
 import { backupCareLogs, deleteCloudEntry } from "@/lib/api";
 import { flushPendingCloudDeletes, markDeletedForCloud, unmarkDeletedForCloud } from "@/lib/cloudDeletes";
+import { hasSessionLost } from "@/lib/cloudState";
+import { backupStatusMessage, SESSION_LOST_MESSAGE } from "@/lib/cloudMessages";
 import type { CareLog, CareTask, EnergyLevel } from "@/lib/types";
 
 const CUSTOM_TASK_POINTS = 10;
@@ -131,16 +133,14 @@ export default function QuestPage() {
 
     async function runBackup() {
       try {
-        const result = await backupCareLogs(loadCareState().logs);
+        // 自動バックアップ。クラウドの記録を削除した後など、止めている間は送らない(2026-09-14 /hci-check クラウド控え #4)。
+        const result = await backupCareLogs(loadCareState().logs, { auto: true });
         await flushPendingCloudDeletes(deleteCloudEntry).catch(() => undefined);
-        if (result.skipped) {
-          setSyncStatus("");
-        } else if (result.total === 0 || result.failed === 0) {
-          setSyncStatus("バックアップが完了しました。");
-        } else if (result.succeeded > 0) {
-          setSyncStatus("一部の記録を控えました。残りはこの端末にちゃんと残っています。");
+        if (result.skipped && !result.reason && hasSessionLost()) {
+          // ログインが切れて止まったことを黙らない(#6)。
+          setSyncStatus(SESSION_LOST_MESSAGE);
         } else {
-          setSyncStatus("同期できませんでした。記録はこの端末にちゃんと残っています。");
+          setSyncStatus(backupStatusMessage(result, "auto"));
         }
       } catch {
         setSyncStatus("同期できませんでした。記録はこの端末にちゃんと残っています。");

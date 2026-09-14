@@ -9,7 +9,9 @@ import UndoNotice from "@/components/UndoNotice";
 import CloudBackupCard from "@/components/CloudBackupCard";
 import FeedbackWidget from "@/components/FeedbackWidget";
 import { loadCareState, saveCareState, resetCareState } from "@/lib/storage";
-import { backupCareLogs, deleteCloudEntry, fetchCareEntries, isSignedIn, syncCareLog } from "@/lib/api";
+import { backupCareLogs, checkCurrentDeviceOwner, deleteCloudEntry, fetchCareEntries, isSignedIn } from "@/lib/api";
+import { clearCloudState, resumeAutoBackup } from "@/lib/cloudState";
+import { backupStatusMessage } from "@/lib/cloudMessages";
 import {
   flushPendingCloudDeletes,
   markDeletedForCloud,
@@ -153,20 +155,12 @@ export default function ReflectionPage() {
     setCloudBusy(true);
     setCloudMessage("クラウドにバックアップしています…");
     try {
+      // 本人が押したので、止めていた自動バックアップも再開する(2026-09-14 /hci-check クラウド控え #4)。
+      resumeAutoBackup();
       const result = await backupCareLogs(loadCareState().logs);
       // 取り消した記録がクラウドに残っていれば、ここで消し直す(候補 #3)。
       await flushPendingCloudDeletes(deleteCloudEntry).catch(() => undefined);
-      if (result.skipped) {
-        setCloudMessage("サインインすると、この端末の記録をクラウドに控えておけます。");
-      } else if (result.total === 0) {
-        setCloudMessage("まだ控えておく記録がありません。");
-      } else if (result.failed === 0) {
-        setCloudMessage("バックアップが完了しました。");
-      } else if (result.succeeded > 0) {
-        setCloudMessage("一部の記録を控えました。残りはこの端末にちゃんと残っています。");
-      } else {
-        setCloudMessage("同期できませんでした。記録はこの端末にちゃんと残っています。");
-      }
+      setCloudMessage(backupStatusMessage(result, "manual"));
     } catch {
       setCloudMessage("同期できませんでした。記録はこの端末にちゃんと残っています。");
     } finally {
@@ -180,7 +174,14 @@ export default function ReflectionPage() {
     setCloudMessage("クラウドから復元しています…");
     try {
       if (!(await isSignedIn())) {
-        setCloudMessage("サインインすると、クラウドの控えから復元できます。");
+        setCloudMessage("ログインすると、クラウドの控えから復元できます。");
+        return;
+      }
+      // 別のアカウントの記録がある端末に、クラウドの記録を混ぜない(#1)。
+      if ((await checkCurrentDeviceOwner()) !== "ok") {
+        setCloudMessage(
+          "この端末に別のアカウントの記録があるか、ログインしている人を確かめられなかったため、復元を止めました。ホームの「アカウント」で確かめてください。",
+        );
         return;
       }
       // fetchCareEntries は sanitize 済みの入口(T31)。生 JSON を信用しない。
@@ -358,7 +359,7 @@ export default function ReflectionPage() {
     }
     // 戻した記録は消しに行かない。すでにクラウドから消えていれば控え直す(候補 #3)。
     unmarkDeletedForCloud(lastRemovedLog.id);
-    void syncCareLog(lastRemovedLog).catch(() => undefined);
+    void backupCareLogs([lastRemovedLog], { auto: true, partial: true }).catch(() => undefined);
     setViewState((current) => ({
       ...current,
       allLogs: nextLogs,
@@ -389,6 +390,8 @@ export default function ReflectionPage() {
   const handleConfirmReset = useCallback(() => {
     const ok = resetCareState();
     if (ok) {
+      // 記録が無くなったので、持ち主・最後に控えた日時・止めた状態も忘れる(クラウド控え #1)。
+      clearCloudState();
       // 削除成功: 画面を初期状態に近い表示へ切り替え、完了メッセージを表示する。
       setViewState({
         ...serverReflectionViewState,
