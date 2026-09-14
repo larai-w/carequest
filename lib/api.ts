@@ -63,9 +63,49 @@ function hasSignedInFlag(): boolean {
  * 設定なし)の場合は false を返し、同時に矛盾したフラグを除去して安全側=未サインインへ倒す。
  */
 export async function isSignedIn(): Promise<boolean> {
+  return (await checkSignIn()) === "signed-in";
+}
+
+export type SignInCheck = "signed-in" | "signed-out" | "unreachable";
+
+// Amplify(TokenOrchestrator.isAuthenticationError)がトークンを無効とみなすエラーと、
+// トークンが無いときの UserUnAuthenticatedException。これ以外はログアウト扱いにしない。
+const AUTH_FAILURE_NAMES = [
+  "UserUnAuthenticatedException",
+  "NotAuthorizedException",
+  "TokenRevokedException",
+  "UserNotFoundException",
+  "PasswordResetRequiredException",
+  "UserNotConfirmedException",
+  "RefreshTokenReuseException",
+];
+
+/**
+ * 認証 SDK の例外を、画面の扱いに合わせて分ける(2026-09-14 /hci-check「直した後」#1)。
+ * - signed-out: ログインしていない・認証が無効(ログインし直しが要る)
+ * - already-signed-in: ログインしようとしたが、すでにログイン中
+ * - unreachable: 通信エラーなど。ログインしているかどうか分からない
+ */
+export function classifyAuthError(error: unknown): "signed-out" | "already-signed-in" | "unreachable" {
+  const name = typeof error === "object" && error !== null ? (error as { name?: unknown }).name : undefined;
+  if (typeof name !== "string") {
+    return "unreachable";
+  }
+  if (name === "UserAlreadyAuthenticatedException") {
+    return "already-signed-in";
+  }
+  return AUTH_FAILURE_NAMES.some((authName) => name.startsWith(authName)) ? "signed-out" : "unreachable";
+}
+
+/**
+ * isSignedIn の三値版。通信できないときに「ログインが切れた」と決めつけない。
+ * Amplify は通信エラーではトークンを残すので、ここでフラグを消すと、画面は未ログインになり、
+ * ログインし直しても「すでにログイン中」で拒否される(2026-09-14 /hci-check「直した後」#1)。
+ */
+export async function checkSignIn(): Promise<SignInCheck> {
   // 第一段: フラグなし → amplify を読まずに未サインイン確定
   if (!hasSignedInFlag()) {
-    return false;
+    return "signed-out";
   }
 
   // 第二段: フラグあり → amplify を読み込んで実セッションを検証
@@ -75,19 +115,21 @@ export async function isSignedIn(): Promise<boolean> {
     const { fetchAuthSession } = await import("@aws-amplify/auth");
     const session = await fetchAuthSession({ forceRefresh: false });
     if (session.tokens?.idToken) {
-      return true;
+      return "signed-in";
     }
     // フラグはあるが実セッションが無い → 不整合。安全側に倒し、フラグも掃除する。
     // 自動バックアップが黙って止まらないよう、切れた印を残す(2026-09-14 /hci-check クラウド控え #6)。
     setSignedInFlag(false);
     markSessionLost();
-    return false;
-  } catch {
-    // 例外時(ネットワーク障害・設定なし・セッション切れ)は未サインイン扱い。
-    // フラグと実態がずれているので掃除する。
-    setSignedInFlag(false);
-    markSessionLost();
-    return false;
+    return "signed-out";
+  } catch (error) {
+    if (classifyAuthError(error) === "signed-out") {
+      setSignedInFlag(false);
+      markSessionLost();
+      return "signed-out";
+    }
+    // 通信エラーなど。フラグは残し、次の機会にまた確かめる。
+    return "unreachable";
   }
 }
 
@@ -249,7 +291,8 @@ export async function fetchPresence(): Promise<number | null> {
 export type BackupResult =
   // 未サインイン — バックアップ不要、ローカル保存で完結。
   // reason があれば、ログインしていても送らなかった理由(#4 止めている / #1 別のアカウントの記録)。
-  | { skipped: true; reason?: "paused" | "other-account" }
+  // unreachable: 通信できず、ログインしているか確かめられなかった(未ログインとは言わない)。
+  | { skipped: true; reason?: "paused" | "other-account" | "unreachable" }
   | { skipped: false; total: number; succeeded: number; failed: number };
 
 // バックアップ送信のチャンク設定。API スロットリング(T29: 10rps / バースト 20)を
@@ -277,7 +320,11 @@ export async function backupCareLogs(
   // partial: 一部だけ送る(元に戻した1件など)。「最後に控えた日時」は更新しない(#3)。
   options: { auto?: boolean; partial?: boolean } = {},
 ): Promise<BackupResult> {
-  if (!(await isSignedIn())) {
+  const signIn = await checkSignIn();
+  if (signIn === "unreachable") {
+    return { skipped: true, reason: "unreachable" };
+  }
+  if (signIn === "signed-out") {
     return { skipped: true };
   }
   if (options.auto && isAutoBackupPaused()) {

@@ -251,3 +251,27 @@ describe("syncOnSignIn の結果を事実どおりに返す", () => {
     expect(fetchSpy.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method === "POST")).toHaveLength(0);
   });
 });
+
+// 2026-09-14 /hci-check「直した後」#1: 通信できないだけで、ログアウト扱い・「切れた」扱いにしない。
+describe("syncOnSignIn と通信できないとき", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "https://example.com/api");
+  });
+
+  it("ログインを確かめられなければ unreachable を返し、フラグを残して通信しない", async () => {
+    const store = mockWindow("1", [makeLog("local-1")]);
+    vi.mocked(fetchAuthSession).mockRejectedValue(Object.assign(new Error("Network error"), { name: "NetworkError" }));
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const { syncOnSignIn } = await import("@/lib/sync");
+    const result = await syncOnSignIn();
+
+    expect(result).toEqual({ skipped: false, restoredCount: 0, backedUp: false, backupTotal: 0, paused: false, blocked: "unreachable" });
+    expect(store.get(SIGNED_IN_FLAG_KEY)).toBe("1");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});

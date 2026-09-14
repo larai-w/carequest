@@ -9,7 +9,7 @@ import UndoNotice from "@/components/UndoNotice";
 import CloudBackupCard from "@/components/CloudBackupCard";
 import FeedbackWidget from "@/components/FeedbackWidget";
 import { loadCareState, saveCareState, resetCareState } from "@/lib/storage";
-import { backupCareLogs, checkCurrentDeviceOwner, deleteCloudEntry, fetchCareEntries, isSignedIn } from "@/lib/api";
+import { backupCareLogs, checkCurrentDeviceOwner, checkSignIn, deleteCloudEntry, fetchCareEntries } from "@/lib/api";
 import { clearCloudState, resumeAutoBackup } from "@/lib/cloudState";
 import { backupStatusMessage } from "@/lib/cloudMessages";
 import {
@@ -173,7 +173,13 @@ export default function ReflectionPage() {
     setCloudBusy(true);
     setCloudMessage("クラウドから復元しています…");
     try {
-      if (!(await isSignedIn())) {
+      const signIn = await checkSignIn();
+      if (signIn === "unreachable") {
+        // 通信できないだけなら「ログインすると」と言わない(2026-09-14 /hci-check「直した後」#1)。
+        setCloudMessage("通信できず、クラウドから読み込めませんでした。記録はこの端末に残っています。通信できる場所で、もう一度お試しください。");
+        return;
+      }
+      if (signIn === "signed-out") {
         setCloudMessage("ログインすると、クラウドの控えから復元できます。");
         return;
       }

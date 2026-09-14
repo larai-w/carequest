@@ -86,8 +86,22 @@ export default function AuthPanel() {
       setCurrentUsername(email);
       setMessage("ログインしました。記録を同期しています…");
       void runSignInSync();
-    } catch {
-      setMessage("ログインに失敗しました。ユーザー情報を確認してください。");
+    } catch (error) {
+      // 通信できなかった間に画面だけ未ログインになっていた人は、ここで「すでにログイン中」になる。
+      // パスワード違いと言わず、ログイン済みとして戻す(2026-09-14 /hci-check「直した後」#1)。
+      const { classifyAuthError } = await import("@/lib/api");
+      const kind = classifyAuthError(error);
+      if (kind === "already-signed-in") {
+        setSignedInFlag(true);
+        setIsSignedIn(true);
+        setCurrentUsername(email || null);
+        setMessage("すでにログインしていました。記録を同期しています…");
+        void runSignInSync();
+      } else if (kind === "unreachable") {
+        setMessage("通信できず、ログインできませんでした。通信できる場所で、もう一度お試しください。");
+      } else {
+        setMessage("ログインに失敗しました。ユーザー情報を確認してください。");
+      }
     } finally {
       setBusy(false);
     }
@@ -131,7 +145,13 @@ export default function AuthPanel() {
       setIsSignedIn(true);
       setSignedInFlag(true);
       void runSignInSync();
-    } catch {
+    } catch (error) {
+      const { classifyAuthError } = await import("@/lib/api");
+      if (classifyAuthError(error) !== "signed-out") {
+        // 通信できないだけなら、ログアウト扱いにしない(2026-09-14 /hci-check「直した後」#1)。
+        setMessage("通信できず、ログインしているか確かめられませんでした。記録はこの端末に残っています。通信できる場所で、もう一度押してください。");
+        return;
+      }
       setCurrentUsername(null);
       setMessage("まだログインしていません。");
       setIsSignedIn(false);
