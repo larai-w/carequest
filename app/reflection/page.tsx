@@ -5,6 +5,7 @@ import Layout from "@/components/Layout";
 import EncouragementCard from "@/components/EncouragementCard";
 import BackupReminderCard from "@/components/BackupReminderCard";
 import ResetDataCard from "@/components/ResetDataCard";
+import UndoNotice from "@/components/UndoNotice";
 import CloudBackupCard from "@/components/CloudBackupCard";
 import FeedbackWidget from "@/components/FeedbackWidget";
 import { loadCareState, saveCareState, resetCareState } from "@/lib/storage";
@@ -17,7 +18,7 @@ import { getTodaySummaryBody } from "@/lib/messages";
 import { buildExportPayload, downloadAsJson, downloadLogsCsv } from "@/lib/export";
 import { parseAndMergeImport } from "@/lib/import";
 import { getTodayGoodThings, setTodayGoodThings } from "@/lib/goodThings";
-import { removeLog, recalcTodayStats } from "@/lib/logs";
+import { removeLog, recalcTodayStats, restoreLog } from "@/lib/logs";
 import { shouldShowBackupReminder } from "@/lib/backup-reminder";
 import type { CareLog } from "@/lib/types";
 
@@ -42,6 +43,10 @@ interface ReflectionViewState {
   resetCompleted: boolean;
   // T42: 削除失敗の通知(T31 の saveFailed パターンと同様)。
   resetFailed: boolean;
+  // ×で取り消した直前の記録(元に戻す用)。2026-09-14 /hci-check 候補 #1。
+  lastRemovedLog: CareLog | null;
+  // 取り消し・元に戻すに失敗したときの知らせ。空文字なら出さない。
+  logNotice: string;
 }
 
 // サーバー/クライアント初回描画で使う既定状態。localStorage を読まない。
@@ -59,6 +64,8 @@ const serverReflectionViewState: ReflectionViewState = {
   showResetConfirm: false,
   resetCompleted: false,
   resetFailed: false,
+  lastRemovedLog: null,
+  logNotice: "",
 };
 
 
@@ -80,6 +87,8 @@ function loadReflectionViewState(): ReflectionViewState {
     showResetConfirm: false,
     resetCompleted: false,
     resetFailed: false,
+    lastRemovedLog: null,
+    logNotice: "",
   };
 }
 
@@ -88,7 +97,7 @@ export default function ReflectionPage() {
     serverReflectionViewState,
     loadReflectionViewState,
   );
-  const { logs, recentDays, note, goodThings, saveFailed, totalLogCount, lastExportDateAtLoad, exportReminderLastShownAtLoad, exportReminderDismissed, showResetConfirm, resetCompleted, resetFailed } = viewState;
+  const { logs, recentDays, note, goodThings, saveFailed, totalLogCount, lastExportDateAtLoad, exportReminderLastShownAtLoad, exportReminderDismissed, showResetConfirm, resetCompleted, resetFailed, lastRemovedLog, logNotice } = viewState;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importMessage, setImportMessage] = useState("");
@@ -273,20 +282,16 @@ export default function ReflectionPage() {
     downloadLogsCsv(loadCareState().logs);
   }, []);
 
+  // ×で取り消す。**保存できてから画面を変える**(2026-09-14 /hci-check 候補 #1・#5)。
+  // 以前は画面から先に消し、保存に失敗すると「消えたように見えて、実は残っている」状態になっていた。
+  // 確認は挟まず、取り消した直後に「元に戻す」を出す(10秒ルール)。
   const handleDeleteLog = useCallback(
     (logId: string) => {
       const state = loadCareState();
+      const removed = state.logs.find((log) => log.id === logId) ?? null;
       const nextLogs = removeLog(state.logs, logId);
       const today = getTodayDate();
       const { todayPoints: nextTodayPoints } = recalcTodayStats(nextLogs, today);
-      const nextTodayLogs = nextLogs.filter((log) => log.date === today);
-
-      setViewState((current) => ({
-        ...current,
-        allLogs: nextLogs,
-        logs: nextTodayLogs,
-        recentDays: getRecentDaySummaries(nextLogs, 7, today, state.goodThingsHistory),
-      }));
 
       const ok = saveCareState({
         ...state,
@@ -297,11 +302,54 @@ export default function ReflectionPage() {
         },
       });
       if (!ok) {
-        setViewState((current) => ({ ...current, saveFailed: true }));
+        setViewState((current) => ({
+          ...current,
+          logNotice: "取り消しできませんでした。記録はそのまま残っています。",
+        }));
+        return;
       }
+
+      setViewState((current) => ({
+        ...current,
+        allLogs: nextLogs,
+        logs: nextLogs.filter((log) => log.date === today),
+        recentDays: getRecentDaySummaries(nextLogs, 7, today, state.goodThingsHistory),
+        lastRemovedLog: removed,
+        logNotice: "",
+      }));
     },
     [setViewState],
   );
+
+  const handleUndoRemoveLog = useCallback(() => {
+    if (!lastRemovedLog) {
+      return;
+    }
+    const state = loadCareState();
+    const nextLogs = restoreLog(state.logs, lastRemovedLog);
+    const today = getTodayDate();
+    const { todayPoints: nextTodayPoints } = recalcTodayStats(nextLogs, today);
+    const ok = saveCareState({
+      ...state,
+      logs: nextLogs,
+      user: { ...state.user, todayPoints: nextTodayPoints },
+    });
+    if (!ok) {
+      setViewState((current) => ({
+        ...current,
+        logNotice: "元に戻せませんでした。端末の空き容量をご確認のうえ、もう一度お試しください。",
+      }));
+      return;
+    }
+    setViewState((current) => ({
+      ...current,
+      allLogs: nextLogs,
+      logs: nextLogs.filter((log) => log.date === today),
+      recentDays: getRecentDaySummaries(nextLogs, 7, today, state.goodThingsHistory),
+      lastRemovedLog: null,
+      logNotice: "",
+    }));
+  }, [lastRemovedLog, setViewState]);
 
   // T42: 全削除フローのハンドラ群。
   const handleShowResetConfirm = useCallback(() => {
@@ -381,6 +429,26 @@ export default function ReflectionPage() {
             onExport={() => {
               handleExport();
             }}
+          />
+        )}
+
+        {logNotice && (
+          <section aria-live="polite" className="rounded-[28px] border border-stone-200 bg-stone-50/80 p-4 shadow-sm">
+            <p className="text-sm leading-6 text-stone-600">{logNotice}</p>
+            <button
+              type="button"
+              onClick={() => setViewState((current) => ({ ...current, logNotice: "" }))}
+              className="mt-3 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+            >
+              わかりました
+            </button>
+          </section>
+        )}
+
+        {lastRemovedLog && (
+          <UndoNotice
+            message={`「${lastRemovedLog.title}」の記録を取り消しました。`}
+            onUndo={handleUndoRemoveLog}
           />
         )}
 

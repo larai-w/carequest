@@ -12,6 +12,27 @@ export function removeLog(logs: CareLog[], id: string): CareLog[] {
 }
 
 /**
+ * 取り消した記録を「元に戻す」純関数。
+ *
+ * - 記録した時刻(completedAt)の順番の位置に差し戻す。
+ * - すでに同じ id がある場合は足さない(元に戻すを連打しても増えない)。
+ * - 元の配列は変更しない(immutable)。
+ */
+export function restoreLog(logs: CareLog[], log: CareLog): CareLog[] {
+  if (logs.some((existing) => existing.id === log.id)) {
+    return [...logs];
+  }
+  const next = [...logs];
+  const insertAt = next.findIndex((existing) => existing.completedAt > log.completedAt);
+  if (insertAt === -1) {
+    next.push(log);
+  } else {
+    next.splice(insertAt, 0, log);
+  }
+  return next;
+}
+
+/**
  * 今日の記録のポイント合計と件数を再計算する純関数。
  *
  * @param allLogs 全期間の記録(削除後の配列)

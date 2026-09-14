@@ -6,6 +6,7 @@ import TaskReadingCard from "@/components/TaskReadingCard";
 import { readingForTask, alreadyShownToday, markShownToday, type Reading } from "@/lib/taskReading";
 import TaskCard from "@/components/TaskCard";
 import EncouragementCard from "@/components/EncouragementCard";
+import UndoNotice from "@/components/UndoNotice";
 import { careTasks } from "@/lib/tasks";
 import { getEncouragementMessage } from "@/lib/messages";
 import { loadCareState, saveCareState } from "@/lib/storage";
@@ -29,8 +30,12 @@ interface QuestViewState {
   customTasks: CareTask[];
   // この画面で保存に成功した直前の記録。確認と取り消しだけに使う。
   lastRecordedLog: CareLog | null;
-  // 保存失敗の通知を表示するかどうか。
+  // 保存失敗の通知を表示するかどうか(記録以外の操作用)。
   saveFailed: boolean;
+  // 保存できなかった記録のタイトル。成功したように見せず、確認カードの位置で知らせる。
+  recordSaveFailedTitle: string | null;
+  // クエストから外した自作ケアと、外す前の位置(元に戻す用)。
+  removedCustomTask: { task: CareTask; index: number } | null;
 }
 
 // サーバー/クライアント初回描画で使う既定状態。localStorage を読まない。
@@ -42,6 +47,8 @@ const serverQuestViewState: QuestViewState = {
   customTasks: [],
   lastRecordedLog: null,
   saveFailed: false,
+  recordSaveFailedTitle: null,
+  removedCustomTask: null,
 };
 
 function loadQuestViewState(): QuestViewState {
@@ -57,6 +64,8 @@ function loadQuestViewState(): QuestViewState {
     customTasks: state.customTasks ?? [],
     lastRecordedLog: null,
     saveFailed: false,
+    recordSaveFailedTitle: null,
+    removedCustomTask: null,
   };
 }
 
@@ -71,7 +80,7 @@ export default function QuestPage() {
   // 同一タスクの連打ガード: 最後に記録した { taskId, 時刻 } を保持し、
   // 500ms 以内の同一タスク再タップを無視する(誤操作による重複記録・バースト送信の防止)。
   const lastTapRef = useRef<{ taskId: string; at: number } | null>(null);
-  const { logs, energyLevel, todayPoints, restMode, customTasks, lastRecordedLog } = viewState;
+  const { logs, energyLevel, todayPoints, restMode, customTasks, lastRecordedLog, recordSaveFailedTitle, removedCustomTask } = viewState;
 
   const completedCount = useMemo(() => logs.filter((log) => log.date === getTodayDate()).length, [logs]);
 
@@ -137,6 +146,10 @@ export default function QuestPage() {
     setViewState((current) => ({ ...current, saveFailed: false }));
   };
 
+  const dismissRecordSaveFailedNotice = () => {
+    setViewState((current) => ({ ...current, recordSaveFailedTitle: null }));
+  };
+
   const handleSelectTask = (task: CareTask) => {
     // 連打ガード: 同一タスクを 500ms 以内に再タップしたら無視する。
     const now = Date.now();
@@ -171,16 +184,27 @@ export default function QuestPage() {
       },
       logs: nextLogs,
     });
+
+    if (!saveOk) {
+      // **保存できなかった記録を、できたように見せない。**(2026-09-14 /hci-check 候補 #2)
+      // 以前はポイントと励ましを先に更新し、失敗の知らせはページ最下部だった。
+      // 上を見ている人には成功に見え、再読み込みで記録が消えていた。
+      setViewState((current) => ({
+        ...current,
+        lastRecordedLog: null,
+        recordSaveFailedTitle: task.title,
+      }));
+      return;
+    }
+
     setViewState((current) => ({
       ...current,
       logs: nextLogs,
       todayPoints: nextPoints,
-      lastRecordedLog: saveOk ? nextLog : null,
+      lastRecordedLog: nextLog,
+      recordSaveFailedTitle: null,
     }));
     setMessage(getEncouragementMessage(energyLevel, nextPoints, nextLogs.filter((log) => log.date === today).length, task.title));
-    if (!saveOk) {
-      setViewState((current) => ({ ...current, saveFailed: true }));
-    }
 
     // 記録は上で確定済み。バックアップはデバウンスして背景で行う(10秒ルール)。
     scheduleBackup();
@@ -262,9 +286,11 @@ export default function QuestPage() {
     }
   };
 
+  // 自作ケアを外す。確認は挟まず、外した直後に「元に戻す」を出す(2026-09-14 /hci-check 候補 #4)。
+  // 保存できてから画面を変える。
   const handleDeleteCustomTask = (task: CareTask) => {
+    const index = customTasks.findIndex((t) => t.id === task.id);
     const nextCustomTasks = customTasks.filter((t) => t.id !== task.id);
-    setViewState((current) => ({ ...current, customTasks: nextCustomTasks }));
 
     const state = loadCareState();
     const ok = saveCareState({
@@ -273,7 +299,36 @@ export default function QuestPage() {
     });
     if (!ok) {
       setViewState((current) => ({ ...current, saveFailed: true }));
+      return;
     }
+    setViewState((current) => ({
+      ...current,
+      customTasks: nextCustomTasks,
+      removedCustomTask: { task, index: index === -1 ? nextCustomTasks.length : index },
+    }));
+  };
+
+  const handleUndoRemoveCustomTask = () => {
+    if (!removedCustomTask) {
+      return;
+    }
+    const state = loadCareState();
+    const current = state.customTasks ?? [];
+    if (current.some((t) => t.id === removedCustomTask.task.id)) {
+      setViewState((view) => ({ ...view, removedCustomTask: null }));
+      return;
+    }
+    const nextCustomTasks = [...current];
+    nextCustomTasks.splice(Math.min(removedCustomTask.index, nextCustomTasks.length), 0, removedCustomTask.task);
+    const ok = saveCareState({
+      ...state,
+      customTasks: nextCustomTasks,
+    });
+    if (!ok) {
+      setViewState((view) => ({ ...view, saveFailed: true }));
+      return;
+    }
+    setViewState((view) => ({ ...view, customTasks: nextCustomTasks, removedCustomTask: null }));
   };
 
   return (
@@ -284,6 +339,26 @@ export default function QuestPage() {
           <p className="mt-2 text-4xl font-semibold text-amber-700">{todayPoints}pt</p>
           <p className="mt-2 text-sm text-stone-600">{message}</p>
         </section>
+
+        {recordSaveFailedTitle && (
+          <section
+            aria-label="記録を保存できませんでした"
+            aria-live="polite"
+            className="rounded-[28px] border border-stone-300 bg-stone-50/90 p-4 shadow-sm"
+          >
+            <p className="text-sm font-semibold text-stone-800">記録を保存できませんでした</p>
+            <p className="mt-1 text-sm leading-6 text-stone-600">
+              「{recordSaveFailedTitle}」は、まだ記録に残っていません。端末の空き容量をご確認のうえ、もう一度タップしてください。
+            </p>
+            <button
+              type="button"
+              onClick={dismissRecordSaveFailedNotice}
+              className="mt-3 min-h-[44px] rounded-full bg-white px-3 py-2 text-sm font-semibold text-stone-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+            >
+              わかりました
+            </button>
+          </section>
+        )}
 
         {lastRecordedLog && (
           <section
@@ -348,6 +423,15 @@ export default function QuestPage() {
             ))}
           </div>
 
+          {removedCustomTask && (
+            <div className="mt-4">
+              <UndoNotice
+                message={`「${removedCustomTask.task.title}」をクエストから外しました。これまでの記録は残っています。`}
+                onUndo={handleUndoRemoveCustomTask}
+              />
+            </div>
+          )}
+
           <div className="mt-4 flex gap-2">
             <label htmlFor="custom-task-input" className="sr-only">
               自分のケアを追加する
@@ -381,7 +465,7 @@ export default function QuestPage() {
         {saveFailed && (
           <section className="rounded-[28px] border border-stone-200 bg-stone-50/80 p-4 shadow-sm">
             <p className="text-sm leading-6 text-stone-600">
-              記録を端末に保存できませんでした。この画面には表示されていますが、再読み込みすると残らない可能性があります。端末の空き容量をご確認のうえ、もう一度記録してください。
+              端末に保存できませんでした。端末の空き容量をご確認のうえ、もう一度お試しください。
             </p>
             <button
               type="button"
