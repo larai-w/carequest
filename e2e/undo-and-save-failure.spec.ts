@@ -139,3 +139,33 @@ test("ふりかえりで削除に失敗したら、記録が残っているこ�
   await expect(page.getByText(/記録を保存できませんでした/)).toHaveCount(0);
   expect(await storedLogCount(page)).toBe(1);
 });
+
+// 2026-09-14 /hci-check 候補 #7: 記録画面の「取り消す」は、取り消した直後に戻せなかった。
+test("記録画面で取り消した記録を、その場で元に戻せる", async ({ page }) => {
+  await recordOne(page);
+
+  await page.getByRole("button", { name: "直前の記録を取り消す" }).click();
+  await expect(page.getByText("「薬を渡した」の記録を取り消しました")).toBeVisible();
+  expect(await storedLogCount(page)).toBe(0);
+
+  await page.getByRole("button", { name: "元に戻す" }).click();
+  await expect(page.locator('[aria-label="直前に記録した内容"]')).toContainText("薬を渡した");
+  await expect(page.getByText("「薬を渡した」の記録を取り消しました")).toHaveCount(0);
+  expect(await storedLogCount(page)).toBe(1);
+
+  await page.reload();
+  expect(await storedLogCount(page)).toBe(1);
+});
+
+// 2026-09-14 /hci-check 候補 #6: 震えで0.5秒以上あけて2回触れると、気づかないまま重複していた。
+test("同じケアを続けて記録したら、確認カードで知らせる", async ({ page }) => {
+  await recordOne(page);
+  const card = page.locator('[aria-label="直前に記録した内容"]');
+  await expect(card).not.toContainText("少し前にも同じ記録");
+
+  await page.waitForTimeout(700); // 500ms の連打ガードを越える
+  await page.getByRole("button", { name: /薬を渡した/ }).click();
+
+  await expect(card).toContainText("少し前にも同じ記録が1件あります");
+  expect(await storedLogCount(page)).toBe(2);
+});
