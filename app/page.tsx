@@ -18,7 +18,7 @@ import { recordDailyEnergy, shouldShowSupportNudge } from "@/lib/support";
 import { SYNC_EVENT_NAME } from "@/lib/sync";
 import { getTodayDate, formatLogWhen } from "@/lib/date";
 import { removeLog, recalcTodayStats, restoreLog } from "@/lib/logs";
-import { deleteCloudEntry, syncCareLog } from "@/lib/api";
+import { backupCareLogs, deleteCloudEntry } from "@/lib/api";
 import { flushPendingCloudDeletes, markDeletedForCloud, unmarkDeletedForCloud } from "@/lib/cloudDeletes";
 import type { CareLog, DailyEnergy, EnergyLevel } from "@/lib/types";
 
@@ -322,7 +322,8 @@ export default function HomePage() {
     }
     // 戻した記録は消しに行かない。すでにクラウドから消えていれば控え直す(候補 #3)。
     unmarkDeletedForCloud(lastRemovedLog.id);
-    void syncCareLog(lastRemovedLog).catch(() => undefined);
+    // 止めている間や、別のアカウントの記録がある端末では送らない(クラウド控え #1・#4)。
+    void backupCareLogs([lastRemovedLog], { auto: true, partial: true }).catch(() => undefined);
     const nextTodayLogs = nextLogs.filter((log) => log.date === today);
     setViewState((current) => ({
       ...current,

@@ -476,3 +476,137 @@ describe("deleteCloudEntry", () => {
     await expect(mod.deleteCloudEntry("log-1")).resolves.toEqual({ skipped: false, ok: false });
   });
 });
+
+// 2026-09-14 /hci-check「クラウド控え」: 持ち主(#1)・最後に控えた日時(#3)・削除後の停止(#4)・ログイン切れ(#6)。
+describe("クラウド控えの守り", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "https://example.com/api");
+  });
+
+  function signedInSession() {
+    return {
+      tokens: {
+        idToken: { toString: () => "valid-token" } as unknown as NonNullable<Awaited<ReturnType<typeof fetchAuthSession>>["tokens"]>["idToken"],
+        accessToken: undefined as unknown as NonNullable<Awaited<ReturnType<typeof fetchAuthSession>>["tokens"]>["accessToken"],
+      },
+      credentials: undefined,
+      identityId: undefined,
+      userSub: undefined,
+    };
+  }
+
+  const log = {
+    id: "medicine-1",
+    taskId: "medicine",
+    title: "薬を渡した",
+    points: 5,
+    completedAt: "2026-09-14T01:00:00.000Z",
+    date: "2026-09-14",
+    energyLevel: "normal" as const,
+  };
+
+  async function asUser(username: string | null) {
+    const auth = await import("@aws-amplify/auth");
+    vi.mocked(auth.fetchAuthSession).mockResolvedValue(signedInSession());
+    if (username) {
+      vi.mocked(auth.getCurrentUser).mockResolvedValue({ username, userId: username } as Awaited<ReturnType<typeof auth.getCurrentUser>>);
+    } else {
+      vi.mocked(auth.getCurrentUser).mockRejectedValue(new Error("unknown"));
+    }
+  }
+
+  it("自動バックアップは、止めている間は送らない(#4)", async () => {
+    mockLocalStorage("1");
+    await asUser("alice");
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const { pauseAutoBackup } = await import("@/lib/cloudState");
+    pauseAutoBackup();
+    const { backupCareLogs } = await import("@/lib/api");
+    await expect(backupCareLogs([log], { auto: true })).resolves.toEqual({ skipped: true, reason: "paused" });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("別のアカウントの記録がある端末では送らない(#1)", async () => {
+    mockLocalStorage("1");
+    await asUser("bob");
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const { adoptDeviceOwner } = await import("@/lib/cloudState");
+    await adoptDeviceOwner("alice");
+    const { backupCareLogs } = await import("@/lib/api");
+    await expect(backupCareLogs([log])).resolves.toEqual({ skipped: true, reason: "other-account" });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("誰のログインか確かめられなければ送らず、失敗として返す(#1)", async () => {
+    mockLocalStorage("1");
+    await asUser(null);
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const { backupCareLogs } = await import("@/lib/api");
+    await expect(backupCareLogs([log])).resolves.toEqual({ skipped: false, total: 1, succeeded: 0, failed: 1 });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("全件控えられたら、最後に控えた日時を残す。失敗したら残さない(#3)", async () => {
+    mockLocalStorage("1");
+    await asUser("alice");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, json: vi.fn() }));
+    const api = await import("@/lib/api");
+    const state = await import("@/lib/cloudState");
+    await api.backupCareLogs([log]);
+    expect(state.getLastCloudBackupAt()).toBeNull();
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: vi.fn() }));
+    await api.backupCareLogs([log]);
+    expect(state.getLastCloudBackupAt()).not.toBeNull();
+  });
+
+  it("クラウドの記録を削除できたら、自動で控えるのを止め、最後の日時を消す(#4)", async () => {
+    mockLocalStorage("1");
+    await asUser("alice");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: vi.fn().mockResolvedValue({ ok: true, deleted: 3 }) }));
+    const state = await import("@/lib/cloudState");
+    state.setLastCloudBackupAt("2026-09-14T01:00:00.000Z");
+    const { deleteCloudEntries } = await import("@/lib/api");
+    await deleteCloudEntries();
+    expect(state.isAutoBackupPaused()).toBe(true);
+    expect(state.getLastCloudBackupAt()).toBeNull();
+  });
+
+  it("別のアカウントの記録がある端末では、1件の削除もしない(#1)", async () => {
+    mockLocalStorage("1");
+    await asUser("bob");
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const { adoptDeviceOwner } = await import("@/lib/cloudState");
+    await adoptDeviceOwner("alice");
+    const { deleteCloudEntry } = await import("@/lib/api");
+    await expect(deleteCloudEntry("medicine-1")).resolves.toEqual({ skipped: true });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("ログインが切れていたら印を付け、ログインし直したら外す(#6)", async () => {
+    mockLocalStorage("1");
+    const auth = await import("@aws-amplify/auth");
+    vi.mocked(auth.fetchAuthSession).mockResolvedValue({ tokens: undefined } as Awaited<ReturnType<typeof auth.fetchAuthSession>>);
+    const api = await import("@/lib/api");
+    const state = await import("@/lib/cloudState");
+    await expect(api.isSignedIn()).resolves.toBe(false);
+    expect(state.hasSessionLost()).toBe(true);
+    api.setSignedInFlag(true);
+    expect(state.hasSessionLost()).toBe(false);
+  });
+
+  it("フラグが無い(ログインしていない)ときは、切れた印を付けない(#6)", async () => {
+    mockLocalStorage(null);
+    const api = await import("@/lib/api");
+    const state = await import("@/lib/cloudState");
+    await api.isSignedIn();
+    expect(state.hasSessionLost()).toBe(false);
+  });
+});

@@ -79,7 +79,7 @@ describe("syncOnSignIn", () => {
     const { syncOnSignIn } = await import("@/lib/sync");
     const result = await syncOnSignIn();
 
-    expect(result).toEqual({ skipped: true, restoredCount: 0, backedUp: false });
+    expect(result).toEqual({ skipped: true, restoredCount: 0, backedUp: false, backupTotal: 0, paused: false, blocked: null });
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
@@ -185,5 +185,69 @@ describe("syncOnSignIn と取り消した記録", () => {
     await syncOnSignIn();
 
     expect(JSON.parse(store.get("carequest-pending-cloud-deletes-v1")!)).toEqual(["undone-1"]);
+  });
+});
+
+// 2026-09-14 /hci-check「クラウド控え」#1・#2・#4
+describe("syncOnSignIn の結果を事実どおりに返す", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "https://example.com/api");
+  });
+
+  it("バックアップが失敗したら backedUp は false、件数は返す(#2)", async () => {
+    mockWindow("1", [makeLog("local-1")]);
+    vi.mocked(fetchAuthSession).mockResolvedValue(signedInSession());
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (_url: string, init?: RequestInit) =>
+        init?.method === "POST"
+          ? { ok: false, json: vi.fn().mockResolvedValue({}) }
+          : { ok: true, json: vi.fn().mockResolvedValue([]) },
+      ),
+    );
+    const { syncOnSignIn } = await import("@/lib/sync");
+    const result = await syncOnSignIn();
+    expect(result.backedUp).toBe(false);
+    expect(result.backupTotal).toBe(1);
+    expect(result.blocked).toBeNull();
+  });
+
+  it("別のアカウントの記録がある端末では、読み込みも送信もしない(#1)", async () => {
+    const store = mockWindow("1", [makeLog("local-1")]);
+    const before = store.get(STORAGE_KEY);
+    vi.mocked(fetchAuthSession).mockResolvedValue(signedInSession());
+    const fetchSpy = vi.fn().mockResolvedValue({ ok: true, json: vi.fn().mockResolvedValue([makeLog("server-1")]) });
+    vi.stubGlobal("fetch", fetchSpy);
+    const { adoptDeviceOwner } = await import("@/lib/cloudState");
+    await adoptDeviceOwner("someone-else");
+
+    const { syncOnSignIn } = await import("@/lib/sync");
+    const result = await syncOnSignIn();
+
+    expect(result.blocked).toBe("other-account");
+    expect(result.restoredCount).toBe(0);
+    expect(result.backedUp).toBe(false);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(store.get(STORAGE_KEY)).toBe(before);
+  });
+
+  it("自動で控えるのを止めているなら、読み込みはするが送らない(#4)", async () => {
+    mockWindow("1", [makeLog("local-1")]);
+    vi.mocked(fetchAuthSession).mockResolvedValue(signedInSession());
+    const fetchSpy = vi.fn().mockResolvedValue({ ok: true, json: vi.fn().mockResolvedValue([makeLog("server-1")]) });
+    vi.stubGlobal("fetch", fetchSpy);
+    const { pauseAutoBackup } = await import("@/lib/cloudState");
+    pauseAutoBackup();
+
+    const { syncOnSignIn } = await import("@/lib/sync");
+    const result = await syncOnSignIn();
+
+    expect(result.paused).toBe(true);
+    expect(result.restoredCount).toBe(1);
+    expect(result.backedUp).toBe(false);
+    expect(fetchSpy.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method === "POST")).toHaveLength(0);
   });
 });

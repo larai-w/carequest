@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { setSignedInFlag, SIGNED_IN_FLAG_KEY } from "@/lib/api";
+import { adoptDeviceForCurrentUser, setSignedInFlag, SIGNED_IN_FLAG_KEY } from "@/lib/api";
+import { getLastCloudBackupAt, hasSessionLost, isAutoBackupPaused } from "@/lib/cloudState";
+import { cloudDeletedMessage, lastBackupLine, signInSyncMessage } from "@/lib/cloudMessages";
 
 type AuthMode = "signIn" | "signUp" | "reset";
 type SignUpStage = "form" | "confirm";
@@ -25,9 +27,17 @@ export default function AuthPanel() {
   const [dangerOpen, setDangerOpen] = useState(false);
   const [confirmingData, setConfirmingData] = useState(false);
   const [confirmingAccount, setConfirmingAccount] = useState(false);
+  // 端末に別のアカウントの記録がある(2026-09-14 /hci-check クラウド控え #1)。
+  const [ownerConflict, setOwnerConflict] = useState(false);
+  // 「最後にクラウドへ控えた日時」(#3)。決めつけの固定文言の代わりに事実を出す。
+  const [cloudLine, setCloudLine] = useState("");
+
+  const refreshCloudLine = () => {
+    setCloudLine(lastBackupLine(getLastCloudBackupAt(), isAutoBackupPaused()));
+  };
 
   // サインインが確認できたときの自動同期(Phase B)。背景で復元→バックアップを実行し、
-  // 結果を穏やかに知らせる。UI はブロックしない・失敗しても記録はローカルに残る。
+  // 結果を事実どおりに知らせる(#2)。UI はブロックしない・失敗しても記録はローカルに残る。
   const runSignInSync = async () => {
     try {
       const { syncOnSignIn } = await import("@/lib/sync");
@@ -35,19 +45,36 @@ export default function AuthPanel() {
       if (result.skipped) {
         return;
       }
-      if (result.restoredCount > 0) {
-        setMessage(`クラウドから${result.restoredCount}件の記録を読み込み、バックアップしました。`);
-      } else {
-        setMessage("記録をクラウドにバックアップしました。");
-      }
+      setOwnerConflict(result.blocked === "other-account");
+      setMessage(signInSyncMessage(result));
     } catch {
-      setMessage("記録はこの端末に安全に保存されています。");
+      setMessage("クラウドとやりとりできませんでした。記録はこの端末に残っています。");
+    } finally {
+      refreshCloudLine();
+    }
+  };
+
+  // 本人が「この端末の記録は、このアカウントのものです」と選んだとき(#1)。
+  const handleAdoptDevice = async () => {
+    setBusy(true);
+    setMessage("この端末の記録を、このアカウントで控えられるようにしています…");
+    try {
+      if (!(await adoptDeviceForCurrentUser())) {
+        setMessage("ログインしている人を確かめられませんでした。もう一度お試しください。");
+        return;
+      }
+      setOwnerConflict(false);
+      await runSignInSync();
+    } catch {
+      setMessage("うまくいきませんでした。もう一度お試しください。");
+    } finally {
+      setBusy(false);
     }
   };
 
   const handleSignIn = async () => {
     setBusy(true);
-    setMessage("サインインしています…");
+    setMessage("ログインしています…");
     try {
       // 認証 SDK はこの操作の瞬間に初めて動的 import する(初期バンドルには含めない・T45)。
       const { ensureAmplifyConfigured } = await import("@/lib/amplify");
@@ -68,7 +95,7 @@ export default function AuthPanel() {
 
   const handleSignOut = async () => {
     setBusy(true);
-    setMessage("サインアウトしています…");
+    setMessage("ログアウトしています…");
     try {
       const { ensureAmplifyConfigured } = await import("@/lib/amplify");
       await ensureAmplifyConfigured();
@@ -78,7 +105,11 @@ export default function AuthPanel() {
       setIsSignedIn(false);
       setCurrentUsername(null);
       setMode("signIn");
-      setMessage("ログアウトしました。");
+      setOwnerConflict(false);
+      // 共有端末では、次にこの端末を使う人にも記録が見える(#9)。
+      setMessage(
+        "ログアウトしました。この端末の記録は、この端末に残っています。消すときは、ふりかえりの「すべての記録を削除する」から行えます。",
+      );
     } catch {
       setMessage("ログアウトに失敗しました。");
     } finally {
@@ -88,7 +119,7 @@ export default function AuthPanel() {
 
   const handleCheckUser = async () => {
     setBusy(true);
-    setMessage("状態を確認しています…");
+    setMessage("クラウドと同期しています…");
     try {
       const { ensureAmplifyConfigured } = await import("@/lib/amplify");
       await ensureAmplifyConfigured();
@@ -125,7 +156,7 @@ export default function AuthPanel() {
       });
       if (isSignUpComplete) {
         setMode("signIn");
-        setMessage("登録が完了しました。そのままサインインできます。");
+        setMessage("登録が完了しました。そのままログインできます。");
         return;
       }
       if (nextStep.signUpStep === "CONFIRM_SIGN_UP") {
@@ -161,7 +192,7 @@ export default function AuthPanel() {
       setMode("signIn");
       setSignUpStage("form");
       setConfirmationCode("");
-      setMessage("登録が完了しました。そのままサインインできます。");
+      setMessage("登録が完了しました。そのままログインできます。");
     } catch (error) {
       const name = error instanceof Error ? error.name : "";
       if (name === "CodeMismatchException") {
@@ -206,7 +237,7 @@ export default function AuthPanel() {
         setMessage(`${email} に再設定コードを送りました。メールをご確認ください。`);
       } else {
         setMode("signIn");
-        setMessage("パスワードの再設定が完了しました。サインインできます。");
+        setMessage("パスワードの再設定が完了しました。ログインできます。");
       }
     } catch (error) {
       const name = error instanceof Error ? error.name : "";
@@ -239,7 +270,7 @@ export default function AuthPanel() {
       setConfirmationCode("");
       setPassword(newPassword);
       setNewPassword("");
-      setMessage("パスワードを変更しました。新しいパスワードでサインインできます。");
+      setMessage("パスワードを変更しました。新しいパスワードでログインできます。");
     } catch (error) {
       const name = error instanceof Error ? error.name : "";
       if (name === "CodeMismatchException") {
@@ -265,14 +296,12 @@ export default function AuthPanel() {
       const result = await deleteCloudEntries();
       setConfirmingData(false);
       setDangerOpen(false);
-      setMessage(
-        result.ok
-          ? "クラウドの記録を削除しました。この端末の記録は残っています。"
-          : "削除できませんでした。もう一度お試しください。",
-      );
+      // 消した後に自動で控え直さないことも伝える(#4)。
+      setMessage(cloudDeletedMessage(result.ok));
     } catch {
-      setMessage("削除できませんでした。もう一度お試しください。");
+      setMessage(cloudDeletedMessage(false));
     } finally {
+      refreshCloudLine();
       setBusy(false);
     }
   };
@@ -332,7 +361,11 @@ export default function AuthPanel() {
       try {
         if (window.localStorage.getItem(SIGNED_IN_FLAG_KEY) === "1") {
           setIsSignedIn(true);
-          setMessage("前回ログインしていました。「状態確認」でセッションを確認できます。");
+          setMessage("前回ログインしていました。「クラウドと同期する」で、クラウドと最新の状態にそろえられます。");
+          refreshCloudLine();
+        } else if (hasSessionLost()) {
+          // ログインが切れて、自動バックアップが止まっている(#6)。
+          setMessage("ログインが切れていました。もう一度ログインすると、また記録をクラウドに控えます。");
         }
       } catch {
         // localStorage 不可。未ログイン表示のままにする(安全側)。
@@ -360,17 +393,36 @@ export default function AuthPanel() {
     return (
       <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
         <h2 className="text-lg font-semibold text-stone-800">アカウント</h2>
-        <p className="mt-1 text-sm text-stone-600">記録はクラウドにも控えられています。</p>
+        <p className="mt-1 text-sm text-stone-600">{cloudLine}</p>
         <p className="mt-3 text-sm text-stone-700">ログイン中: {currentUsername ?? "ユーザー"}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           <button type="button" onClick={handleSignOut} disabled={busy} className={subtleButton}>
-            サインアウト
+            ログアウト
           </button>
           <button type="button" onClick={handleCheckUser} disabled={busy} className={amberButton}>
-            状態確認
+            クラウドと同期する
           </button>
         </div>
-        <p className="mt-3 text-sm text-stone-600">{message}</p>
+        <p className="mt-3 text-sm text-stone-600" aria-live="polite">{message}</p>
+
+        {ownerConflict && (
+          <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50/80 p-3">
+            <p className="text-sm leading-6 text-stone-700">
+              この端末には、別のアカウントで控えていた記録があります。ほかの人の記録かもしれないときは、ログアウトしてください。
+            </p>
+            <p className="mt-1 text-sm leading-6 text-stone-700">
+              この端末の記録があなたのものなら、下のボタンで、このアカウントに控えられるようにできます。
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" onClick={handleAdoptDevice} disabled={busy} className={subtleButton}>
+                この端末の記録は、このアカウントのものです
+              </button>
+              <button type="button" onClick={handleSignOut} disabled={busy} className={subtleButton}>
+                ログアウトする
+              </button>
+            </div>
+          </div>
+        )}
 
         {!dangerOpen ? (
           <button type="button" onClick={() => setDangerOpen(true)} className={`mt-3 ${linkButton}`}>
@@ -384,7 +436,9 @@ export default function AuthPanel() {
 
             {confirmingData ? (
               <div className="rounded-2xl bg-stone-50 p-3">
-                <p className="text-sm leading-6 text-stone-600">クラウドに保存した記録を削除します。よろしいですか?</p>
+                <p className="text-sm leading-6 text-stone-600">
+                  クラウドに保存した記録を削除します。削除すると、自動でクラウドへ控えるのも止めます。よろしいですか?
+                </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <button type="button" onClick={handleDeleteCloudData} disabled={busy} className={subtleButton}>
                     削除する
@@ -451,7 +505,7 @@ export default function AuthPanel() {
     <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
       <h2 className="text-lg font-semibold text-stone-800">VEAI アカウント</h2>
       <p className="mt-1 text-sm text-stone-600">
-        VEAI アカウントでサインインすると、記録をクラウドにバックアップして、別の端末でも見られるようになります。サインインしなくても、すべての機能を使えます。
+        VEAI アカウントでログインすると、ケアの記録をクラウドに控えて、別の端末でも見られるようになります。ログインしなくても、すべての機能を使えます。
       </p>
 
       <div className="mt-3 flex gap-2">
@@ -486,10 +540,7 @@ export default function AuthPanel() {
           <>
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={handleSignIn} disabled={busy} className={primaryButton}>
-                サインイン
-              </button>
-              <button type="button" onClick={handleCheckUser} disabled={busy} className={amberButton}>
-                状態確認
+                ログインする
               </button>
             </div>
             <button type="button" onClick={switchToReset} disabled={busy} className={linkButton}>

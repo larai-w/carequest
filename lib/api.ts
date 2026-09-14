@@ -1,6 +1,17 @@
 import type { CareLog } from "@/lib/types";
 import { sanitizeLog } from "@/lib/storage";
 import { chunk } from "@/lib/backup";
+import {
+  adoptDeviceOwner,
+  checkDeviceOwner,
+  clearCloudState,
+  clearLastCloudBackupAt,
+  clearSessionLost,
+  isAutoBackupPaused,
+  markSessionLost,
+  pauseAutoBackup,
+  setLastCloudBackupAt,
+} from "@/lib/cloudState";
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
 const entriesEndpoint = apiBase ? `${apiBase}/entries` : "";
@@ -19,6 +30,7 @@ export function setSignedInFlag(value: boolean): void {
   try {
     if (value) {
       window.localStorage.setItem(SIGNED_IN_FLAG_KEY, "1");
+      clearSessionLost();
     } else {
       window.localStorage.removeItem(SIGNED_IN_FLAG_KEY);
     }
@@ -66,12 +78,15 @@ export async function isSignedIn(): Promise<boolean> {
       return true;
     }
     // フラグはあるが実セッションが無い → 不整合。安全側に倒し、フラグも掃除する。
+    // 自動バックアップが黙って止まらないよう、切れた印を残す(2026-09-14 /hci-check クラウド控え #6)。
     setSignedInFlag(false);
+    markSessionLost();
     return false;
   } catch {
     // 例外時(ネットワーク障害・設定なし・セッション切れ)は未サインイン扱い。
     // フラグと実態がずれているので掃除する。
     setSignedInFlag(false);
+    markSessionLost();
     return false;
   }
 }
@@ -106,6 +121,31 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
     // 認証トークンが取れなければ、通常のリクエストを行います。
   }
   return { "Content-Type": "application/json" };
+}
+
+export type DeviceOwnerStatus = "ok" | "other-account" | "unknown";
+
+/**
+ * いまログインしているアカウントが、この端末の記録の持ち主かを確かめる
+ * (2026-09-14 /hci-check クラウド控え #1)。持ち主がまだいなければ、このアカウントを覚える。
+ * 誰のログインか確かめられないときは "unknown"(送る側は止める)。
+ */
+export async function checkCurrentDeviceOwner(): Promise<DeviceOwnerStatus> {
+  const userId = await getCurrentUserId();
+  if (userId === "anonymous") {
+    return "unknown";
+  }
+  return checkDeviceOwner(userId);
+}
+
+/** 本人が「この端末の記録は、このアカウントのものです」と選んだときだけ呼ぶ。 */
+export async function adoptDeviceForCurrentUser(): Promise<boolean> {
+  const userId = await getCurrentUserId();
+  if (userId === "anonymous") {
+    return false;
+  }
+  await adoptDeviceOwner(userId);
+  return true;
 }
 
 export type SyncResult =
@@ -207,7 +247,9 @@ export async function fetchPresence(): Promise<number | null> {
 }
 
 export type BackupResult =
-  | { skipped: true } // 未サインイン — バックアップ不要、ローカル保存で完結
+  // 未サインイン — バックアップ不要、ローカル保存で完結。
+  // reason があれば、ログインしていても送らなかった理由(#4 止めている / #1 別のアカウントの記録)。
+  | { skipped: true; reason?: "paused" | "other-account" }
   | { skipped: false; total: number; succeeded: number; failed: number };
 
 // バックアップ送信のチャンク設定。API スロットリング(T29: 10rps / バースト 20)を
@@ -229,9 +271,25 @@ function delay(ms: number): Promise<void> {
  *   (design-sync.md §6 E-3)。
  * - 失敗しても記録はローカルに残る。呼び出し側は succeeded/failed で穏やかに通知する。
  */
-export async function backupCareLogs(logs: CareLog[]): Promise<BackupResult> {
+export async function backupCareLogs(
+  logs: CareLog[],
+  // auto: 記録後・ログイン時の自動バックアップ。止めている間は送らない(#4)。
+  // partial: 一部だけ送る(元に戻した1件など)。「最後に控えた日時」は更新しない(#3)。
+  options: { auto?: boolean; partial?: boolean } = {},
+): Promise<BackupResult> {
   if (!(await isSignedIn())) {
     return { skipped: true };
+  }
+  if (options.auto && isAutoBackupPaused()) {
+    return { skipped: true, reason: "paused" };
+  }
+  const owner = await checkCurrentDeviceOwner();
+  if (owner === "other-account") {
+    return { skipped: true, reason: "other-account" };
+  }
+  if (owner === "unknown") {
+    // 誰のクラウドへ送るのか確かめられないなら、送らない(失敗として返す)。
+    return { skipped: false, total: logs.length, succeeded: 0, failed: logs.length };
   }
   if (logs.length === 0) {
     return { skipped: false, total: 0, succeeded: 0, failed: 0 };
@@ -256,6 +314,9 @@ export async function backupCareLogs(logs: CareLog[]): Promise<BackupResult> {
     if (i < batches.length - 1) {
       await delay(BACKUP_CHUNK_PAUSE_MS);
     }
+  }
+  if (failed === 0 && !options.partial) {
+    setLastCloudBackupAt(new Date().toISOString());
   }
   return { skipped: false, total: logs.length, succeeded, failed };
 }
@@ -285,6 +346,10 @@ export async function deleteCloudEntries(): Promise<{ ok: boolean; deleted?: num
       typeof raw === "object" && raw !== null && typeof (raw as { deleted?: unknown }).deleted === "number"
         ? (raw as { deleted: number }).deleted
         : undefined;
+    // ログインしたまま次に記録すると、全件がまたクラウドへ送られる。
+    // 消したつもりの記録が戻らないよう、自動で控えるのを止める(2026-09-14 /hci-check クラウド控え #4)。
+    pauseAutoBackup();
+    clearLastCloudBackupAt();
     return { ok: true, deleted };
   } catch {
     return { ok: false };
@@ -299,6 +364,10 @@ export async function deleteCloudEntries(): Promise<{ ok: boolean; deleted?: num
  */
 export async function deleteCloudEntry(id: string): Promise<SyncResult> {
   if (!(await isSignedIn())) {
+    return { skipped: true };
+  }
+  // 別のアカウントの記録がある端末では、その人のクラウドを触らない(#1)。控えは残す。
+  if ((await checkCurrentDeviceOwner()) === "other-account") {
     return { skipped: true };
   }
   if (!entriesEndpoint) {
@@ -333,6 +402,8 @@ export async function deleteAccount(): Promise<{ ok: boolean }> {
     const { deleteUser } = await import("@aws-amplify/auth");
     await deleteUser();
     setSignedInFlag(false);
+    // アカウントが無くなったので、持ち主・止めた状態・最後の日時も忘れる。
+    clearCloudState();
     return { ok: true };
   } catch {
     return { ok: false };

@@ -68,7 +68,7 @@ test.describe("オンボーディング", () => {
       // オンボーディングカードが表示されている。
       const card1 = page1.locator('[aria-label="はじめてのかたへ"]');
       await expect(card1).toBeVisible();
-      await expect(card1).toContainText("クラウドに控えるのは、あとでサインインして選んだときだけです");
+      await expect(card1).toContainText("クラウドに控えるのは、あとでログインして選んだときだけです");
 
       // 「はじめる」ボタンをクリックする。
       await page1.click("button:has-text('はじめる')");
