@@ -13,7 +13,8 @@ import { loadCareState, saveCareState } from "@/lib/storage";
 import { removeLog, recalcTodayStats } from "@/lib/logs";
 import { useHydratedState } from "@/lib/useHydratedState";
 import { formatLogWhen, getTodayDate } from "@/lib/date";
-import { backupCareLogs } from "@/lib/api";
+import { backupCareLogs, deleteCloudEntry } from "@/lib/api";
+import { flushPendingCloudDeletes, markDeletedForCloud } from "@/lib/cloudDeletes";
 import type { CareLog, CareTask, EnergyLevel } from "@/lib/types";
 
 const CUSTOM_TASK_POINTS = 10;
@@ -104,17 +105,25 @@ export default function QuestPage() {
 
   const [syncStatus, setSyncStatus] = useState("");
   const backupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const backupChainRef = useRef<Promise<void>>(Promise.resolve());
 
   // 記録後にデバウンスして、ローカルの全 logs を背景で冪等バックアップする(Phase B)。
   // 全件 PUT なので、以前に送れなかった記録もここでまとめて再送される(§4.3 再送)。
   // 未サインインなら backupCareLogs が { skipped: true } を返し、文言は出さない。
+  // 続けて、取り消した記録をクラウドからも消す(候補 #3)。
+  // 送信中のバックアップが取り消した記録を後から書き戻さないよう、1本ずつ順に流す。
   const scheduleBackup = useCallback(() => {
     if (backupTimerRef.current) {
       clearTimeout(backupTimerRef.current);
     }
-    backupTimerRef.current = setTimeout(async () => {
+    backupTimerRef.current = setTimeout(() => {
+      backupChainRef.current = backupChainRef.current.then(runBackup);
+    }, RECORD_BACKUP_DEBOUNCE_MS);
+
+    async function runBackup() {
       try {
         const result = await backupCareLogs(loadCareState().logs);
+        await flushPendingCloudDeletes(deleteCloudEntry).catch(() => undefined);
         if (result.skipped) {
           setSyncStatus("");
         } else if (result.total === 0 || result.failed === 0) {
@@ -127,7 +136,7 @@ export default function QuestPage() {
       } catch {
         setSyncStatus("同期できませんでした。記録はこの端末にちゃんと残っています。");
       }
-    }, RECORD_BACKUP_DEBOUNCE_MS);
+    }
   }, []);
 
   // アンマウント時に保留中のタイマーを片づける。
@@ -247,6 +256,8 @@ export default function QuestPage() {
       lastRecordedLog: null,
     }));
     setMessage("記録を取り消しました。今日のことは、必要なときにまた残せます。");
+    // クラウドに控えていた分も消す(候補 #3)。消すのは scheduleBackup の中で順に行う。
+    markDeletedForCloud(lastRecordedLog.id);
     scheduleBackup();
   };
 

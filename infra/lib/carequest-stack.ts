@@ -147,6 +147,12 @@ export class CareQuestStack extends cdk.Stack {
       authorizer,
       authorizationType: apigateway.AuthorizationType.COGNITO,
     });
+    // 端末で取り消した記録を1件だけクラウドから消す(2026-09-14 /hci-check 候補 #3)。
+    const entry = entries.addResource('{id}');
+    entry.addMethod('DELETE', new apigateway.LambdaIntegration(apiHandler), {
+      authorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    });
 
     // ─── 匿名フィードバック(ご意見)────────────────────────────────────────
     // 認証なしで受け付ける(匿名性の担保)。ステージ全体のスロットリング

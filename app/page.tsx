@@ -18,6 +18,8 @@ import { recordDailyEnergy, shouldShowSupportNudge } from "@/lib/support";
 import { SYNC_EVENT_NAME } from "@/lib/sync";
 import { getTodayDate, formatLogWhen } from "@/lib/date";
 import { removeLog, recalcTodayStats, restoreLog } from "@/lib/logs";
+import { deleteCloudEntry, syncCareLog } from "@/lib/api";
+import { flushPendingCloudDeletes, markDeletedForCloud, unmarkDeletedForCloud } from "@/lib/cloudDeletes";
 import type { CareLog, DailyEnergy, EnergyLevel } from "@/lib/types";
 
 interface HomeViewState {
@@ -288,6 +290,11 @@ export default function HomePage() {
         lastRemovedLog: removed,
         logNotice: "",
       }));
+      // クラウドに控えていた分も消す(候補 #3)。通信できなければ控えを残し、次の同期で消す。
+      if (removed) {
+        markDeletedForCloud(removed.id);
+        void flushPendingCloudDeletes(deleteCloudEntry).catch(() => undefined);
+      }
     },
     [setViewState],
   );
@@ -313,6 +320,9 @@ export default function HomePage() {
       }));
       return;
     }
+    // 戻した記録は消しに行かない。すでにクラウドから消えていれば控え直す(候補 #3)。
+    unmarkDeletedForCloud(lastRemovedLog.id);
+    void syncCareLog(lastRemovedLog).catch(() => undefined);
     const nextTodayLogs = nextLogs.filter((log) => log.date === today);
     setViewState((current) => ({
       ...current,

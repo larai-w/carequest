@@ -13,6 +13,7 @@ import {
   PutItemCommand,
   QueryCommand,
   BatchWriteItemCommand,
+  DeleteItemCommand,
 } from '@aws-sdk/client-dynamodb';
 
 // ── DynamoDB モック ────────────────────────────────────────────────────────
@@ -27,6 +28,7 @@ beforeEach(async () => {
   ddbMock.on(PutItemCommand).resolves({});
   ddbMock.on(QueryCommand).resolves({ Items: [] });
   ddbMock.on(BatchWriteItemCommand).resolves({});
+  ddbMock.on(DeleteItemCommand).resolves({});
 
   // require をリセットするため vi.resetModules() を呼び、モジュールを再読込
   vi.resetModules();
@@ -526,5 +528,74 @@ describe('身元が無いリクエスト', () => {
       requestContext: { requestId: 'r' },
     });
     expect(res.statusCode).toBe(200);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DELETE /entries/{id} – 取り消した1件だけをクラウドから消す(2026-09-14 /hci-check 候補 #3)
+// 端末で取り消した記録がクラウドのバックアップに残り続けないようにする。
+// ─────────────────────────────────────────────────────────────────────────────
+function deleteOneEvent(username, id, extra = {}) {
+  return makeEvent({
+    httpMethod: 'DELETE',
+    resource: '/entries/{id}',
+    pathParameters: id === undefined ? null : { id },
+    requestContext: {
+      requestId: 'del-one-req',
+      authorizer: username ? { claims: { 'cognito:username': username } } : {},
+    },
+    ...extra,
+  });
+}
+
+describe('DELETE /entries/{id}', () => {
+  it('自分の区画(pk)の、その1件(sk)だけを DeleteItem で消す', async () => {
+    const res = await handler(deleteOneEvent('alice', 'log-1'));
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body)).toEqual({ ok: true });
+    const calls = ddbMock.commandCalls(DeleteItemCommand);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].args[0].input.Key).toEqual({ pk: { S: 'alice' }, sk: { S: 'log-1' } });
+    // 全件削除の経路(Query + BatchWrite)は使わない
+    expect(ddbMock.commandCalls(QueryCommand)).toHaveLength(0);
+    expect(ddbMock.commandCalls(BatchWriteItemCommand)).toHaveLength(0);
+  });
+
+  it('無い記録を消しても 200(冪等。再送で失敗扱いにしない)', async () => {
+    ddbMock.on(DeleteItemCommand).resolves({});
+    const first = await handler(deleteOneEvent('alice', 'gone'));
+    const second = await handler(deleteOneEvent('alice', 'gone'));
+    expect(first.statusCode).toBe(200);
+    expect(second.statusCode).toBe(200);
+  });
+
+  it('id が無い → 400 で、何も消さない', async () => {
+    const res = await handler(deleteOneEvent('alice', undefined));
+    expect(res.statusCode).toBe(400);
+    expect(ddbMock.commandCalls(DeleteItemCommand)).toHaveLength(0);
+  });
+
+  it('id が空文字 → 400 で、何も消さない', async () => {
+    const res = await handler(deleteOneEvent('alice', ''));
+    expect(res.statusCode).toBe(400);
+    expect(ddbMock.commandCalls(DeleteItemCommand)).toHaveLength(0);
+  });
+
+  it('id が長すぎる → 400 で、何も消さない', async () => {
+    const res = await handler(deleteOneEvent('alice', 'x'.repeat(1025)));
+    expect(res.statusCode).toBe(400);
+    expect(ddbMock.commandCalls(DeleteItemCommand)).toHaveLength(0);
+  });
+
+  it('身元が無い → 401 で、何も消さない', async () => {
+    const res = await handler(deleteOneEvent(null, 'log-1'));
+    expect(res.statusCode).toBe(401);
+    expect(ddbMock.commandCalls(DeleteItemCommand)).toHaveLength(0);
+  });
+
+  it('DeleteItem が失敗したら 500', async () => {
+    ddbMock.on(DeleteItemCommand).rejects(new Error('boom'));
+    const res = await handler(deleteOneEvent('alice', 'log-1'));
+    expect(res.statusCode).toBe(500);
   });
 });
