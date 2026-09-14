@@ -10,13 +10,14 @@ import StatCard from "@/components/StatCard";
 import OnboardingCard from "@/components/OnboardingCard";
 import RestModeCard from "@/components/RestModeCard";
 import SupportNudgeCard from "@/components/SupportNudgeCard";
+import UndoNotice from "@/components/UndoNotice";
 import { getEncouragementMessage } from "@/lib/messages";
 import { loadCareState, loadCareStateWithReport, saveCareState } from "@/lib/storage";
 import { useHydratedState } from "@/lib/useHydratedState";
 import { recordDailyEnergy, shouldShowSupportNudge } from "@/lib/support";
 import { SYNC_EVENT_NAME } from "@/lib/sync";
 import { getTodayDate, formatLogWhen } from "@/lib/date";
-import { removeLog, recalcTodayStats } from "@/lib/logs";
+import { removeLog, recalcTodayStats, restoreLog } from "@/lib/logs";
 import type { CareLog, DailyEnergy, EnergyLevel } from "@/lib/types";
 
 interface HomeViewState {
@@ -38,6 +39,10 @@ interface HomeViewState {
   supportNudgeLastShownAtLoad: string;
   supportNudgeDismissed: boolean;
   onboardingShown: boolean;
+  // ×で取り消した直前の記録(元に戻す用)。2026-09-14 /hci-check 候補 #1。
+  lastRemovedLog: CareLog | null;
+  // 取り消し・元に戻すに失敗したときの知らせ。空文字なら出さない。
+  logNotice: string;
 }
 
 // サーバー/クライアント初回描画で使う既定状態。localStorage を読まない。
@@ -59,6 +64,8 @@ const serverHomeViewState: HomeViewState = {
   // 初回描画ではオンボーディングカードを出さない(実データ読み込み後に判定する)。
   // 未読み込みの一瞬にカードを出してからすぐ消すと、逆にちらついて見えるため。
   onboardingShown: true,
+  lastRemovedLog: null,
+  logNotice: "",
 };
 
 function loadHomeViewState(): HomeViewState {
@@ -80,6 +87,8 @@ function loadHomeViewState(): HomeViewState {
     supportNudgeLastShownAtLoad: state.supportNudgeLastShown,
     supportNudgeDismissed: false,
     onboardingShown: state.onboardingShown,
+    lastRemovedLog: null,
+    logNotice: "",
   };
 }
 
@@ -103,6 +112,8 @@ export default function HomePage() {
     supportNudgeLastShownAtLoad,
     supportNudgeDismissed,
     onboardingShown,
+    lastRemovedLog,
+    logNotice,
   } = viewState;
 
   // サインイン時の背景同期(Phase B)でクラウドの記録が復元されたら、
@@ -240,22 +251,16 @@ export default function HomePage() {
     }
   }, [setViewState]);
 
+  // ×で取り消す。**保存できてから画面を変える**(2026-09-14 /hci-check 候補 #1・#5)。
+  // 確認は挟まず、取り消した直後に「元に戻す」を出す(10秒ルール)。
   const handleDeleteLog = useCallback(
     (logId: string) => {
       const state = loadCareState();
+      const removed = state.logs.find((log) => log.id === logId) ?? null;
       const nextLogs = removeLog(state.logs, logId);
       const today = getTodayDate();
       const { todayPoints: nextTodayPoints, completedCount: nextCompletedCount } =
         recalcTodayStats(nextLogs, today);
-      const nextTodayLogs = nextLogs.filter((log) => log.date === today);
-
-      setViewState((current) => ({
-        ...current,
-        todayLogs: nextTodayLogs,
-        todayPoints: nextTodayPoints,
-        completedCount: nextCompletedCount,
-        latestTaskTitle: nextTodayLogs.at(-1)?.title ?? "",
-      }));
 
       const ok = saveCareState({
         ...state,
@@ -266,11 +271,59 @@ export default function HomePage() {
         },
       });
       if (!ok) {
-        setViewState((current) => ({ ...current, saveFailed: true }));
+        setViewState((current) => ({
+          ...current,
+          logNotice: "取り消しできませんでした。記録はそのまま残っています。",
+        }));
+        return;
       }
+
+      const nextTodayLogs = nextLogs.filter((log) => log.date === today);
+      setViewState((current) => ({
+        ...current,
+        todayLogs: nextTodayLogs,
+        todayPoints: nextTodayPoints,
+        completedCount: nextCompletedCount,
+        latestTaskTitle: nextTodayLogs.at(-1)?.title ?? "",
+        lastRemovedLog: removed,
+        logNotice: "",
+      }));
     },
     [setViewState],
   );
+
+  const handleUndoRemoveLog = useCallback(() => {
+    if (!lastRemovedLog) {
+      return;
+    }
+    const state = loadCareState();
+    const nextLogs = restoreLog(state.logs, lastRemovedLog);
+    const today = getTodayDate();
+    const { todayPoints: nextTodayPoints, completedCount: nextCompletedCount } =
+      recalcTodayStats(nextLogs, today);
+    const ok = saveCareState({
+      ...state,
+      logs: nextLogs,
+      user: { ...state.user, todayPoints: nextTodayPoints },
+    });
+    if (!ok) {
+      setViewState((current) => ({
+        ...current,
+        logNotice: "元に戻せませんでした。端末の空き容量をご確認のうえ、もう一度お試しください。",
+      }));
+      return;
+    }
+    const nextTodayLogs = nextLogs.filter((log) => log.date === today);
+    setViewState((current) => ({
+      ...current,
+      todayLogs: nextTodayLogs,
+      todayPoints: nextTodayPoints,
+      completedCount: nextCompletedCount,
+      latestTaskTitle: nextTodayLogs.at(-1)?.title ?? "",
+      lastRemovedLog: null,
+      logNotice: "",
+    }));
+  }, [lastRemovedLog, setViewState]);
 
   if (restMode) {
     return (
@@ -341,6 +394,26 @@ export default function HomePage() {
         </section>
 
         <EncouragementCard title="今日のひとこと" body={message} />
+
+        {logNotice && (
+          <section aria-live="polite" className="rounded-[28px] border border-stone-200 bg-stone-50/80 p-4 shadow-sm">
+            <p className="text-sm leading-6 text-stone-600">{logNotice}</p>
+            <button
+              type="button"
+              onClick={() => setViewState((current) => ({ ...current, logNotice: "" }))}
+              className="mt-3 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+            >
+              わかりました
+            </button>
+          </section>
+        )}
+
+        {lastRemovedLog && (
+          <UndoNotice
+            message={`「${lastRemovedLog.title}」の記録を取り消しました。`}
+            onUndo={handleUndoRemoveLog}
+          />
+        )}
 
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">

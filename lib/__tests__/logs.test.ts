@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { removeLog, recalcTodayStats } from "@/lib/logs";
+import { removeLog, recalcTodayStats, restoreLog } from "@/lib/logs";
 import type { CareLog } from "@/lib/types";
 
 // テスト用のログ生成ヘルパー
@@ -87,5 +87,35 @@ describe("recalcTodayStats", () => {
     const result = recalcTodayStats(logs, "2024-03-15");
     expect(result.todayPoints).toBe(0);
     expect(result.completedCount).toBe(0);
+  });
+});
+
+describe("restoreLog", () => {
+  // 取り消した記録を「元に戻す」ための純関数(2026-09-14 /hci-check 候補 #1)。
+  it("取り消した記録を、記録した時刻の順番の位置に戻す", () => {
+    const a = makeLog({ id: "a", completedAt: "2024-03-15T08:00:00" });
+    const b = makeLog({ id: "b", completedAt: "2024-03-15T09:00:00" });
+    const c = makeLog({ id: "c", completedAt: "2024-03-15T10:00:00" });
+    const result = restoreLog([a, c], b);
+    expect(result.map((l) => l.id)).toEqual(["a", "b", "c"]);
+  });
+
+  it("すでに同じ id がある場合は二重に足さない(元に戻すの連打で増えない)", () => {
+    const a = makeLog({ id: "a" });
+    const result = restoreLog([a], a);
+    expect(result.map((l) => l.id)).toEqual(["a"]);
+  });
+
+  it("空の配列にも戻せる", () => {
+    const a = makeLog({ id: "a" });
+    expect(restoreLog([], a).map((l) => l.id)).toEqual(["a"]);
+  });
+
+  it("元の配列を変更しない(immutable)", () => {
+    const a = makeLog({ id: "a", completedAt: "2024-03-15T08:00:00" });
+    const b = makeLog({ id: "b", completedAt: "2024-03-15T09:00:00" });
+    const logs = [a];
+    restoreLog(logs, b);
+    expect(logs.map((l) => l.id)).toEqual(["a"]);
   });
 });
