@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { removeLog, recalcTodayStats, restoreLog } from "@/lib/logs";
+import { removeLog, recalcTodayStats, recentDuplicateCount, restoreLog } from "@/lib/logs";
 import type { CareLog } from "@/lib/types";
 
 // テスト用のログ生成ヘルパー
@@ -117,5 +117,42 @@ describe("restoreLog", () => {
     const logs = [a];
     restoreLog(logs, b);
     expect(logs.map((l) => l.id)).toEqual(["a"]);
+  });
+});
+
+// 2026-09-14 /hci-check 候補 #6: 手の震えなどで、同じケアを続けて2回押してしまう。
+// 500ms の連打ガードでは防げないので、確認カードで「少し前にも同じ記録がある」と知らせる。
+describe("recentDuplicateCount", () => {
+  const base = {
+    taskId: "medicine",
+    title: "薬を渡した",
+    points: 5,
+    date: "2026-09-14",
+    energyLevel: "normal" as const,
+  };
+  const at = (id: string, completedAt: string, extra: Partial<typeof base> = {}) => ({ ...base, id, completedAt, ...extra });
+
+  it("5分以内の同じケアの記録を数える(自分自身は数えない)", () => {
+    const target = at("b", "2026-09-14T10:04:00.000Z");
+    const logs = [at("a", "2026-09-14T10:00:30.000Z"), target];
+    expect(recentDuplicateCount(logs, target)).toBe(1);
+  });
+
+  it("5分より前の記録は数えない(時間をおいた服薬などは重複ではない)", () => {
+    const target = at("b", "2026-09-14T10:06:00.000Z");
+    const logs = [at("a", "2026-09-14T10:00:00.000Z"), target];
+    expect(recentDuplicateCount(logs, target)).toBe(0);
+  });
+
+  it("別のケアは数えない", () => {
+    const target = at("b", "2026-09-14T10:01:00.000Z");
+    const logs = [at("a", "2026-09-14T10:00:30.000Z", { taskId: "meal" }), target];
+    expect(recentDuplicateCount(logs, target)).toBe(0);
+  });
+
+  it("時刻が読めない記録は数えない(例外を出さない)", () => {
+    const target = at("b", "2026-09-14T10:01:00.000Z");
+    const logs = [at("a", "not-a-date"), target];
+    expect(recentDuplicateCount(logs, target)).toBe(0);
   });
 });

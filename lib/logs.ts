@@ -32,6 +32,30 @@ export function restoreLog(logs: CareLog[], log: CareLog): CareLog[] {
   return next;
 }
 
+// 同じケアの記録が「重なって押された」とみなす間隔。時間をおいた服薬などは重複にしない。
+const DUPLICATE_WINDOW_MS = 5 * 60 * 1000;
+
+/**
+ * 指定の記録と同じケアが、前後5分以内に何件あるかを返す純関数(自分自身は数えない)。
+ *
+ * 2026-09-14 /hci-check 候補 #6: 手の震えなどで0.5秒以上あけて2回触れると、
+ * 連打ガードを越えて気づかないまま重複していた。確認カードで知らせるために使う。
+ * 時刻が読めない記録は数えない。
+ */
+export function recentDuplicateCount(logs: CareLog[], log: CareLog): number {
+  const at = Date.parse(log.completedAt);
+  if (Number.isNaN(at)) {
+    return 0;
+  }
+  return logs.filter((other) => {
+    if (other.id === log.id || other.taskId !== log.taskId) {
+      return false;
+    }
+    const otherAt = Date.parse(other.completedAt);
+    return !Number.isNaN(otherAt) && Math.abs(at - otherAt) <= DUPLICATE_WINDOW_MS;
+  }).length;
+}
+
 /**
  * 今日の記録のポイント合計と件数を再計算する純関数。
  *

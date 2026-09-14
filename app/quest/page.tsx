@@ -10,11 +10,11 @@ import UndoNotice from "@/components/UndoNotice";
 import { careTasks } from "@/lib/tasks";
 import { getEncouragementMessage } from "@/lib/messages";
 import { loadCareState, saveCareState } from "@/lib/storage";
-import { removeLog, recalcTodayStats } from "@/lib/logs";
+import { removeLog, recalcTodayStats, recentDuplicateCount, restoreLog } from "@/lib/logs";
 import { useHydratedState } from "@/lib/useHydratedState";
 import { formatLogWhen, getTodayDate } from "@/lib/date";
 import { backupCareLogs, deleteCloudEntry } from "@/lib/api";
-import { flushPendingCloudDeletes, markDeletedForCloud } from "@/lib/cloudDeletes";
+import { flushPendingCloudDeletes, markDeletedForCloud, unmarkDeletedForCloud } from "@/lib/cloudDeletes";
 import type { CareLog, CareTask, EnergyLevel } from "@/lib/types";
 
 const CUSTOM_TASK_POINTS = 10;
@@ -31,6 +31,8 @@ interface QuestViewState {
   customTasks: CareTask[];
   // この画面で保存に成功した直前の記録。確認と取り消しだけに使う。
   lastRecordedLog: CareLog | null;
+  // 「取り消す」で消した直前の記録(元に戻す用。候補 #7)。
+  undoneRecord: CareLog | null;
   // 保存失敗の通知を表示するかどうか(記録以外の操作用)。
   saveFailed: boolean;
   // 保存できなかった記録のタイトル。成功したように見せず、確認カードの位置で知らせる。
@@ -47,6 +49,7 @@ const serverQuestViewState: QuestViewState = {
   restMode: false,
   customTasks: [],
   lastRecordedLog: null,
+  undoneRecord: null,
   saveFailed: false,
   recordSaveFailedTitle: null,
   removedCustomTask: null,
@@ -64,6 +67,7 @@ function loadQuestViewState(): QuestViewState {
       .reduce((sum, log) => sum + log.points, 0),
     customTasks: state.customTasks ?? [],
     lastRecordedLog: null,
+    undoneRecord: null,
     saveFailed: false,
     recordSaveFailedTitle: null,
     removedCustomTask: null,
@@ -81,9 +85,14 @@ export default function QuestPage() {
   // 同一タスクの連打ガード: 最後に記録した { taskId, 時刻 } を保持し、
   // 500ms 以内の同一タスク再タップを無視する(誤操作による重複記録・バースト送信の防止)。
   const lastTapRef = useRef<{ taskId: string; at: number } | null>(null);
-  const { logs, energyLevel, todayPoints, restMode, customTasks, lastRecordedLog, recordSaveFailedTitle, removedCustomTask } = viewState;
+  const { logs, energyLevel, todayPoints, restMode, customTasks, lastRecordedLog, undoneRecord, recordSaveFailedTitle, removedCustomTask } = viewState;
 
   const completedCount = useMemo(() => logs.filter((log) => log.date === getTodayDate()).length, [logs]);
+  // 直前の記録と同じケアが少し前にもあるか(候補 #6)。重なって押したときに気づけるようにする。
+  const duplicateCount = useMemo(
+    () => (lastRecordedLog ? recentDuplicateCount(logs, lastRecordedLog) : 0),
+    [logs, lastRecordedLog],
+  );
 
   const [reading, setReading] = useState<Reading | null>(null);
 
@@ -211,6 +220,7 @@ export default function QuestPage() {
       logs: nextLogs,
       todayPoints: nextPoints,
       lastRecordedLog: nextLog,
+      undoneRecord: null,
       recordSaveFailedTitle: null,
     }));
     setMessage(getEncouragementMessage(energyLevel, nextPoints, nextLogs.filter((log) => log.date === today).length, task.title));
@@ -254,10 +264,41 @@ export default function QuestPage() {
       logs: nextLogs,
       todayPoints: nextPoints,
       lastRecordedLog: null,
+      undoneRecord: lastRecordedLog,
     }));
     setMessage("記録を取り消しました。今日のことは、必要なときにまた残せます。");
     // クラウドに控えていた分も消す(候補 #3)。消すのは scheduleBackup の中で順に行う。
     markDeletedForCloud(lastRecordedLog.id);
+    scheduleBackup();
+  };
+
+  // 取り消した直後に「元に戻す」(候補 #7)。記録し直すと時刻が今になってしまうため、元の記録をそのまま戻す。
+  const handleRestoreUndoneRecord = () => {
+    if (!undoneRecord) {
+      return;
+    }
+    const state = loadCareState();
+    const nextLogs = restoreLog(state.logs, undoneRecord);
+    const { todayPoints: nextPoints } = recalcTodayStats(nextLogs, getTodayDate());
+    const saveOk = saveCareState({
+      ...state,
+      logs: nextLogs,
+      user: { ...state.user, todayPoints: nextPoints },
+    });
+    if (!saveOk) {
+      setViewState((current) => ({ ...current, saveFailed: true }));
+      return;
+    }
+    setViewState((current) => ({
+      ...current,
+      logs: nextLogs,
+      todayPoints: nextPoints,
+      lastRecordedLog: undoneRecord,
+      undoneRecord: null,
+    }));
+    setMessage("記録を元に戻しました。");
+    // 戻した記録はクラウドから消しに行かず、送り直す。
+    unmarkDeletedForCloud(undoneRecord.id);
     scheduleBackup();
   };
 
@@ -382,6 +423,11 @@ export default function QuestPage() {
             <p className="mt-1 text-sm text-stone-600">
               {formatLogWhen(lastRecordedLog.completedAt, lastRecordedLog.date)}に、この端末へ保存しました。
             </p>
+            {duplicateCount > 0 && (
+              <p className="mt-2 text-sm leading-6 text-stone-700">
+                少し前にも同じ記録が{duplicateCount}件あります。重なって押していたら「取り消す」で1件消せます。
+              </p>
+            )}
             <button
               type="button"
               onClick={handleUndoLastRecord}
@@ -391,6 +437,13 @@ export default function QuestPage() {
               取り消す
             </button>
           </section>
+        )}
+
+        {undoneRecord && (
+          <UndoNotice
+            message={`「${undoneRecord.title}」の記録を取り消しました。`}
+            onUndo={handleRestoreUndoneRecord}
+          />
         )}
 
         {reading && <TaskReadingCard reading={reading} onDismiss={() => setReading(null)} />}
