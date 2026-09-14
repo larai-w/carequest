@@ -77,13 +77,29 @@ export function backupStatusMessage(
   result: BackupResult,
   mode: "manual" | "auto",
   // resumedAuto: 手動のバックアップで、止めていた自動の控えを再開した(「直した後」#5)。黙って再開しない。
-  options: { resumedAuto?: boolean } = {},
+  // pendingCloudDeletes: 取り消したのにクラウドから消せず、控えに残っている件数(「直した後」#7)。
+  options: { resumedAuto?: boolean; pendingCloudDeletes?: number } = {},
 ): string {
-  const base = backupStatusBase(result, mode);
+  let message = backupStatusBase(result, mode);
   if (!result.skipped && options.resumedAuto) {
-    return `${base}自動でクラウドへ控えるのも再開しました。`;
+    message = `${message}自動でクラウドへ控えるのも再開しました。`;
   }
-  return base;
+  if (!result.skipped && message && (options.pendingCloudDeletes ?? 0) > 0) {
+    message = `${message}取り消した記録は、次にクラウドとやりとりするときに消します。`;
+  }
+  return message;
+}
+
+/**
+ * 控えが止まった・届かなかった知らせか(2026-09-14 /hci-check「直した後」#8)。
+ * true のときは、ページ下の小さい文字だけでなく、目が向いている確認カードでも言う。
+ * 止めている(paused)ときは確認カードで別に言うので、ここでは false。
+ */
+export function backupNeedsAttention(result: BackupResult): boolean {
+  if (result.skipped) {
+    return result.reason === "unreachable" || result.reason === "other-account";
+  }
+  return result.failed > 0;
 }
 
 function backupStatusBase(result: BackupResult, mode: "manual" | "auto"): string {

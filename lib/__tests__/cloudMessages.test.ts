@@ -78,6 +78,24 @@ describe("AUTO_BACKUP_PAUSED_NOTE(直した後 #4)", () => {
   });
 });
 
+// 2026-09-14 /hci-check「直した後」#8: 控えが止まる・届かなかった知らせは、ページ下の小さい文字だけにしない。
+describe("backupNeedsAttention(直した後 #8)", () => {
+  it("通信できない・別のアカウント・送れなかった分があるときは true", async () => {
+    const { backupNeedsAttention } = await import("@/lib/cloudMessages");
+    expect(backupNeedsAttention({ skipped: true, reason: "unreachable" })).toBe(true);
+    expect(backupNeedsAttention({ skipped: true, reason: "other-account" })).toBe(true);
+    expect(backupNeedsAttention({ skipped: false, total: 2, succeeded: 1, failed: 1 })).toBe(true);
+    expect(backupNeedsAttention({ skipped: false, total: 2, succeeded: 0, failed: 2 })).toBe(true);
+  });
+
+  it("成功・未ログイン・止めている(確認カードで別に言う)ときは false", async () => {
+    const { backupNeedsAttention } = await import("@/lib/cloudMessages");
+    expect(backupNeedsAttention({ skipped: false, total: 2, succeeded: 2, failed: 0 })).toBe(false);
+    expect(backupNeedsAttention({ skipped: true })).toBe(false);
+    expect(backupNeedsAttention({ skipped: true, reason: "paused" })).toBe(false);
+  });
+});
+
 describe("cloudDeletedMessage(#4)", () => {
   it("成功したら、自動で控えるのも止めたことと、再開のしかたを言う", () => {
     const message = cloudDeletedMessage(true);
@@ -159,6 +177,21 @@ describe("backupStatusMessage", () => {
   it("再開していなければ、再開したとは言わない", () => {
     expect(backupStatusMessage({ skipped: false, total: 2, succeeded: 2, failed: 0 }, "manual")).not.toContain("再開");
     expect(backupStatusMessage({ skipped: true }, "manual", { resumedAuto: false })).not.toContain("再開");
+  });
+
+  // 2026-09-14 /hci-check「直した後」#7: 取り消した記録をクラウドから消せなかったのに「完了しました」だけで済ませない。
+  it("取り消した記録をクラウドから消せずに残っていたら、そのことと次に消すことを言う(直した後 #7)", () => {
+    const message = backupStatusMessage({ skipped: false, total: 2, succeeded: 2, failed: 0 }, "auto", {
+      pendingCloudDeletes: 1,
+    });
+    expect(message).toContain("バックアップが完了しました。");
+    expect(message).toContain("取り消した記録は、次にクラウドとやりとりするときに消します");
+  });
+
+  it("消し残しが無ければ、そのことは言わない", () => {
+    expect(
+      backupStatusMessage({ skipped: false, total: 2, succeeded: 2, failed: 0 }, "auto", { pendingCloudDeletes: 0 }),
+    ).toBe("バックアップが完了しました。");
   });
 
   it("手動で0件なら、控える記録が無いと言う", () => {

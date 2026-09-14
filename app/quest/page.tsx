@@ -14,9 +14,19 @@ import { removeLog, recalcTodayStats, recentDuplicateCount, restoreLog } from "@
 import { useHydratedState } from "@/lib/useHydratedState";
 import { formatLogWhen, getTodayDate } from "@/lib/date";
 import { backupCareLogs, deleteCloudEntry } from "@/lib/api";
-import { flushPendingCloudDeletes, markDeletedForCloud, unmarkDeletedForCloud } from "@/lib/cloudDeletes";
+import {
+  flushPendingCloudDeletes,
+  markDeletedForCloud,
+  pendingCloudDeletes,
+  unmarkDeletedForCloud,
+} from "@/lib/cloudDeletes";
 import { hasSessionLost, isAutoBackupPaused } from "@/lib/cloudState";
-import { AUTO_BACKUP_PAUSED_NOTE, backupStatusMessage, SESSION_LOST_MESSAGE } from "@/lib/cloudMessages";
+import {
+  AUTO_BACKUP_PAUSED_NOTE,
+  backupNeedsAttention,
+  backupStatusMessage,
+  SESSION_LOST_MESSAGE,
+} from "@/lib/cloudMessages";
 import type { CareLog, CareTask, EnergyLevel } from "@/lib/types";
 
 const CUSTOM_TASK_POINTS = 10;
@@ -117,6 +127,8 @@ export default function QuestPage() {
   };
 
   const [syncStatus, setSyncStatus] = useState("");
+  // 控えが止まった・届かなかった知らせか。true なら確認カードの中で言う(2026-09-14 /hci-check「直した後」#8)。
+  const [syncNeedsAttention, setSyncNeedsAttention] = useState(false);
   const backupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backupChainRef = useRef<Promise<void>>(Promise.resolve());
 
@@ -141,11 +153,15 @@ export default function QuestPage() {
         if (result.skipped && !result.reason && hasSessionLost()) {
           // ログインが切れて止まったことを黙らない(#6)。
           setSyncStatus(SESSION_LOST_MESSAGE);
+          setSyncNeedsAttention(true);
         } else {
-          setSyncStatus(backupStatusMessage(result, "auto"));
+          // 取り消した記録をクラウドから消せずに残っていたら、「完了しました」だけで済ませない(「直した後」#7)。
+          setSyncStatus(backupStatusMessage(result, "auto", { pendingCloudDeletes: pendingCloudDeletes().length }));
+          setSyncNeedsAttention(backupNeedsAttention(result));
         }
       } catch {
         setSyncStatus("同期できませんでした。記録はこの端末にちゃんと残っています。");
+        setSyncNeedsAttention(true);
       }
     }
   }, []);
@@ -435,6 +451,9 @@ export default function QuestPage() {
             {autoBackupPaused && (
               <p className="mt-2 text-sm leading-6 text-stone-700">{AUTO_BACKUP_PAUSED_NOTE}</p>
             )}
+            {syncNeedsAttention && syncStatus && (
+              <p className="mt-2 text-sm leading-6 text-stone-700">{syncStatus}</p>
+            )}
             <button
               type="button"
               onClick={handleUndoLastRecord}
@@ -530,7 +549,10 @@ export default function QuestPage() {
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h2 className="text-lg font-semibold text-stone-800">今日の記録</h2>
           <p className="mt-1 text-sm text-stone-600">{completedCount}件の介護を記録しました。</p>
-          {syncStatus ? <p className="mt-2 text-sm text-stone-500">{syncStatus}</p> : null}
+          {/* 確認カードで言った知らせは、ここで繰り返さない(「直した後」#8)。 */}
+          {syncStatus && !(syncNeedsAttention && lastRecordedLog) ? (
+            <p className="mt-2 text-sm text-stone-500">{syncStatus}</p>
+          ) : null}
         </section>
 
         {saveFailed && (
