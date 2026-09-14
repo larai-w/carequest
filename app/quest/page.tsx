@@ -15,8 +15,8 @@ import { useHydratedState } from "@/lib/useHydratedState";
 import { formatLogWhen, getTodayDate } from "@/lib/date";
 import { backupCareLogs, deleteCloudEntry } from "@/lib/api";
 import { flushPendingCloudDeletes, markDeletedForCloud, unmarkDeletedForCloud } from "@/lib/cloudDeletes";
-import { hasSessionLost } from "@/lib/cloudState";
-import { backupStatusMessage, SESSION_LOST_MESSAGE } from "@/lib/cloudMessages";
+import { hasSessionLost, isAutoBackupPaused } from "@/lib/cloudState";
+import { AUTO_BACKUP_PAUSED_NOTE, backupStatusMessage, SESSION_LOST_MESSAGE } from "@/lib/cloudMessages";
 import type { CareLog, CareTask, EnergyLevel } from "@/lib/types";
 
 const CUSTOM_TASK_POINTS = 10;
@@ -97,6 +97,8 @@ export default function QuestPage() {
   );
 
   const [reading, setReading] = useState<Reading | null>(null);
+  // 自動の控えを止めているか。記録したとき・元に戻したときに読み直す(2026-09-14 /hci-check「直した後」#4)。
+  const [autoBackupPaused, setAutoBackupPaused] = useState(false);
 
   const handleRestModeToggle = () => {
     const nextRestMode = !restMode;
@@ -224,6 +226,7 @@ export default function QuestPage() {
       recordSaveFailedTitle: null,
     }));
     setMessage(getEncouragementMessage(energyLevel, nextPoints, nextLogs.filter((log) => log.date === today).length, task.title));
+    setAutoBackupPaused(isAutoBackupPaused());
 
     // 記録は上で確定済み。バックアップはデバウンスして背景で行う(10秒ルール)。
     scheduleBackup();
@@ -297,6 +300,7 @@ export default function QuestPage() {
       undoneRecord: null,
     }));
     setMessage("記録を元に戻しました。");
+    setAutoBackupPaused(isAutoBackupPaused());
     // 戻した記録はクラウドから消しに行かず、送り直す。
     unmarkDeletedForCloud(undoneRecord.id);
     scheduleBackup();
@@ -427,6 +431,9 @@ export default function QuestPage() {
               <p className="mt-2 text-sm leading-6 text-stone-700">
                 少し前にも同じ記録が{duplicateCount}件あります。重なって押していたら「取り消す」で1件消せます。
               </p>
+            )}
+            {autoBackupPaused && (
+              <p className="mt-2 text-sm leading-6 text-stone-700">{AUTO_BACKUP_PAUSED_NOTE}</p>
             )}
             <button
               type="button"

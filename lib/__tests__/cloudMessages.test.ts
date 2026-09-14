@@ -68,6 +68,16 @@ describe("signInSyncMessage と通信できないとき", () => {
   });
 });
 
+// 2026-09-14 /hci-check「直した後」#4: 止めた状態を、記録するたびに目に入る場所で言う。
+describe("AUTO_BACKUP_PAUSED_NOTE(直した後 #4)", () => {
+  it("止めていることと、再開する場所を言う", async () => {
+    const { AUTO_BACKUP_PAUSED_NOTE } = await import("@/lib/cloudMessages");
+    expect(AUTO_BACKUP_PAUSED_NOTE).toContain("自動でクラウドへ控えるのは止めています");
+    expect(AUTO_BACKUP_PAUSED_NOTE).toContain("ふりかえり");
+    expect(AUTO_BACKUP_PAUSED_NOTE).toContain("クラウドにバックアップ");
+  });
+});
+
 describe("cloudDeletedMessage(#4)", () => {
   it("成功したら、自動で控えるのも止めたことと、再開のしかたを言う", () => {
     const message = cloudDeletedMessage(true);
@@ -137,6 +147,18 @@ describe("backupStatusMessage", () => {
       expect(message).not.toContain("ログインすると");
       expect(message).not.toContain("完了");
     }
+  });
+
+  // 2026-09-14 /hci-check「直した後」#5: 手動のバックアップで、止めていた自動の控えを黙って再開しない。
+  it("手動で止めていた自動の控えを再開したら、そのことを言う(直した後 #5)", () => {
+    const message = backupStatusMessage({ skipped: false, total: 2, succeeded: 2, failed: 0 }, "manual", { resumedAuto: true });
+    expect(message).toContain("バックアップが完了しました。");
+    expect(message).toContain("自動でクラウドへ控えるのも再開しました");
+  });
+
+  it("再開していなければ、再開したとは言わない", () => {
+    expect(backupStatusMessage({ skipped: false, total: 2, succeeded: 2, failed: 0 }, "manual")).not.toContain("再開");
+    expect(backupStatusMessage({ skipped: true }, "manual", { resumedAuto: false })).not.toContain("再開");
   });
 
   it("手動で0件なら、控える記録が無いと言う", () => {

@@ -10,7 +10,7 @@ import CloudBackupCard from "@/components/CloudBackupCard";
 import FeedbackWidget from "@/components/FeedbackWidget";
 import { loadCareState, saveCareState, resetCareState } from "@/lib/storage";
 import { backupCareLogs, checkCurrentDeviceOwner, checkSignIn, deleteCloudEntry, fetchCareEntries } from "@/lib/api";
-import { clearCloudState, resumeAutoBackup } from "@/lib/cloudState";
+import { clearCloudState, isAutoBackupPaused, resumeAutoBackup } from "@/lib/cloudState";
 import { backupStatusMessage } from "@/lib/cloudMessages";
 import {
   flushPendingCloudDeletes,
@@ -155,12 +155,18 @@ export default function ReflectionPage() {
     setCloudBusy(true);
     setCloudMessage("クラウドにバックアップしています…");
     try {
-      // 本人が押したので、止めていた自動バックアップも再開する(2026-09-14 /hci-check クラウド控え #4)。
-      resumeAutoBackup();
+      const wasPaused = isAutoBackupPaused();
       const result = await backupCareLogs(loadCareState().logs);
+      // 本人が押して実際に送れたら、止めていた自動バックアップも再開する(2026-09-14 /hci-check クラウド控え #4)。
+      // 未ログイン・通信できないときは再開しない。再開したら黙らずにそう言う(「直した後」#5)。
+      let resumedAuto = false;
+      if (!result.skipped && wasPaused) {
+        resumeAutoBackup();
+        resumedAuto = true;
+      }
       // 取り消した記録がクラウドに残っていれば、ここで消し直す(候補 #3)。
       await flushPendingCloudDeletes(deleteCloudEntry).catch(() => undefined);
-      setCloudMessage(backupStatusMessage(result, "manual"));
+      setCloudMessage(backupStatusMessage(result, "manual", { resumedAuto }));
     } catch {
       setCloudMessage("同期できませんでした。記録はこの端末にちゃんと残っています。");
     } finally {
