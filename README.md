@@ -15,6 +15,8 @@ Records a care session in under 10 seconds with no account required. Data lives 
 
 Care Quest lets family caregivers log daily care activities through a single tap — no typing required. It tracks energy levels, rest-mode days, and a weekly look-back, and surfaces a gentle prompt to a support helpline when low-energy days accumulate. The "Tomoshibi" (Candlelight) widget shows an aggregate count of caregivers who synced records today, without displaying their individual records.
 
+Mistakes are recoverable without confirmation dialogs: right after recording, undoing, or removing a record (or a custom task), an "元に戻す" (restore) button appears. If the same care item is logged twice within a few minutes, the confirmation card says so. A record that could not be saved to the device is never shown as saved.
+
 **Status:** Live — https://veai.jp/carequest/
 
 ### Product metadata
@@ -44,6 +46,22 @@ Logging and looking back at records work without an account. Cloud backup and cr
 require signing in. For a local copy, export JSON from the reflection screen; that file can be
 imported into CareQuest on another device. CSV is for reviewing records in a spreadsheet and is
 not an app-restore format. Check that a cloud backup completed or keep a JSON copy before switching devices.
+
+What cloud backup covers, and how it behaves:
+
+- **Care records only.** Reflection notes, "good things", energy history, and custom tasks stay on
+  the device. Use the JSON export to move everything.
+- **Last backup time is shown** in the account panel and on the reflection screen, instead of
+  assuming the backup succeeded. Messages after sign-in say what actually happened (backed up,
+  failed, or nothing to back up).
+- **Undoing or removing a record also removes its cloud copy.** If the device is offline, the
+  deletion is retried on the next sync, and restores never bring an undone record back.
+- **Deleting cloud records pauses automatic backup**, so the next record does not re-upload
+  everything. Pressing "クラウドにバックアップ" on the reflection screen resumes it.
+- **Shared devices are kept apart.** The device remembers (as a hash, not the account name) which
+  account its records were backed up under. If a different account signs in, CareQuest does not
+  upload records, restore into the device, or remove individual cloud records until the person
+  confirms the device's records are theirs.
 
 Browser storage can be lost when its data is cleared or the device is lost. Keep a backup somewhere
 accessible outside that device. Exported files contain your records; clearing browser data does not
@@ -93,18 +111,16 @@ Data is always written to `localStorage` first. Cognito sign-in enables cloud sy
 ## Testing
 
 ```
-lib/__tests__/   — 16 Vitest unit test files
-                   (api, backup, backup-reminder, contacts, date,
-                    export, goodThings, import, logs, messages,
-                    presence, stats, storage, support, sync)
-e2e/             — 3 Playwright spec files (smoke, features, data-operations)
-                   covering record creation, rest-mode toggle,
-                   JSON export/import, onboarding, data reset,
-                   backup-reminder boundary conditions
-infra/test/      — 1 Vitest CDK assertions file
-                   (Cognito, DynamoDB PITR, API Gateway Cognito auth,
-                    throttling, CloudWatch alarms, Lambda asset packaging,
-                    AWS Budget)
+lib/__tests__/   — Vitest unit tests: storage and import sanitizing, cloud sync
+                   (backup, restore, per-record cloud deletes, device-owner
+                   checks, auto-backup pause), user-facing messages and wording,
+                   stats, date handling
+e2e/             — Playwright specs: record creation, undo/restore flows,
+                   save-failure handling, rest mode, JSON export/import,
+                   onboarding, data reset, backup reminders
+infra/test/      — Vitest: CDK assertions (Cognito, DynamoDB PITR and deletion
+                   protection, API Gateway Cognito auth and throttling,
+                   alarms, budget) and the entries Lambda handler
 ```
 
 Run unit tests: `npm test`  
@@ -163,7 +179,7 @@ docs/          Strategy, design principles, runbook, risk register
 
 ## 日本語
 
-Care Quest は、家族介護者が「今日できたこと」をやさしく記録する Web アプリです。登録不要・広告なし・完全無料。記録はデバイスの localStorage に保存され、任意でクラウドバックアップが可能です。詳細なビジョンや設計原則は [docs/design-principles.md](docs/design-principles.md) を参照してください。
+Care Quest は、家族介護者が「今日できたこと」をやさしく記録する Web アプリです。登録不要・広告なし・完全無料。記録はデバイスの localStorage に保存され、任意でクラウドバックアップが可能です。クラウドに控えるのはケアの記録だけで、メモなどを含めて全部を別の端末へ移すときは JSON で保存します。記録や取り消しは、直後に「元に戻す」で戻せます。詳細なビジョンや設計原則は [docs/design-principles.md](docs/design-principles.md) を参照してください。
 
 ---
 
