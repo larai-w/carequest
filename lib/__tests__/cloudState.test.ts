@@ -131,3 +131,39 @@ describe("ログインが切れた印(#6)", () => {
     await expect(m.checkDeviceOwner("a")).resolves.toBe("ok");
   });
 });
+
+// 2026-09-14 /hci-check「直した後」#2: 記録画面が「ホームの『アカウント』で確かめて」と案内しても、
+// ホームには選ぶ欄が出なかった。見つけたときに印を残し、ホームは印だけ読む(認証 SDK を読まない・T45)。
+describe("別のアカウントの記録がある印(直した後 #2)", () => {
+  it("別のアカウントと分かったら印を付け、持ち主と同じなら外す", async () => {
+    mockLocalStorage();
+    const { checkDeviceOwner, hasOwnerConflict } = await import("@/lib/cloudState");
+    await checkDeviceOwner("alice@example.com");
+    expect(hasOwnerConflict()).toBe(false);
+    await checkDeviceOwner("bob@example.com");
+    expect(hasOwnerConflict()).toBe(true);
+    await checkDeviceOwner("alice@example.com");
+    expect(hasOwnerConflict()).toBe(false);
+  });
+
+  it("本人が持ち主を移したら、印を外す", async () => {
+    mockLocalStorage();
+    const { adoptDeviceOwner, checkDeviceOwner, hasOwnerConflict } = await import("@/lib/cloudState");
+    await checkDeviceOwner("alice@example.com");
+    await checkDeviceOwner("bob@example.com");
+    await adoptDeviceOwner("bob@example.com");
+    expect(hasOwnerConflict()).toBe(false);
+  });
+
+  it("ログアウト・すべての記録を削除したら、印を外す", async () => {
+    mockLocalStorage();
+    const { checkDeviceOwner, clearCloudState, clearOwnerConflict, hasOwnerConflict } = await import("@/lib/cloudState");
+    await checkDeviceOwner("alice@example.com");
+    await checkDeviceOwner("bob@example.com");
+    clearOwnerConflict();
+    expect(hasOwnerConflict()).toBe(false);
+    await checkDeviceOwner("bob@example.com");
+    clearCloudState();
+    expect(hasOwnerConflict()).toBe(false);
+  });
+});

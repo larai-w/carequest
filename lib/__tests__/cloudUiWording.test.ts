@@ -60,7 +60,21 @@ describe("AuthPanel", () => {
   });
 
   it("別のアカウントの記録がある端末で、本人が選べる(#1)", () => {
-    expect(source).toContain("この端末の記録は、このアカウントのものです");
+    expect(source).toContain("この端末の記録を、このアカウントのクラウドへ送る");
+  });
+
+  // 2026-09-14 /hci-check「直した後」#2: ホームを開いたときにも選ぶ欄を出す(印だけ読む)。
+  it("ホームを開いたときに、別のアカウントの印を読んで欄を出す(直した後 #2)", () => {
+    expect(source).toContain("hasOwnerConflict()");
+  });
+
+  // 「直した後」#3: 宣言の形のボタンは、家族が「はい、自分のアカウントです」の意味で押しうる。
+  it("送る側のボタンは起きることを名前にし、ログアウトを先に置く(直した後 #3)", () => {
+    expect(source).not.toContain("この端末の記録は、このアカウントのものです");
+    const logout = source.indexOf("ログアウトする");
+    const adopt = source.indexOf("この端末の記録を、このアカウントのクラウドへ送る");
+    expect(logout).toBeGreaterThan(-1);
+    expect(adopt).toBeGreaterThan(logout);
   });
 });
 
