@@ -180,7 +180,7 @@ export async function checkCurrentDeviceOwner(): Promise<DeviceOwnerStatus> {
   return checkDeviceOwner(userId);
 }
 
-/** 本人が「この端末の記録は、このアカウントのものです」と選んだときだけ呼ぶ。 */
+/** 本人が「この端末の記録を、このアカウントのクラウドへ送る」を選んだときだけ呼ぶ。 */
 export async function adoptDeviceForCurrentUser(): Promise<boolean> {
   const userId = await getCurrentUserId();
   if (userId === "anonymous") {

@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { adoptDeviceForCurrentUser, setSignedInFlag, SIGNED_IN_FLAG_KEY } from "@/lib/api";
-import { getLastCloudBackupAt, hasSessionLost, isAutoBackupPaused } from "@/lib/cloudState";
+import {
+  clearOwnerConflict,
+  getLastCloudBackupAt,
+  hasOwnerConflict,
+  hasSessionLost,
+  isAutoBackupPaused,
+} from "@/lib/cloudState";
 import { cloudDeletedMessage, lastBackupLine, signInSyncMessage } from "@/lib/cloudMessages";
 
 type AuthMode = "signIn" | "signUp" | "reset";
@@ -54,7 +60,7 @@ export default function AuthPanel() {
     }
   };
 
-  // 本人が「この端末の記録は、このアカウントのものです」と選んだとき(#1)。
+  // 本人が「この端末の記録を、このアカウントのクラウドへ送る」を選んだとき(#1)。
   const handleAdoptDevice = async () => {
     setBusy(true);
     setMessage("この端末の記録を、このアカウントで控えられるようにしています…");
@@ -120,6 +126,7 @@ export default function AuthPanel() {
       setCurrentUsername(null);
       setMode("signIn");
       setOwnerConflict(false);
+      clearOwnerConflict();
       // 共有端末では、次にこの端末を使う人にも記録が見える(#9)。
       setMessage(
         "ログアウトしました。この端末の記録は、この端末に残っています。消すときは、ふりかえりの「すべての記録を削除する」から行えます。",
@@ -383,6 +390,9 @@ export default function AuthPanel() {
           setIsSignedIn(true);
           setMessage("前回ログインしていました。「クラウドと同期する」で、クラウドと最新の状態にそろえられます。");
           refreshCloudLine();
+          // 記録画面などで別のアカウントの記録が見つかっていたら、ここで選べるようにする
+          // (2026-09-14 /hci-check「直した後」#2)。認証 SDK は読まず、印だけ見る。
+          setOwnerConflict(hasOwnerConflict());
         } else if (hasSessionLost()) {
           // ログインが切れて、自動バックアップが止まっている(#6)。
           setMessage("ログインが切れていました。もう一度ログインすると、また記録をクラウドに控えます。");
@@ -427,18 +437,25 @@ export default function AuthPanel() {
 
         {ownerConflict && (
           <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50/80 p-3">
+            {/* 宣言の形のボタンは、家族が「はい、自分のアカウントです」の意味で押しうる。
+                起きることを名前にし、安全なログアウトを先に置く(2026-09-14 /hci-check「直した後」#3)。 */}
             <p className="text-sm leading-6 text-stone-700">
-              この端末には、別のアカウントで控えていた記録があります。ほかの人の記録かもしれないときは、ログアウトしてください。
+              この端末には、別のアカウントで控えていた記録があります。家族など、ほかの人の記録かもしれません。混ざらないように、クラウドとのやりとりを止めています。
             </p>
             <p className="mt-1 text-sm leading-6 text-stone-700">
-              この端末の記録があなたのものなら、下のボタンで、このアカウントに控えられるようにできます。
+              ほかの人の記録なら、ログアウトしてください。この端末の記録があなたのものなら、下のボタンで、この端末の記録をすべてこのアカウントのクラウドへ送り、クラウドの記録もこの端末に読み込みます。
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
-              <button type="button" onClick={handleAdoptDevice} disabled={busy} className={subtleButton}>
-                この端末の記録は、このアカウントのものです
-              </button>
               <button type="button" onClick={handleSignOut} disabled={busy} className={subtleButton}>
                 ログアウトする
+              </button>
+              <button
+                type="button"
+                onClick={handleAdoptDevice}
+                disabled={busy}
+                className="min-h-[44px] rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 disabled:opacity-60"
+              >
+                この端末の記録を、このアカウントのクラウドへ送る
               </button>
             </div>
           </div>

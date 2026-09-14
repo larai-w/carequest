@@ -13,6 +13,9 @@ const OWNER_KEY = "carequest-device-owner-v1";
 const PAUSED_KEY = "carequest-cloud-auto-paused-v1";
 const LAST_BACKUP_KEY = "carequest-last-cloud-backup-v1";
 const SESSION_LOST_KEY = "carequest-session-lost-v1";
+// 別のアカウントの記録があると分かった印(2026-09-14 /hci-check「直した後」#2)。
+// ホームは認証 SDK を読まずに、この印だけで選ぶ欄を出す(T45)。
+const OWNER_CONFLICT_KEY = "carequest-owner-conflict-v1";
 // lib/cloudDeletes.ts の控えと同じキー。すべての記録を削除したら一緒に消す。
 const PENDING_DELETES_KEY = "carequest-pending-cloud-deletes-v1";
 
@@ -67,14 +70,30 @@ export async function checkDeviceOwner(userId: string): Promise<DeviceOwnerCheck
   const current = read(OWNER_KEY);
   if (!current) {
     write(OWNER_KEY, mine);
+    remove(OWNER_CONFLICT_KEY);
     return "ok";
   }
-  return current === mine ? "ok" : "other-account";
+  if (current === mine) {
+    remove(OWNER_CONFLICT_KEY);
+    return "ok";
+  }
+  write(OWNER_CONFLICT_KEY, "1");
+  return "other-account";
 }
 
-/** 本人が「この端末の記録はこのアカウントのもの」と選んだときだけ呼ぶ。 */
+/** 本人が「この端末の記録を、このアカウントのクラウドへ送る」と選んだときだけ呼ぶ。 */
 export async function adoptDeviceOwner(userId: string): Promise<void> {
   write(OWNER_KEY, await fingerprint(userId));
+  remove(OWNER_CONFLICT_KEY);
+}
+
+export function hasOwnerConflict(): boolean {
+  return read(OWNER_CONFLICT_KEY) === "1";
+}
+
+/** ログアウトしたときに呼ぶ。次にログインした人で、もう一度確かめる。 */
+export function clearOwnerConflict(): void {
+  remove(OWNER_CONFLICT_KEY);
 }
 
 export function getLastCloudBackupAt(): string | null {
@@ -119,4 +138,5 @@ export function clearCloudState(): void {
   remove(PAUSED_KEY);
   remove(LAST_BACKUP_KEY);
   remove(PENDING_DELETES_KEY);
+  remove(OWNER_CONFLICT_KEY);
 }
