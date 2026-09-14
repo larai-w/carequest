@@ -58,6 +58,16 @@ describe("signInSyncMessage(#2)", () => {
   });
 });
 
+describe("signInSyncMessage と通信できないとき", () => {
+  it("ログインが切れたとは言わず、通信できなかったと言う", () => {
+    const message = signInSyncMessage({ ...base, blocked: "unreachable" });
+    expect(message).toContain("通信");
+    expect(message).toContain("この端末に残っています");
+    expect(message).not.toContain("切れ");
+    expect(message).not.toContain("控えました");
+  });
+});
+
 describe("cloudDeletedMessage(#4)", () => {
   it("成功したら、自動で控えるのも止めたことと、再開のしかたを言う", () => {
     const message = cloudDeletedMessage(true);
@@ -116,6 +126,17 @@ describe("backupStatusMessage", () => {
     expect(backupStatusMessage({ skipped: false, total: 2, succeeded: 2, failed: 0 }, "manual")).toBe("バックアップが完了しました。");
     expect(backupStatusMessage({ skipped: false, total: 2, succeeded: 1, failed: 1 }, "auto")).toContain("一部");
     expect(backupStatusMessage({ skipped: false, total: 2, succeeded: 0, failed: 2 }, "auto")).toContain("できませんでした");
+  });
+
+  // 2026-09-14 /hci-check「直した後」#1: 通信できないことを、未ログインや成功と同じ言い方にしない。
+  it("通信できずログインを確かめられなかったら、自動でも手動でも、そう言う", () => {
+    for (const mode of ["auto", "manual"] as const) {
+      const message = backupStatusMessage({ skipped: true, reason: "unreachable" }, mode);
+      expect(message).toContain("通信");
+      expect(message).toContain("この端末に残っています");
+      expect(message).not.toContain("ログインすると");
+      expect(message).not.toContain("完了");
+    }
   });
 
   it("手動で0件なら、控える記録が無いと言う", () => {

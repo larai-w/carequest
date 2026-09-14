@@ -8,12 +8,19 @@ const OTHER_ACCOUNT =
   "この端末には、別のアカウントで控えていた記録があります。混ざらないように、クラウドとのやりとりを止めました。";
 const PAUSED_SUFFIX = "自動でクラウドへ控えるのは止めています。";
 
+// 通信できず、ログインしているか確かめられなかった(「切れた」とは言わない・「直した後」#1)。
+const UNREACHABLE_AUTO =
+  "通信できず、クラウドへ控えられませんでした。記録はこの端末に残っています。次に記録したときに、もう一度控えます。";
+
 export const SESSION_LOST_MESSAGE =
   "ログインが切れたため、クラウドへ控えられませんでした。記録はこの端末に残っています。ホームでもう一度ログインすると、また控えます。";
 
 export function signInSyncMessage(result: SignInSyncResult): string {
   if (result.blocked === "other-account") {
     return OTHER_ACCOUNT;
+  }
+  if (result.blocked === "unreachable") {
+    return "通信できず、クラウドとやりとりできませんでした。記録はこの端末に残っています。通信できる場所で、もう一度「クラウドと同期する」を押してください。";
   }
   if (result.blocked === "unknown") {
     return "ログインしている人を確かめられなかったため、クラウドとのやりとりを止めました。記録はこの端末に残っています。";
@@ -63,6 +70,11 @@ export function lastBackupLine(lastIso: string | null, paused: boolean): string 
 
 export function backupStatusMessage(result: BackupResult, mode: "manual" | "auto"): string {
   if (result.skipped) {
+    if (result.reason === "unreachable") {
+      return mode === "manual"
+        ? "通信できず、クラウドへ控えられませんでした。記録はこの端末に残っています。通信できる場所で、もう一度お試しください。"
+        : UNREACHABLE_AUTO;
+    }
     if (result.reason === "other-account") {
       return "この端末には、別のアカウントで控えていた記録があります。混ざらないように、クラウドへ控えるのを止めました。ホームの「アカウント」で確かめてください。";
     }

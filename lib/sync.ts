@@ -1,5 +1,5 @@
 import { loadCareState, saveCareState } from "@/lib/storage";
-import { backupCareLogs, checkCurrentDeviceOwner, deleteCloudEntry, fetchCareEntries, isSignedIn } from "@/lib/api";
+import { backupCareLogs, checkCurrentDeviceOwner, checkSignIn, deleteCloudEntry, fetchCareEntries } from "@/lib/api";
 import { mergeRestoredLogs } from "@/lib/backup";
 import { flushPendingCloudDeletes, withoutPendingDeletes } from "@/lib/cloudDeletes";
 
@@ -39,7 +39,8 @@ export interface SignInSyncResult {
   // 自動で控えるのを止めている(クラウドの記録を削除した後など・#4)。
   paused: boolean;
   // クラウドとのやりとりを止めた理由(#1)。null なら止めていない。
-  blocked: null | "other-account" | "unknown";
+  // unreachable: 通信できず、ログインしているか確かめられなかった。
+  blocked: null | "other-account" | "unknown" | "unreachable";
 }
 
 /**
@@ -47,8 +48,13 @@ export interface SignInSyncResult {
  * どの段で失敗してもローカルの記録は無傷。次トリガーで再送される。
  */
 export async function syncOnSignIn(): Promise<SignInSyncResult> {
-  if (!(await isSignedIn())) {
+  const signIn = await checkSignIn();
+  if (signIn === "signed-out") {
     return { skipped: true, restoredCount: 0, backedUp: false, backupTotal: 0, paused: false, blocked: null };
+  }
+  // 通信できないだけなら、ログアウト扱いにせず、そう返す(2026-09-14 /hci-check「直した後」#1)。
+  if (signIn === "unreachable") {
+    return { skipped: false, restoredCount: 0, backedUp: false, backupTotal: 0, paused: false, blocked: "unreachable" };
   }
 
   // 0. 端末の記録の持ち主を確かめる(#1)。別のアカウントの記録がある端末では、

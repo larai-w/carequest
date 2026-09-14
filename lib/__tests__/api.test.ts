@@ -271,23 +271,89 @@ describe("isSignedIn", () => {
     await expect(isSignedIn()).resolves.toBe(false);
   });
 
-  it("フラグはあるが fetchAuthSession が例外を投げた場合は安全側(false)に倒れ、フラグを掃除する", async () => {
-    // ネットワーク障害・セッション切れ・設定なし等を想定
+  // 2026-09-14 /hci-check「直した後」#1: 電波が弱いだけで「ログインが切れた」にしない。
+  // Amplify は通信エラーではトークンを残したまま例外を投げる。ここでフラグを消すと、
+  // 画面は未ログインになり、ログインし直しても「すでにログイン中」で拒否される。
+  it("通信エラーで確かめられなければ false だが、フラグは残し「切れた」印も付けない", async () => {
     const store = mockLocalStorage("1");
-    vi.mocked(fetchAuthSession).mockRejectedValueOnce(new Error("Network error"));
+    vi.mocked(fetchAuthSession).mockRejectedValueOnce(Object.assign(new Error("Network error"), { name: "NetworkError" }));
 
-    const { isSignedIn } = await import("@/lib/api");
-    await expect(isSignedIn()).resolves.toBe(false);
-    expect(store.has(SIGNED_IN_FLAG_KEY)).toBe(false);
+    const api = await import("@/lib/api");
+    const state = await import("@/lib/cloudState");
+    await expect(api.isSignedIn()).resolves.toBe(false);
+    expect(store.get(SIGNED_IN_FLAG_KEY)).toBe("1");
+    expect(state.hasSessionLost()).toBe(false);
   });
 
-  it("セッション切れ(TokenExpiredException 相当)でも安全側に倒れる", async () => {
+  it("通信エラーは checkSignIn で unreachable と返す", async () => {
     mockLocalStorage("1");
-    const expiredError = new Error("TokenExpiredException: Token has expired");
-    vi.mocked(fetchAuthSession).mockRejectedValueOnce(expiredError);
+    vi.mocked(fetchAuthSession).mockRejectedValueOnce(Object.assign(new Error("Network error"), { name: "NetworkError" }));
 
-    const { isSignedIn } = await import("@/lib/api");
-    await expect(isSignedIn()).resolves.toBe(false);
+    const { checkSignIn } = await import("@/lib/api");
+    await expect(checkSignIn()).resolves.toBe("unreachable");
+  });
+
+  it("認証の失敗(トークン取り消しなど)ならフラグを掃除し、「切れた」印を付ける", async () => {
+    const store = mockLocalStorage("1");
+    vi.mocked(fetchAuthSession).mockRejectedValueOnce(Object.assign(new Error("revoked"), { name: "TokenRevokedException" }));
+
+    const api = await import("@/lib/api");
+    const state = await import("@/lib/cloudState");
+    await expect(api.checkSignIn()).resolves.toBe("signed-out");
+    expect(store.has(SIGNED_IN_FLAG_KEY)).toBe(false);
+    expect(state.hasSessionLost()).toBe(true);
+  });
+});
+
+describe("classifyAuthError", () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it("ログインしていない・認証が無効なら signed-out", async () => {
+    const { classifyAuthError } = await import("@/lib/api");
+    for (const name of ["UserUnAuthenticatedException", "NotAuthorizedException", "RefreshTokenReuseException"]) {
+      expect(classifyAuthError(Object.assign(new Error(name), { name }))).toBe("signed-out");
+    }
+  });
+
+  it("すでにログイン中なら already-signed-in", async () => {
+    const { classifyAuthError } = await import("@/lib/api");
+    expect(
+      classifyAuthError(Object.assign(new Error("x"), { name: "UserAlreadyAuthenticatedException" })),
+    ).toBe("already-signed-in");
+  });
+
+  it("通信エラーや名前の無い例外は unreachable(ログアウト扱いにしない)", async () => {
+    const { classifyAuthError } = await import("@/lib/api");
+    expect(classifyAuthError(Object.assign(new Error("x"), { name: "NetworkError" }))).toBe("unreachable");
+    expect(classifyAuthError(new Error("Failed to fetch"))).toBe("unreachable");
+    expect(classifyAuthError("oops")).toBe("unreachable");
+  });
+});
+
+describe("backupCareLogs と通信できないとき", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+  });
+
+  it("ログインを確かめられなければ、未ログインと区別して unreachable を理由に返す", async () => {
+    mockLocalStorage("1");
+    vi.mocked(fetchAuthSession).mockRejectedValueOnce(Object.assign(new Error("Network error"), { name: "NetworkError" }));
+
+    const { backupCareLogs } = await import("@/lib/api");
+    const log = {
+      id: "a",
+      taskId: "medicine",
+      title: "薬を渡した",
+      points: 5,
+      completedAt: "2026-09-14T10:00:00",
+      date: "2026-09-14",
+      energyLevel: "normal" as const,
+    };
+    await expect(backupCareLogs([log], { auto: true })).resolves.toEqual({ skipped: true, reason: "unreachable" });
   });
 });
 
