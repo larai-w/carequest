@@ -2,7 +2,7 @@ name: Synthetic health check
 
 on:
   schedule:
-    # 6 時間ごと (UTC 0:00 / 6:00 / 12:00 / 18:00)
+    # Every 6 hours (UTC 0:00 / 6:00 / 12:00 / 18:00)
     - cron: '0 0,6,12,18 * * *'
   workflow_dispatch:
 
@@ -33,7 +33,7 @@ jobs:
 
       - name: Run smoke:prod
         id: smoke
-        # 失敗しても後続の Issue 起票ステップを実行するため continue-on-error を使う
+        # continue-on-error so the issue-filing step below still runs on failure
         continue-on-error: true
         run: npm run smoke:prod
 
@@ -99,7 +99,7 @@ jobs:
 
             console.log('Issue created.');
 
-      # smoke ジョブ自体を失敗させてワークフロー全体を赤にする
+      # Fail the smoke job itself so the whole workflow goes red
       - name: Fail workflow if smoke failed
         if: steps.smoke.outcome == 'failure'
         run: exit 1
