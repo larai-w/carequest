@@ -1,104 +1,47 @@
-# Care Quest production deploy
+# Care Quest production deployment
 
-Care Quest is published under:
+The app is served at **https://veai.jp/carequest/**. This document describes the checked-in [production workflow](../.github/workflows/deploy-prod.yml); it is not confirmation of live AWS configuration.
 
-```text
-https://veai.jp/carequest/
-```
+## Triggers and release boundary
 
-The production deploy workflow is:
+- A push to `main` triggers deployment, including documentation-only changes.
+- Manual `workflow_dispatch` also deploys.
+- Every six hours, a scheduled run compares `main` with the stored `.deployed-sha` and deploys when they differ.
 
-```text
-development -> CI -> PR/merge to main -> S3 sync -> CloudFront invalidation
-```
+The [CI workflow](../.github/workflows/ci.yml) runs separately. The production workflow does not declare a dependency on completion of all CI jobs. Review the intended commit and required checks before authorizing a merge or deployment.
 
-## GitHub Actions secrets
+## Authentication and configuration
 
-Add these in GitHub:
+GitHub Actions uses OIDC with `id-token: write` to assume an AWS role in the `production` environment. The workflow does **not** use long-lived `AWS_ACCESS_KEY_ID` or `AWS_SECRET_ACCESS_KEY` values.
 
-```text
-Settings -> Secrets and variables -> Actions -> Repository secrets
-```
+Repository/environment configuration names:
 
-Required secrets:
+| Name | Purpose |
+| --- | --- |
+| `AWS_DEPLOY_ROLE_ARN` | Role assumed through GitHub OIDC |
+| `AWS_REGION` | Deployment region |
+| `S3_BUCKET` | Bucket containing the `carequest/` prefix |
+| `CLOUDFRONT_DISTRIBUTION_ID` | Distribution whose `/carequest/*` paths are invalidated |
+| `NEXT_PUBLIC_COGNITO_USER_POOL_ID` | Browser authentication configuration |
+| `NEXT_PUBLIC_COGNITO_CLIENT_ID` | Browser authentication configuration |
+| `NEXT_PUBLIC_API_URL` | Browser API endpoint |
+| `NEXT_PUBLIC_AWS_REGION` | Browser AWS configuration |
 
-```text
-AWS_ACCESS_KEY_ID
-AWS_SECRET_ACCESS_KEY
-AWS_REGION=ap-northeast-1
-S3_BUCKET=veai-jp-toc-web
-CLOUDFRONT_DISTRIBUTION_ID=E32Z6UIZTZD6DE
-```
+The `NEXT_PUBLIC_` values are embedded at build time and visible to browser users even when supplied through GitHub secrets. They must not contain private credentials. Setting these names does not provision AWS resources; infrastructure source is in [`infra/`](../infra/).
 
-Required app config secrets:
+## What the workflow does
 
-```text
-NEXT_PUBLIC_COGNITO_USER_POOL_ID
-NEXT_PUBLIC_COGNITO_CLIENT_ID
-NEXT_PUBLIC_API_URL
-NEXT_PUBLIC_AWS_REGION=ap-northeast-1
-```
+1. Checks out the revision and assumes the OIDC role.
+2. On scheduled runs, reads `carequest/.deployed-sha` from the configured bucket and skips deployment if it matches.
+3. Installs dependencies and builds the Next.js static export with the public app configuration.
+4. Writes the commit SHA into `out/.deployed-sha`.
+5. Syncs static files to `s3://<configured-bucket>/carequest/`, and build assets to its `_next/` prefix, with different cache headers.
+6. Invalidates `/carequest/*` in CloudFront.
 
-## S3 layout
+The app uses `basePath: "/carequest"` and `trailingSlash: true`. Static hosting must preserve that URL layout.
 
-The workflow uploads the static export to:
+## Permissions and shared hosting
 
-```text
-s3://veai-jp-toc-web/carequest/
-```
+The sync uses `--delete`. Scope the deployment role to the intended `carequest/` prefix and the intended CloudFront distribution; this prefix may share a bucket with other applications. Verify the OIDC trust policy, environment restrictions, bucket policy and CloudFront origin configuration in the target account before release. This document intentionally contains configuration names rather than deployment-specific account values.
 
-CloudFront should serve it as:
-
-```text
-https://veai.jp/carequest/
-```
-
-## CloudFront checklist
-
-Distribution:
-
-```text
-E32Z6UIZTZD6DE
-```
-
-Confirm:
-
-- The existing default origin `veai-jp-toc-web` contains the `carequest/` prefix.
-- `/carequest/*` falls through to the default behavior and is served from `veai-jp-toc-web`.
-- The existing bucket policy allows CloudFront OAC to read objects from `veai-jp-toc-web`.
-- CloudFront invalidation includes `/carequest/*`.
-
-## Minimal IAM permissions for deploy key
-
-Scope these permissions to the `veai-jp-toc-web` bucket and the `E32Z6UIZTZD6DE` distribution.
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:ListBucket"
-      ],
-      "Resource": "arn:aws:s3:::veai-jp-toc-web"
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:DeleteObject",
-        "s3:GetObject",
-        "s3:PutObject"
-      ],
-      "Resource": "arn:aws:s3:::veai-jp-toc-web/carequest/*"
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "cloudfront:CreateInvalidation"
-      ],
-      "Resource": "arn:aws:cloudfront::*:distribution/E32Z6UIZTZD6DE"
-    }
-  ]
-}
-```
+Frontend publication and CDK deployment are separate operations. The production workflow described here does not deploy the CDK stack. Synthetic availability checks are defined in [their own workflow](../.github/workflows/synthetic-check.yml).
