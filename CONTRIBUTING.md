@@ -13,12 +13,12 @@ Thank you for contributing. Before opening anything, please read this repository
 ### Run it locally
 
 ```bash
-npm install
-npm run dev        # http://localhost:3000
+npm ci
+npm run dev        # http://localhost:3000/carequest/
 npm test
 ```
 
-Node 20+ recommended. **No AWS credentials are needed for local development** —
+Use Node.js 24, matching CI. **No AWS credentials are needed for local development** —
 cloud backup is opt-in and the app works entirely on `localStorage` without it.
 
 - Start from a small issue: define the expected behavior and one acceptance check.

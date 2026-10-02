@@ -1,8 +1,10 @@
 # Care Quest
 
-**A local-first care-record companion for family caregivers — live at [veai.jp/carequest](https://veai.jp/carequest/).**
+**A local-first care-record companion for family caregivers.**
 
-Records a care session in under 10 seconds with no account required. Data lives in `localStorage`; cloud backup is opt-in via Amazon Cognito.
+[Open the app](https://veai.jp/carequest/) · [日本語](README.ja.md) · [Local development](#local-development) · [Contributing](CONTRIBUTING.md)
+
+Record care activities without an account. Data lives in browser `localStorage`; cloud backup is opt-in via Amazon Cognito. The application UI is in Japanese. This repository provides the TypeScript frontend, AWS CDK infrastructure and automated checks. It does not include a trained ML model or a clinical prediction service.
 
 > **Care Quest is not a medical device.** It records what a family caregiver chooses to
 > log. It does not diagnose, does not decide whether care or medication is needed, and is
@@ -50,7 +52,7 @@ not an app-restore format. Check that a cloud backup completed or keep a JSON co
 What cloud backup covers, and how it behaves:
 
 - **Care records only.** Reflection notes, "good things", energy history, and custom tasks stay on
-  the device. Use the JSON export to move everything.
+  the device. Use the JSON export for the broader app state; device-local reminder flags retain their destination values during import. Account sessions and every browser preference are not a portable backup.
 - **Last backup time is shown** in the account panel and on the reflection screen, instead of
   assuming the backup succeeded. Messages after sign-in say what actually happened (backed up,
   failed, or nothing to back up).
@@ -77,7 +79,7 @@ Browser (PWA / localStorage)
   │
   ├─ Service Worker  (offline support; git-SHA version injected at build)
   │
-  └─ AWS CloudFront  ──  S3 (veai-jp-toc-web/carequest/)
+  └─ AWS CloudFront  ──  S3 (configured bucket / carequest/)
           │
           └─ [optional, sign-in only]
                API Gateway  ──  Lambda  ──  DynamoDB
@@ -108,57 +110,104 @@ Data is always written to `localStorage` first. Cognito sign-in enables cloud sy
 
 ---
 
-## Testing
-
-```
-lib/__tests__/   — Vitest unit tests: storage and import sanitizing, cloud sync
-                   (backup, restore, per-record cloud deletes, device-owner
-                   checks, auto-backup pause), user-facing messages and wording,
-                   stats, date handling
-e2e/             — Playwright specs: record creation, undo/restore flows,
-                   save-failure handling, rest mode, JSON export/import,
-                   onboarding, data reset, backup reminders
-infra/test/      — Vitest: CDK assertions (Cognito, DynamoDB PITR and deletion
-                   protection, API Gateway Cognito auth and throttling,
-                   alarms, budget) and the entries Lambda handler
-```
-
-Run unit tests: `npm test`  
-Run E2E tests: `npm run test:e2e` (requires a running dev server)  
-Run infra tests: `cd infra && npm test`
-
----
-
 ## Local Development
 
-```bash
-npm install
-npm run dev          # http://localhost:3000/carequest
-npm test             # unit tests
-npm run test:e2e     # Playwright E2E
+Use **Node.js 24** (matching CI), npm, and Git. Python 3 is needed for the public-content guard. Start from a fresh checkout without production environment files.
 
-# IaC
-cd infra
-npm install
-npm test             # CDK assertions
-npm run synth        # synthesize CloudFormation template
+```bash
+git clone https://github.com/larai-w/carequest.git
+cd carequest
+npm ci
+npm run dev
 ```
 
----
+Open **http://localhost:3000/carequest/**. The `/carequest` base path is configured in [next.config.ts](next.config.ts). No AWS credentials or account are needed for local recording. Stop the server with `Ctrl+C`.
+
+### Try the local flow
+
+Use invented examples in a separate browser profile:
+
+1. Complete the introductory screen and record a sample care task.
+2. Use the immediate **元に戻す** action to reverse the change.
+3. Open the reflection screen, export JSON and CSV, and compare their contents.
+4. Reload to see the locally retained state. Import JSON in another isolated browser profile to explore restoration.
+
+These steps describe the implemented flow, not a measured usability result. Device storage and downloaded files can contain sensitive data when used with real records.
+
+### Optional cloud configuration
+
+Leave these values unset for the local-only flow. To connect to **your own isolated development resources**, supply them in a Git-ignored `.env.local`:
+
+```dotenv
+NEXT_PUBLIC_COGNITO_USER_POOL_ID=your-development-user-pool-id
+NEXT_PUBLIC_COGNITO_CLIENT_ID=your-development-app-client-id
+NEXT_PUBLIC_API_URL=https://your-development-api.example.invalid
+NEXT_PUBLIC_AWS_REGION=ap-northeast-1
+```
+
+These placeholders do not create a backend. The `NEXT_PUBLIC_` values are embedded in the browser bundle: never use them for AWS keys, client secrets or tokens. See [Amplify initialization](lib/amplify.ts), [API calls](lib/api.ts), and the [CDK stack](infra/lib/carequest-stack.ts). Setting a real API URL enables network-backed features, including optional feedback and aggregate presence; local-first does not mean all interactions are network-free.
+
+### Static output
+
+```bash
+npm run build
+```
+
+The export is written to `out/`; `postbuild` injects a service-worker version. This project uses static export. `npm start` maps to `next start` and is not the serving path for the exported site. Use `npm run dev` for development; a static host must serve the export under `/carequest/` with the corresponding asset paths.
+
+## Testing
+
+The commands below are entry points to the existing checks, not a claim about their latest run:
+
+```bash
+npm run lint
+npm test
+npx playwright install chromium
+npm run test:e2e
+```
+
+[Playwright configuration](playwright.config.ts) starts the development server automatically on port 3000, or reuses one locally. Start from an isolated development checkout; do not reuse a server connected to live care records. Browser installation may download dependencies.
+
+For infrastructure checks (from the repository root):
+
+```bash
+npm --prefix infra ci
+npm --prefix infra test
+npm --prefix infra run build
+npm --prefix infra run synth
+```
+
+Synthesis produces infrastructure templates; it is not a deployment. Do not use deployment or production smoke scripts as ordinary local checks.
+
+| Concern | Review entry point |
+| --- | --- |
+| Storage validation and import | [Storage tests](lib/__tests__/storage.test.ts), [import tests](lib/__tests__/import.test.ts) |
+| Backup and shared-device ownership | [Backup tests](lib/__tests__/backup.test.ts), [cloud state tests](lib/__tests__/cloudState.test.ts) |
+| Retrying cloud deletion | [Cloud deletion tests](lib/__tests__/cloudDeletes.test.ts) |
+| Undo and failed saves | [Browser scenarios](e2e/undo-and-save-failure.spec.ts) |
+| Export and restoration | [Browser backup scenarios](e2e/backup-restore.spec.ts) |
+| Cloud resources and API behavior | [Infrastructure checks](infra/test/) |
+
+[CI](.github/workflows/ci.yml) runs web lint/unit/build checks and infrastructure build/test/synth. Its Playwright job runs on PRs after the web job. These checks do not establish the state of a deployed environment.
+
+## Engineering boundaries
+
+| Decision | Implementation and limit |
+| --- | --- |
+| Local save first | [Storage](lib/storage.ts) reports save failure instead of presenting it as success; clearing browser data can still remove records |
+| Optional backup | Cloud backup stores care logs; JSON export carries the broader app state |
+| Restore by record ID | [Merge logic](lib/backup.ts) preserves existing local records when IDs overlap; this is not a general conflict-resolution engine |
+| Undo across devices | [Pending cloud deletes](lib/cloudDeletes.ts) are retried during sync |
+| Shared-device protection | [Cloud state](lib/cloudState.ts) checks account association before sending/restoring records; the browser itself is not a separately authenticated local vault |
+| Support prompts | [Deterministic rules](lib/support.ts) show support information; they do not infer a diagnosis or predict risk |
 
 ## Deployment
 
-`main` branch push triggers GitHub Actions:
+The [production workflow](.github/workflows/deploy-prod.yml) uses **GitHub OIDC** to assume an AWS role, builds the static site, syncs the configured S3 prefix and invalidates CloudFront. It does not use long-lived AWS access keys. See [deployment details](docs/deploy.md) for configuration names and boundaries.
 
-1. `audit → lint → test → build` (Next.js static export to `out/`)
-2. Service Worker version injected (`postbuild` hook, git SHA + date)
-3. `aws s3 sync out/ s3://veai-jp-toc-web/carequest/`
-4. CloudFront cache invalidation on `/carequest/*`
+**Every push to `main`, including documentation-only changes, can trigger production deployment.** Manual dispatch also deploys, and a scheduled run checks for deployment drift every six hours. CI and deployment are separate workflows; do not assume deployment waits for all CI jobs simply because both exist.
 
-Required GitHub secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET`, `CLOUDFRONT_DISTRIBUTION_ID`, Cognito pool IDs.  
-See [docs/deploy.md](docs/deploy.md) for full setup.
-
-A synthetic health check runs every 6 hours via GitHub Actions.
+Publish documentation on a branch for review. Merging to `main` and changing infrastructure are separate release decisions. A [synthetic availability workflow](.github/workflows/synthetic-check.yml) is also configured; its presence alone does not establish uptime.
 
 ---
 
@@ -172,14 +221,14 @@ e2e/           Playwright specs
 infra/         AWS CDK stack (TypeScript)
 scripts/       Deploy, smoke-check, SW version injection
 public/        PWA icons + service worker
-docs/          Strategy, design principles, runbook, risk register
+docs/          Design principles, technical guides and operational documentation
 ```
 
 ---
 
 ## 日本語
 
-Care Quest は、家族介護者が「今日できたこと」をやさしく記録する Web アプリです。登録不要・広告なし・完全無料。記録はデバイスの localStorage に保存され、任意でクラウドバックアップが可能です。クラウドに控えるのはケアの記録だけで、メモなどを含めて全部を別の端末へ移すときは JSON で保存します。記録や取り消しは、直後に「元に戻す」で戻せます。詳細なビジョンや設計原則は [docs/design-principles.md](docs/design-principles.md) を参照してください。
+使い方・保存範囲・開発手順は [日本語README](README.ja.md) を参照してください。
 
 ---
 
