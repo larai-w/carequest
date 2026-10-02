@@ -88,7 +88,7 @@ export default function AboutPage() {
             </div>
             <div>
               <dt className="font-semibold text-stone-800">使うのをやめたいときは?</dt>
-              <dd className="mt-1 text-stone-600">いつでもふりかえり画面からすべての記録を削除できます。登録した場合は、ホーム画面の「アカウント」から、クラウドの記録やアカウントも削除できます。</dd>
+              <dd className="mt-1 text-stone-600">いつでもふりかえり画面からすべての記録を削除できます。登録した場合は、ホーム画面の「アカウント」から、クラウドの記録やアカウントも削除できます。ログインできない場合は、<Link href="/delete-account" className="font-semibold text-amber-700 underline underline-offset-2">アカウントとデータの削除方法</Link>をご覧ください。</dd>
             </div>
           </dl>
         </section>

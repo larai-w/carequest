@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Layout from "@/components/Layout";
 
 export default function PrivacyPage() {
@@ -19,6 +20,9 @@ export default function PrivacyPage() {
             </li>
             <li>
               アカウント登録をした場合は、メールアドレスと介護の記録を、日本国内にあるサーバーに保存します(Amazon Web Services の東京リージョン。Amazon Cognito / DynamoDB を使用)。
+            </li>
+            <li>
+              「CareQuest へのひとこと」で送信した気分の選択と任意のメッセージは、改善のためサーバーに保存され、運営へ通知されます。ご意見にはアカウントの識別子を付けません。氏名・病名などの個人情報や健康情報は書かないでください。
             </li>
           </ul>
         </section>
@@ -52,6 +56,10 @@ export default function PrivacyPage() {
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h3 className="text-lg font-semibold text-stone-800">データの削除</h3>
           <p className="mt-3 text-sm leading-7 text-stone-700">
+            アプリをインストールしていない場合やログインできない場合も、運営へ削除を依頼できます。
+            <Link href="/delete-account" className="ml-1 font-semibold text-amber-700 underline underline-offset-2">アカウントとデータの削除方法</Link>
+          </p>
+          <p className="mt-3 text-sm leading-7 text-stone-700">
             端末内のデータは、ふりかえり画面のデータ管理セクションにある「すべての記録を削除する」からアプリ内で削除できます。削除後はオンボーディングが再表示される、まっさらな状態に戻ります。
           </p>
           <p className="mt-2 text-sm leading-7 text-stone-700">
@@ -68,7 +76,7 @@ export default function PrivacyPage() {
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h3 className="text-lg font-semibold text-stone-800">このポリシーについて</h3>
           <p className="mt-3 text-sm leading-7 text-stone-700">
-            内容を変更する場合は、このページでお知らせします。最終更新日: 2026年9月14日
+            運営元は veai.jp です。お問い合わせは care_q@veai.jp で受け付けます。内容を変更する場合は、このページでお知らせします。最終更新日: 2026年10月1日
           </p>
         </section>
       </div>
