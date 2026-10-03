@@ -58,6 +58,12 @@ describe('DynamoDB Table', () => {
   // ─────────────────────────────────────────────────────────────────────────
   // 3. DynamoDB – PITR 有効
   // ─────────────────────────────────────────────────────────────────────────
+  it('ご意見のテーブルは expiresAt で自動削除(TTL)が有効', () => {
+    template.hasResourceProperties('AWS::DynamoDB::Table', {
+      TimeToLiveSpecification: { AttributeName: 'expiresAt', Enabled: true },
+    });
+  });
+
   it('PITR (Point-in-Time Recovery) が有効', () => {
     template.hasResourceProperties('AWS::DynamoDB::Table', {
       PointInTimeRecoverySpecification: {

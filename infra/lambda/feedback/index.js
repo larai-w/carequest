@@ -3,6 +3,9 @@
 const { DynamoDBClient, PutItemCommand } = require('@aws-sdk/client-dynamodb');
 const crypto = require('crypto');
 
+// ご意見の保存期間(1年)。変えるときは app/privacy と app/delete-account の文言も直す。
+const FEEDBACK_RETENTION_SECONDS = 365 * 24 * 60 * 60;
+
 const dynamodb = new DynamoDBClient({});
 
 // ─── CORS(entries と同一ポリシー)──────────────────────────────────────────
@@ -103,12 +106,16 @@ exports.handler = async (event) => {
     throw error;
   }
 
-  const createdAt = new Date().toISOString();
+  const now = new Date();
+  const createdAt = now.toISOString();
   const item = {
     pk: { S: 'feedback' },
     sk: { S: `${createdAt}#${crypto.randomUUID()}` },
     mood: { S: feedback.mood },
     createdAt: { S: createdAt },
+    // 1年で自動で消す(DynamoDB の TTL・秒)。ご意見は誰のものか分からない形で保存するので、
+    // 個別には消せない。そのかわり保存期間を決めて、プライバシーの説明と一致させる(2026-10-03)。
+    expiresAt: { N: String(Math.floor(now.getTime() / 1000) + FEEDBACK_RETENTION_SECONDS) },
   };
   if (feedback.note) {
     item.note = { S: feedback.note };
@@ -127,3 +134,4 @@ exports.handler = async (event) => {
 
   return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
 };
+

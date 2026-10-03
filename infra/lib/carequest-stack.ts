@@ -170,6 +170,8 @@ export class CareQuestStack extends cdk.Stack {
       },
       // OPS-04 (PGB 2026-08-12 承認): 誤削除の保護
       deletionProtection: true,
+      // ご意見は1年で自動で消す(Lambda が expiresAt を付ける・2026-10-03)。
+      timeToLiveAttribute: 'expiresAt',
     });
 
     const feedbackHandler = new lambda.Function(this, 'CareQuestFeedbackHandler', {
