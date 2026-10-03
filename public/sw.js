@@ -27,6 +27,8 @@ const PRECACHE_URLS = [
   `${BASE}reflection/`,
   `${BASE}community/`,
   `${BASE}about/`,
+  `${BASE}privacy/`,
+  `${BASE}delete-account/`,
   `${BASE}icon-192.png`,
   `${BASE}icon-512.png`,
   `${BASE}apple-touch-icon.png`,
