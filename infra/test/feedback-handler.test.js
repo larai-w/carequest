@@ -44,6 +44,17 @@ describe('POST /feedback', () => {
     expect(put.Item.userId).toBeUndefined();
   });
 
+  it('1年後に自動で消える期限(expiresAt・秒)を付けて保存する', async () => {
+    const before = Math.floor(Date.now() / 1000);
+    const res = await handler(feedbackEvent({ mood: 'good' }));
+    expect(res.statusCode).toBe(200);
+    const put = ddbMock.commandCalls(PutItemCommand)[0].args[0].input;
+    const expiresAt = Number(put.Item.expiresAt.N);
+    const oneYear = 365 * 24 * 60 * 60;
+    expect(expiresAt).toBeGreaterThanOrEqual(before + oneYear);
+    expect(expiresAt).toBeLessThanOrEqual(Math.floor(Date.now() / 1000) + oneYear);
+  });
+
   it('note 付きで 200、trim されて保存される', async () => {
     const res = await handler(feedbackEvent({ mood: 'hard', note: '  文字が小さい  ' }));
     expect(res.statusCode).toBe(200);
