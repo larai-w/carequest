@@ -116,6 +116,18 @@ export function pauseAutoBackup(): void {
   write(PAUSED_KEY, "1");
 }
 
+/**
+ * 本人が押したバックアップのあと、止めていた自動の控えを再開してよいか。
+ * 1件でも実際に送れたときだけ再開する。持ち主を確かめられない・全件失敗・記録が0件のときに再開すると、
+ * クラウドの削除のあとで、次の記録のたびに消した記録が全部クラウドへ戻ってしまう。
+ */
+export function shouldResumeAutoBackup(
+  result: { skipped: true } | { skipped: false; succeeded: number },
+  wasPaused: boolean,
+): boolean {
+  return wasPaused && !result.skipped && result.succeeded > 0;
+}
+
 export function resumeAutoBackup(): void {
   remove(PAUSED_KEY);
 }

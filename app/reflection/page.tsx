@@ -10,7 +10,7 @@ import CloudBackupCard from "@/components/CloudBackupCard";
 import FeedbackWidget from "@/components/FeedbackWidget";
 import { loadCareState, saveCareState, resetCareState } from "@/lib/storage";
 import { backupCareLogs, checkCurrentDeviceOwner, checkSignIn, deleteCloudEntry, fetchCareEntries } from "@/lib/api";
-import { clearCloudState, isAutoBackupPaused, resumeAutoBackup } from "@/lib/cloudState";
+import { clearCloudState, isAutoBackupPaused, resumeAutoBackup, shouldResumeAutoBackup } from "@/lib/cloudState";
 import { backupStatusMessage } from "@/lib/cloudMessages";
 import {
   flushPendingCloudDeletes,
@@ -160,7 +160,9 @@ export default function ReflectionPage() {
       // 本人が押して実際に送れたら、止めていた自動バックアップも再開する(2026-09-14 /hci-check クラウド控え #4)。
       // 未ログイン・通信できないときは再開しない。再開したら黙らずにそう言う(「直した後」#5)。
       let resumedAuto = false;
-      if (!result.skipped && wasPaused) {
+      // 1件も送れていない（持ち主を確かめられない・全件失敗・記録が0件）ときは再開しない。
+      // 削除のあとに再開すると、次の記録で消した記録がクラウドに全部戻るため(2026-10-03 Qwen レビュー #1)。
+      if (shouldResumeAutoBackup(result, wasPaused)) {
         resumeAutoBackup();
         resumedAuto = true;
       }

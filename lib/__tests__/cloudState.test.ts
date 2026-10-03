@@ -167,3 +167,25 @@ describe("別のアカウントの記録がある印(直した後 #2)", () => {
     expect(hasOwnerConflict()).toBe(false);
   });
 });
+
+describe("shouldResumeAutoBackup（削除のあと、送れていないのに再開しない）", () => {
+  it("止めていて、1件以上送れたときだけ再開する", async () => {
+    const { shouldResumeAutoBackup } = await import("../cloudState");
+    expect(shouldResumeAutoBackup({ skipped: false, succeeded: 3 }, true)).toBe(true);
+  });
+
+  it("1件も送れなかった（持ち主を確かめられない・全件失敗・記録が0件）ときは再開しない", async () => {
+    const { shouldResumeAutoBackup } = await import("../cloudState");
+    expect(shouldResumeAutoBackup({ skipped: false, succeeded: 0 }, true)).toBe(false);
+  });
+
+  it("送らなかった（未ログインなど）ときは再開しない", async () => {
+    const { shouldResumeAutoBackup } = await import("../cloudState");
+    expect(shouldResumeAutoBackup({ skipped: true }, true)).toBe(false);
+  });
+
+  it("もともと止めていなければ、再開の知らせを出さない", async () => {
+    const { shouldResumeAutoBackup } = await import("../cloudState");
+    expect(shouldResumeAutoBackup({ skipped: false, succeeded: 5 }, false)).toBe(false);
+  });
+});
