@@ -232,6 +232,15 @@ describe('AWS Budgets', () => {
 // 8. Lambda – inline ZipFile ではなくアセット (S3Bucket/S3Key) 参照
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Lambda – Code.fromAsset', () => {
+  it('API と週次ダイジェストの Lambda は 256MB に設定される', () => {
+    const functions = template.findResources('AWS::Lambda::Function');
+    for (const name of ['CareQuestApiHandler', 'CareQuestFeedbackDigestHandler']) {
+      const matches = Object.entries(functions).filter(([id]) => id.startsWith(name));
+      expect(matches, `${name} が1件ある`).toHaveLength(1);
+      expect(matches[0][1].Properties?.MemorySize, `${name} のメモリ`).toBe(256);
+    }
+  });
+
   it('Lambda が S3Bucket/S3Key 参照 (fromAsset) を使用している', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
       Code: {
