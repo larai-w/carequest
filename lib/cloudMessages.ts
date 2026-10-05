@@ -84,8 +84,12 @@ export function backupStatusMessage(
   if (!result.skipped && options.resumedAuto) {
     message = `${message}自動でクラウドへ控えるのも再開しました。`;
   }
-  if (!result.skipped && message && (options.pendingCloudDeletes ?? 0) > 0) {
-    message = `${message}取り消した記録は、次にクラウドとやりとりするときに消します。`;
+  if (!result.skipped && (options.pendingCloudDeletes ?? 0) > 0) {
+    // 控える記録が0件（最後の1件を取り消した直後など）だと元の文は空になる。
+    // そのときも消し残しは黙らない(2026-10-03 Qwen レビュー #2)。
+    message = message
+      ? `${message}取り消した記録は、次にクラウドとやりとりするときに消します。`
+      : "取り消した記録は、まだクラウドに残っています。次にクラウドとやりとりするときに消します。";
   }
   return message;
 }

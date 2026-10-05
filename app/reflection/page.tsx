@@ -15,6 +15,7 @@ import { backupStatusMessage } from "@/lib/cloudMessages";
 import {
   flushPendingCloudDeletes,
   markDeletedForCloud,
+  pendingCloudDeletes,
   unmarkDeletedForCloud,
   withoutPendingDeletes,
 } from "@/lib/cloudDeletes";
@@ -168,7 +169,10 @@ export default function ReflectionPage() {
       }
       // 取り消した記録がクラウドに残っていれば、ここで消し直す(候補 #3)。
       await flushPendingCloudDeletes(deleteCloudEntry).catch(() => undefined);
-      setCloudMessage(backupStatusMessage(result, "manual", { resumedAuto }));
+      // 消し直しても残っていれば、手動のバックアップでも黙らない(2026-10-03 Qwen レビュー #3)。
+      setCloudMessage(
+        backupStatusMessage(result, "manual", { resumedAuto, pendingCloudDeletes: pendingCloudDeletes().length }),
+      );
     } catch {
       setCloudMessage("同期できませんでした。記録はこの端末にちゃんと残っています。");
     } finally {
