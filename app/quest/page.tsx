@@ -194,6 +194,9 @@ export default function QuestPage() {
       return;
     }
     lastTapRef.current = { taskId: task.id, at: now };
+    // 前の記録の控えの知らせを、新しい記録のカードに持ち越さない(2026-10-03 Qwen レビュー #5)。
+    setSyncStatus("");
+    setSyncNeedsAttention(false);
 
     const today = getTodayDate();
     const nextLog: CareLog = {
@@ -296,6 +299,8 @@ export default function QuestPage() {
     if (!undoneRecord) {
       return;
     }
+    setSyncStatus("");
+    setSyncNeedsAttention(false);
     const state = loadCareState();
     const nextLogs = restoreLog(state.logs, undoneRecord);
     const { todayPoints: nextPoints } = recalcTodayStats(nextLogs, getTodayDate());

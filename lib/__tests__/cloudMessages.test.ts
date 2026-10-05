@@ -198,3 +198,22 @@ describe("backupStatusMessage", () => {
     expect(backupStatusMessage({ skipped: false, total: 0, succeeded: 0, failed: 0 }, "manual")).toBe("まだ控えておく記録がありません。");
   });
 });
+
+describe("backupStatusMessage: 控える記録が0件でも消し残しは黙らない（Qwen #2）", () => {
+  it("自動・0件・消し残し1件なら、消し残しを言う", () => {
+    const m = backupStatusMessage({ skipped: false, total: 0, succeeded: 0, failed: 0 }, "auto", {
+      pendingCloudDeletes: 1,
+    });
+    expect(m).toContain("取り消した記録は、まだクラウドに残っています");
+  });
+  it("手動・0件・消し残し1件なら、元の文に続けて言う", () => {
+    const m = backupStatusMessage({ skipped: false, total: 0, succeeded: 0, failed: 0 }, "manual", {
+      pendingCloudDeletes: 1,
+    });
+    expect(m).toContain("まだ控えておく記録がありません。");
+    expect(m).toContain("取り消した記録は、次にクラウドとやりとりするときに消します。");
+  });
+  it("自動・0件・消し残しなしなら、何も言わない（今までどおり）", () => {
+    expect(backupStatusMessage({ skipped: false, total: 0, succeeded: 0, failed: 0 }, "auto", { pendingCloudDeletes: 0 })).toBe("");
+  });
+});
