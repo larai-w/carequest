@@ -42,7 +42,7 @@
 		"en": {
 			"name": "CareQuest",
 			"tagline": "A local-first care-record PWA with opt-in AWS serverless sync",
-			"description": "A local-first PWA for family caregivers. Log a care session in under 10 seconds without an account; cloud backup and cross-device restore are opt-in."
+			"description": "A local-first PWA for family caregivers. Log care activities without an account; cloud backup and cross-device restore are opt-in."
 		},
 		"ja": {
 			"name": "CareQuest",
