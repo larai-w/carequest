@@ -84,7 +84,15 @@ export default function AboutPage() {
             </div>
             <div>
               <dt className="font-semibold text-stone-800">記録が消えないか心配です。</dt>
-              <dd className="mt-1 text-stone-600">端末に保存されるので、ブラウザのデータを消さなければ残ります。心配なときは、ふりかえり画面から JSON / CSV で書き出したり、登録してクラウドに控えることもできます。</dd>
+              <dd className="mt-1 text-stone-600">記録はこの端末に保存されます。端末を替えたりブラウザのデータを消したりする前に、ふりかえり画面の「自分の記録を保存する（JSON）」で控えを作ってください。別の端末では「記録を読み込む」から、そのJSONファイルを選べます。CSVは表計算ソフトで見るための書き出しです。移行先で必要な記録を確認するまでは、元の端末の記録を残してください。</dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-stone-800">クラウドに控えると、すべて移せますか?</dt>
+              <dd className="mt-1 text-stone-600">クラウドに控えるのは、ケアの記録（いつ・何をしたか）だけです。ふりかえりのメモ、よかったこと、自分で足したケアは含まれません。それらも移すときは、ふりかえり画面の「自分の記録を保存する（JSON）」を使い、移行先で内容を確認してください。</dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-stone-800">保存や読み込みがうまくいかないときは?</dt>
+              <dd className="mt-1 text-stone-600">下の「運営元・お問い合わせ」から、端末・ブラウザの種類、起きた日時、行った操作、エラーメッセージを分かる範囲でお知らせください。記録本文、氏名、パスワード、ログイン用コードは添付しないでください。画面を送る場合は個人情報を隠し、元の端末の記録を消さずに残してください。</dd>
             </div>
             <div>
               <dt className="font-semibold text-stone-800">使うのをやめたいときは?</dt>
