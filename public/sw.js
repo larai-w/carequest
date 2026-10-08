@@ -15,6 +15,9 @@
 // activate 時に旧バージョンのキャッシュが削除され、古い HTML を配り続けない。
 const VERSION = "v1";
 const CACHE_NAME = `carequest-${VERSION}`;
+// postbuild injects exported JS/CSS/fonts, including first-load resources fetched
+// before this worker controls the page. Never activate a partially cached build.
+const STATIC_PRECACHE = [];
 
 // basePath 配下の公開パス。SW 内では自動付与されないため明示する。
 const BASE = "/carequest/";
@@ -44,6 +47,7 @@ self.addEventListener("install", (event) => {
       await Promise.allSettled(
         PRECACHE_URLS.map((url) => cache.add(url)),
       );
+      await cache.addAll(STATIC_PRECACHE);
       // 新しい SW を即座に有効化する（古い HTML を配り続けないため）。
       await self.skipWaiting();
     })(),

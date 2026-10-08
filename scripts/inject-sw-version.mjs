@@ -7,8 +7,8 @@
  */
 
 import { execSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync, writeFileSync, readdirSync } from "node:fs";
+import { join, relative, sep } from "node:path";
 
 const cwd = process.cwd();
 const swPath = join(cwd, "out", "sw.js");
@@ -33,7 +33,23 @@ try {
 }
 
 // `const VERSION = "..."` の最初の行だけを置換(コメント内の VERSION は無視)。
-const updated = content.replace(/^(const VERSION = )"[^"]*"/m, `$1"${version}"`);
+const staticRoot = join(cwd, "out", "_next", "static");
+function staticFiles(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const file = join(dir, entry.name);
+    if (entry.isDirectory()) return staticFiles(file);
+    return entry.isFile() && /\.(?:js|css|woff2?|ttf|otf|png|svg|ico)$/.test(entry.name)
+      ? ["/carequest/_next/static/" + relative(staticRoot, file).split(sep).join("/")]
+      : [];
+  });
+}
+const assets = staticFiles(staticRoot).sort();
+if (!assets.length || !/^const STATIC_PRECACHE = \[\];$/m.test(content)) {
+  throw new Error("Static precache injection requires exported assets and the SW marker");
+}
+const updated = content
+  .replace(/^(const VERSION = )"[^"]*"/m, `$1"${version}"`)
+  .replace(/^const STATIC_PRECACHE = \[\];$/m, `const STATIC_PRECACHE = ${JSON.stringify(assets)};`);
 
 if (updated === content) {
   console.warn("inject-sw-version: VERSION 行が out/sw.js に見つかりませんでした。");
