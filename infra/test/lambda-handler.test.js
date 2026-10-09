@@ -6,7 +6,7 @@
  * handler を直接呼び出す。AWSへの実際の通信は一切発生しない。
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mockClient } from 'aws-sdk-client-mock';
 import {
   DynamoDBClient,
@@ -114,6 +114,9 @@ function deleteEvent(username, extra = {}) {
 }
 
 describe('DELETE /entries (US-503)', () => {
+  beforeEach(() => vi.stubEnv('TABLE_NAME', 'synthetic-entries'));
+  afterEach(() => vi.unstubAllEnvs());
+
   it('自分の pk のみを Query して削除する', async () => {
     ddbMock.on(QueryCommand).resolves({
       Items: [
@@ -169,6 +172,65 @@ describe('DELETE /entries (US-503)', () => {
     ddbMock.on(QueryCommand).rejects(new Error('DDB Error'));
     const res = await handler(deleteEvent('e'));
     expect(res.statusCode).toBe(500);
+  });
+
+  it('未処理の削除だけを再試行し、完了後に正しい件数を返す', async () => {
+    const first = { pk: { S: 'alice' }, sk: { S: 'log-1' } };
+    const second = { pk: { S: 'alice' }, sk: { S: 'log-2' } };
+    const remaining = { DeleteRequest: { Key: second } };
+    ddbMock.on(QueryCommand).resolves({ Items: [first, second] });
+    ddbMock.on(BatchWriteItemCommand)
+      .resolvesOnce({ UnprocessedItems: { 'synthetic-entries': [remaining] } })
+      .resolves({ UnprocessedItems: {} });
+
+    const res = await handler(deleteEvent('alice'));
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body)).toEqual({ ok: true, deleted: 2 });
+    const calls = ddbMock.commandCalls(BatchWriteItemCommand);
+    expect(calls).toHaveLength(2);
+    expect(calls[1].args[0].input.RequestItems).toEqual({ 'synthetic-entries': [remaining] });
+  });
+
+  it('未処理が続くと上限で500にし、次のページへ進まない', async () => {
+    const key = { pk: { S: 'alice' }, sk: { S: 'log-1' } };
+    ddbMock.on(QueryCommand).resolves({ Items: [key], LastEvaluatedKey: key });
+    ddbMock.on(BatchWriteItemCommand).resolves({
+      UnprocessedItems: { 'synthetic-entries': [{ DeleteRequest: { Key: key } }] },
+    });
+
+    // The current buggy handler would keep querying this page indefinitely.
+    // A second query throws so the pre-fix test remains bounded and fails on retries.
+    ddbMock.on(QueryCommand)
+      .resolvesOnce({ Items: [key], LastEvaluatedKey: key })
+      .rejects(new Error('Unexpected next page before deletes completed'));
+    const res = await handler(deleteEvent('alice'));
+    expect(res.statusCode).toBe(500);
+    expect(JSON.parse(res.body)).toEqual({ message: 'Error deleting entries' });
+    expect(ddbMock.commandCalls(BatchWriteItemCommand)).toHaveLength(3);
+    expect(ddbMock.commandCalls(QueryCommand)).toHaveLength(1);
+  });
+
+  it('未処理が残ったまま削除成功を返さない', async () => {
+    const key = { pk: { S: 'alice' }, sk: { S: 'log-1' } };
+    ddbMock.on(QueryCommand).resolves({ Items: [key] });
+    ddbMock.on(BatchWriteItemCommand).resolves({
+      UnprocessedItems: { 'synthetic-entries': [{ DeleteRequest: { Key: key } }] },
+    });
+    const res = await handler(deleteEvent('alice'));
+    expect(res.statusCode).toBe(500);
+    expect(JSON.parse(res.body)).not.toHaveProperty('ok', true);
+    expect(JSON.parse(res.body)).not.toHaveProperty('deleted');
+  });
+
+  it('未処理の再試行で例外が出ても成功を返さない', async () => {
+    const key = { pk: { S: 'alice' }, sk: { S: 'log-1' } };
+    ddbMock.on(QueryCommand).resolves({ Items: [key] });
+    ddbMock.on(BatchWriteItemCommand)
+      .resolvesOnce({ UnprocessedItems: { 'synthetic-entries': [{ DeleteRequest: { Key: key } }] } })
+      .rejects(new Error('Synthetic throttling failure'));
+    const res = await handler(deleteEvent('alice'));
+    expect(res.statusCode).toBe(500);
+    expect(ddbMock.commandCalls(BatchWriteItemCommand)).toHaveLength(2);
   });
 });
 
