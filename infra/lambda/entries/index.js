@@ -11,6 +11,24 @@ const crypto = require('crypto');
 
 const dynamodb = new DynamoDBClient({});
 
+// BatchWriteItem は一部の未処理を例外ではなく応答で返す。
+// 完了した削除を再送せず、待機を挟んで最大3回で打ち切る。
+async function deleteBatch(requests) {
+  const tableName = process.env.TABLE_NAME;
+  let pending = requests;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const result = await dynamodb.send(
+      new BatchWriteItemCommand({ RequestItems: { [tableName]: pending } })
+    );
+    pending = result.UnprocessedItems?.[tableName] || [];
+    if (pending.length === 0) return;
+    if (attempt < 2) {
+      await new Promise((resolve) => setTimeout(resolve, 50 * 2 ** attempt));
+    }
+  }
+  throw new Error('Unprocessed deletes remain after retries');
+}
+
 // ─── DynamoDB マーシャリング ────────────────────────────────────────────────
 
 function toAttributeValue(value) {
@@ -350,15 +368,9 @@ exports.handler = async (event) => {
         // BatchWriteItem は1回25件まで。25件ずつ削除する。
         for (let i = 0; i < items.length; i += 25) {
           const batch = items.slice(i, i + 25);
-          await dynamodb.send(
-            new BatchWriteItemCommand({
-              RequestItems: {
-                [process.env.TABLE_NAME]: batch.map((it) => ({
-                  DeleteRequest: { Key: { pk: it.pk, sk: it.sk } },
-                })),
-              },
-            })
-          );
+          await deleteBatch(batch.map((it) => ({
+            DeleteRequest: { Key: { pk: it.pk, sk: it.sk } },
+          })));
           deleted += batch.length;
         }
         lastEvaluatedKey = result.LastEvaluatedKey;
