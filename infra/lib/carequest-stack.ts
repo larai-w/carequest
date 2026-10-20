@@ -287,7 +287,8 @@ export class CareQuestStack extends cdk.Stack {
         namespace: 'AWS/ApiGateway',
         metricName: '5XXError',
         dimensionsMap: {
-          ApiName: 'CareQuest API',
+          // RestApi の名前から取る(直書きすると、API 名を変えたときにアラームだけ古い名前を見続ける)
+          ApiName: api.restApiName,
           Stage: 'dev',
         },
         period: cdk.Duration.minutes(5),
