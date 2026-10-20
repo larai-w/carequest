@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { PRODUCT_NAME } from "@/lib/brand";
 
 export default function GlobalError({
   error,
@@ -59,7 +60,7 @@ export default function GlobalError({
                 marginBottom: "0.5rem",
               }}
             >
-              Care Quest
+              {PRODUCT_NAME}
             </p>
             <h1
               style={{

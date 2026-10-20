@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { PRODUCT_NAME } from "@/lib/brand";
 
 const navItems = [
   { href: "/", label: "ホーム" },
@@ -22,7 +23,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-amber-700">
-                Care Quest
+                {PRODUCT_NAME}
               </p>
               <h1 className="text-lg font-semibold text-stone-800">今日も、少しだけやさしく</h1>
             </div>

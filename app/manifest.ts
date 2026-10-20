@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { PRODUCT_NAME } from "@/lib/brand";
 
 // output: "export" では metadata route に force-static の明示が必要です。
 export const dynamic = "force-static";
@@ -6,8 +7,8 @@ export const dynamic = "force-static";
 // 静的エクスポート + basePath 配下のため、URL は /carequest/ を明示します。
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Care Quest",
-    short_name: "Care Quest",
+    name: PRODUCT_NAME,
+    short_name: PRODUCT_NAME,
     description: "家族介護者のためのやさしい支援アプリ",
     lang: "ja",
     start_url: "/carequest/",

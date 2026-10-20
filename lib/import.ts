@@ -1,10 +1,8 @@
 import type { CareStorageState } from "@/lib/storage";
 import { sanitizeRawState } from "@/lib/storage";
 import type { CareLog } from "@/lib/types";
-
-// エクスポートファイルが Care Quest のものか判定するための識別子。
-// lib/export.ts の buildExportPayload と対応している。
-const APP_NAME = "Care Quest";
+import { ACCEPTED_EXPORT_APP_NAMES } from "@/lib/export";
+import { PRODUCT_NAME } from "@/lib/brand";
 
 export interface ImportResult {
   ok: boolean;
@@ -104,7 +102,7 @@ export function parseAndMergeImport(
   existing: CareStorageState,
 ): ImportResult {
   const notCareQuestMessage =
-    "このファイルは Care Quest の記録ではないようです。書き出したファイルをもう一度ご確認ください。";
+    `このファイルは ${PRODUCT_NAME} の記録ではないようです。書き出したファイルをもう一度ご確認ください。`;
 
   let parsed: unknown;
   try {
@@ -112,7 +110,7 @@ export function parseAndMergeImport(
   } catch {
     return {
       ok: false,
-      message: "ファイルを読み込めませんでした。Care Quest から書き出した JSON ファイルか、ご確認ください。",
+      message: `ファイルを読み込めませんでした。${PRODUCT_NAME} から書き出した JSON ファイルか、ご確認ください。`,
     };
   }
 
@@ -120,9 +118,10 @@ export function parseAndMergeImport(
     return { ok: false, message: notCareQuestMessage };
   }
 
-  // 他アプリ・別形式の JSON を弾く。app.name で Care Quest のエクスポートか確認する。
+  // 他アプリ・別形式の JSON を弾く。app.name が受け付ける形式識別子のどれかか確認する。
+  // 表示名(PRODUCT_NAME)ではなく形式識別子で判定するので、表示名を変えても古いバックアップは読める。
   const app = parsed.app;
-  if (!isRecord(app) || app.name !== APP_NAME) {
+  if (!isRecord(app) || typeof app.name !== "string" || !ACCEPTED_EXPORT_APP_NAMES.includes(app.name)) {
     return { ok: false, message: notCareQuestMessage };
   }
 

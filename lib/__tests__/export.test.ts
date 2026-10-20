@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildLogsCsv } from "@/lib/export";
+import { buildExportPayload, buildLogsCsv, EXPORT_FORMAT_ID } from "@/lib/export";
 import type { CareLog } from "@/lib/types";
 
 function makeLog(overrides: Partial<CareLog> = {}): CareLog {
@@ -50,5 +50,17 @@ describe("buildLogsCsv", () => {
     const lines = csv.split("\r\n");
     expect(lines[1]).toContain("前日");
     expect(lines[2]).toContain("翌日");
+  });
+});
+
+describe("buildExportPayload の app 欄", () => {
+  it("形式の識別子は \"Care Quest\" のまま変えない(過去のバックアップとの互換)", () => {
+    expect(EXPORT_FORMAT_ID).toBe("Care Quest");
+  });
+
+  it("app 欄は以前と1バイトも変わらない", () => {
+    const payload = buildExportPayload();
+    expect(JSON.stringify(payload.app)).toBe('{"name":"Care Quest","version":"0.1.0"}');
+    expect(Object.keys(payload)).toEqual(["exportedAt", "app", "data"]);
   });
 });

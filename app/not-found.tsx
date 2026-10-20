@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PRODUCT_NAME } from "@/lib/brand";
 
 export default function NotFound() {
   return (
@@ -7,7 +8,7 @@ export default function NotFound() {
         <div className="w-full max-w-md space-y-4">
           <section className="rounded-[28px] border border-stone-200 bg-white/80 p-6 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-amber-600">
-              Care Quest
+              {PRODUCT_NAME}
             </p>
             <h2 className="mt-2 text-lg font-semibold text-stone-800">
               このページは見つかりませんでした
