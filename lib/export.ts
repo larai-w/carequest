@@ -2,6 +2,16 @@ import { loadCareState } from "@/lib/storage";
 import { getTodayDate } from "@/lib/date";
 import type { CareLog } from "@/lib/types";
 
+// バックアップ(JSON)の形式を見分けるための固定の識別子。app.name に入る。
+// 画面の表示名(lib/brand.ts の PRODUCT_NAME)とは別物で、表示名を変えてもこの値は変えない。
+// 値が表示名と同じ「Care Quest」なのは、これまでに書き出したバックアップがこの値を持っているため。
+// 変えると、古い版のアプリが新しいバックアップを読めなくなる(古いバックアップは下の一覧で受け付けられる)。
+export const EXPORT_FORMAT_ID = "Care Quest";
+
+// 読み込み(lib/import.ts)で受け付ける app.name の一覧。
+// 将来 EXPORT_FORMAT_ID を変えることがあっても、古い値はここに残して古いバックアップを読めるようにする。
+export const ACCEPTED_EXPORT_APP_NAMES: readonly string[] = [EXPORT_FORMAT_ID];
+
 export interface CareQuestExport {
   exportedAt: string;
   app: {
@@ -31,7 +41,7 @@ export function buildExportPayload(): CareQuestExport {
   return {
     exportedAt: new Date().toISOString(),
     app: {
-      name: "Care Quest",
+      name: EXPORT_FORMAT_ID,
       version: "0.1.0",
     },
     data: {

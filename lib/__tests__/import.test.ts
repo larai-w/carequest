@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseAndMergeImport } from "@/lib/import";
+import { ACCEPTED_EXPORT_APP_NAMES, buildExportPayload } from "@/lib/export";
 import { createInitialUser, type CareStorageState } from "@/lib/storage";
 import type { CareLog, CareTask } from "@/lib/types";
 
@@ -231,4 +232,48 @@ it("取り込みファイル内の同じID・日付は最初の1件だけを足�
   expect(result.state?.energyHistory).toEqual([{ date: "2024-03-15", energyLevel: "low" }]);
   expect(result.state?.goodThingsHistory).toEqual([{ date: "2024-03-15", items: ["最初"] }]);
   expect(parseAndMergeImport(file, result.state!).state).toEqual(result.state);
+});
+
+// 表示名を変えても、バックアップの形式識別子で判定するので古いバックアップは読める。
+describe("バックアップ形式の識別子(app.name)", () => {
+  it("これまでのバックアップ(app.name が \"Care Quest\")はそのまま取り込める", () => {
+    // 過去に書き出されたファイルと同じ形を、定数を使わずに文字列で直接書く。
+    const oldBackup = JSON.stringify({
+      exportedAt: "2024-03-15T12:00:00.000Z",
+      app: { name: "Care Quest", version: "0.1.0" },
+      data: { logs: [makeLog()] },
+    });
+    const result = parseAndMergeImport(oldBackup, makeState());
+    expect(result.ok).toBe(true);
+    expect(result.importedLogCount).toBe(1);
+  });
+
+  it("受け付ける識別子の一覧に \"Care Quest\" が残っている", () => {
+    expect(ACCEPTED_EXPORT_APP_NAMES).toContain("Care Quest");
+  });
+
+  it("buildExportPayload で書き出したものは、そのまま取り込める", () => {
+    const payload = buildExportPayload();
+    payload.data.logs = [makeLog()];
+    const result = parseAndMergeImport(JSON.stringify(payload), makeState());
+    expect(result.ok).toBe(true);
+    expect(result.importedLogCount).toBe(1);
+  });
+
+  it("別のアプリ名のファイルは拒否する(似た名前・表記ゆれも含む)", () => {
+    for (const name of ["Some Other App", "CareQuest", "care quest", "Care Quest ", ""]) {
+      const file = JSON.stringify({ app: { name, version: "0.1.0" }, data: { logs: [makeLog()] } });
+      const result = parseAndMergeImport(file, makeState());
+      expect(result.ok, name).toBe(false);
+      expect(result.state, name).toBeUndefined();
+      expect(result.message, name).toContain("Care Quest の記録ではない");
+    }
+  });
+
+  it("app.name が文字列でないファイルは拒否する", () => {
+    for (const name of [null, 1, ["Care Quest"], { name: "Care Quest" }]) {
+      const file = JSON.stringify({ app: { name }, data: { logs: [makeLog()] } });
+      expect(parseAndMergeImport(file, makeState()).ok).toBe(false);
+    }
+  });
 });
