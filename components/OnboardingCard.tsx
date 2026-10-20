@@ -1,5 +1,7 @@
 "use client";
 
+import { PRODUCT_NAME } from "@/lib/brand";
+
 interface OnboardingCardProps {
   onStart: () => void;
 }
@@ -10,7 +12,7 @@ export default function OnboardingCard({ onStart }: OnboardingCardProps) {
       className="rounded-[28px] border border-amber-100 bg-amber-50/80 p-5 shadow-sm"
       aria-label="はじめてのかたへ"
     >
-      <p className="text-base font-semibold text-stone-800">Care Quest へようこそ</p>
+      <p className="text-base font-semibold text-stone-800">{`${PRODUCT_NAME} へようこそ`}</p>
       <p className="mt-3 text-sm leading-7 text-stone-700">
         介護の毎日は、記録しにくいことばかりです。
         <br />

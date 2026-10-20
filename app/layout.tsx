@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
+import { PRODUCT_NAME } from "@/lib/brand";
 
 export const metadata: Metadata = {
-  title: "Care Quest",
+  title: PRODUCT_NAME,
   description: "家族介護者のためのやさしい支援アプリ",
   // アプリ本体は検索インデックス対象外(集客は /apps/carequest/ の紹介ページで行う)
   robots: { index: false, follow: false },
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    title: "Care Quest",
+    title: PRODUCT_NAME,
     statusBarStyle: "default",
   },
 };
