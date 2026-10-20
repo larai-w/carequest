@@ -8,16 +8,16 @@ export default function DeleteAccountPage() {
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h2 className="text-xl font-semibold text-stone-800">Care Quest アカウントとデータの削除</h2>
           <p className="mt-3 text-sm leading-7 text-stone-700">
-            Care Quest（運営: veai.jp）のアカウントやクラウドの記録は、アプリをインストールしていなくても削除を依頼できます。
+            Care Quest（運営: VEAI LAB）のアカウントやクラウドの記録は、アプリをインストールしていなくても削除を依頼できます。
           </p>
           <p className="mt-3 text-sm leading-7 text-stone-700">
-            登録したメールアドレスから care_q@veai.jp へ、Care Quest のアカウントとクラウドの記録を削除したい旨をお知らせください。登録したメールアドレスを使えない場合も、この窓口へご相談ください。本人確認の方法と対応についてご案内します。
+            登録したメールアドレスから info@veai.jp へ、Care Quest のアカウントとクラウドの記録を削除したい旨をお知らせください。登録したメールアドレスを使えない場合も、この窓口へご相談ください。本人確認の方法と対応についてご案内します。
           </p>
           <p className="mt-3 text-sm leading-7 text-stone-700">
             パスワードや認証コード、介護記録の内容は送らないでください。
           </p>
           <a
-            href={`mailto:care_q@veai.jp?subject=${encodeURIComponent("Care Quest アカウントとデータの削除依頼")}`}
+            href={`mailto:info@veai.jp?subject=${encodeURIComponent("Care Quest アカウントとデータの削除依頼")}`}
             className="mt-4 inline-flex min-h-12 items-center rounded-2xl bg-amber-700 px-4 py-3 font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-700"
           >
             メールで削除を依頼する

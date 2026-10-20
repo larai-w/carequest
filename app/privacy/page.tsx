@@ -76,7 +76,7 @@ export default function PrivacyPage() {
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h3 className="text-lg font-semibold text-stone-800">このポリシーについて</h3>
           <p className="mt-3 text-sm leading-7 text-stone-700">
-            運営元は veai.jp です。お問い合わせは care_q@veai.jp で受け付けます。内容を変更する場合は、このページでお知らせします。最終更新日: 2026年10月1日
+            運営元は VEAI LAB です。お問い合わせは info@veai.jp で受け付けます。内容を変更する場合は、このページでお知らせします。最終更新日: 2026年10月20日
           </p>
         </section>
       </div>
