@@ -3,6 +3,14 @@
 :root {
   --background: #fffaf3;
   --foreground: #3f3428;
+  /* 下に固定したナビ（components/Layout.tsx）の高さ＋1rem の余白。
+     余白 18px ＋ アイコン（上限 32px）＋ ラベル1行（上限 20px）で、文字の大きさに合わせて少し伸びる。 */
+  --bottom-nav-space: calc(18px + min(1.5rem, 32px) + min(1.125rem, 20px) + 1rem + env(safe-area-inset-bottom, 0px));
+}
+
+html {
+  /* キーボード操作で下の方の入力欄に移ったとき、ナビの裏に隠れないようにする */
+  scroll-padding-bottom: var(--bottom-nav-space);
 }
 
 @theme inline {
