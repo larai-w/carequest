@@ -47,7 +47,7 @@ export default function FeedbackWidget() {
             type="button"
             onClick={() => setMood(option.id)}
             aria-pressed={mood === option.id}
-            className={`rounded-full border px-4 py-2 text-sm font-semibold ${
+            className={`min-h-[44px] rounded-full border px-4 py-2 text-sm font-semibold ${
               mood === option.id
                 ? "border-stone-800 bg-stone-800 text-white"
                 : "border-stone-200 bg-stone-50 text-stone-700"
@@ -71,7 +71,7 @@ export default function FeedbackWidget() {
             type="button"
             onClick={handleSend}
             disabled={status === "sending"}
-            className="rounded-full bg-stone-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            className="min-h-[44px] rounded-full bg-stone-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
           >
             {status === "sending" ? "送信中…" : "送信する"}
           </button>

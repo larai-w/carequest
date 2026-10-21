@@ -29,7 +29,7 @@ export default function QuestionFinderCard() {
   return (
     <section id="question-finder" className="scroll-mt-4 rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
       <h2 className="text-sm font-medium text-stone-700">介護のことで、調べたいことはありますか</h2>
-      <p className="mt-1 text-xs leading-6 text-stone-500">
+      <p className="mt-1 text-sm leading-6 text-stone-500">
         近い読みものをお探しします。入力した内容はこの端末から出ません。
       </p>
 
@@ -40,7 +40,7 @@ export default function QuestionFinderCard() {
           onChange={(e) => setQuestion(e.target.value)}
           placeholder="例: 食事でむせるようになりました"
           aria-label="調べたいこと"
-          className="min-h-[44px] flex-1 rounded-full border border-stone-200 bg-white px-4 text-sm text-stone-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+          className="min-h-[44px] min-w-0 grow basis-[12rem] rounded-full border border-stone-200 bg-white px-4 text-sm text-stone-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
         />
         <button
           type="submit"
@@ -88,7 +88,7 @@ function Result({ result }: { result: Outcome }) {
 
   return (
     <div>
-      <div className="mb-2 rounded-[16px] border border-stone-200 bg-stone-50 px-3 py-2 text-xs leading-6 text-stone-600">
+      <div className="mb-2 rounded-[16px] border border-stone-200 bg-stone-50 px-3 py-2 text-sm leading-6 text-stone-600">
         入力内容とことばが近い、関連する読みものの候補です。質問への答えを確定するものではありません。
       </div>
       <ul className="space-y-2">
@@ -101,11 +101,11 @@ function Result({ result }: { result: Outcome }) {
             className="block rounded-[20px] border border-stone-200 bg-white p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
           >
             <span className="text-sm font-medium text-stone-700">{article.title}</span>
-            <span className="mt-1 block text-xs leading-6 text-stone-500">{article.description}</span>
+            <span className="mt-1 block text-sm leading-6 text-stone-500">{article.description}</span>
           </a>
         </li>
       ))}
-      <li className="pt-1 text-xs leading-6 text-stone-400">
+      <li className="pt-1 text-sm leading-6 text-stone-500">
         これは読みものの候補です。制度の判断はケアマネジャーやお住まいの市区町村へ、
         体調に関わることは主治医にご相談ください。
       </li>

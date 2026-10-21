@@ -432,7 +432,7 @@ export default function ReflectionPage() {
             <button
               type="button"
               onClick={dismissSaveFailedNotice}
-              className="mt-3 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+              className="mt-3 min-h-[44px] rounded-full bg-stone-100 px-3 py-1.5 text-sm font-semibold text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
             >
               わかりました
             </button>
@@ -447,7 +447,7 @@ export default function ReflectionPage() {
             <button
               type="button"
               onClick={() => setViewState((current) => ({ ...current, resetFailed: false }))}
-              className="mt-3 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+              className="mt-3 min-h-[44px] rounded-full bg-stone-100 px-3 py-1.5 text-sm font-semibold text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
             >
               わかりました
             </button>
@@ -477,7 +477,7 @@ export default function ReflectionPage() {
             <button
               type="button"
               onClick={() => setViewState((current) => ({ ...current, logNotice: "" }))}
-              className="mt-3 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+              className="mt-3 min-h-[44px] rounded-full bg-stone-100 px-3 py-1.5 text-sm font-semibold text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
             >
               わかりました
             </button>
@@ -531,14 +531,14 @@ export default function ReflectionPage() {
         />
 
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
-          <h3 className="text-lg font-semibold text-stone-800">ここ7日間のあゆみ</h3>
+          <h2 className="text-lg font-semibold text-stone-800">ここ7日間のあゆみ</h2>
           {recentDays.length === 0 ? (
             <p className="mt-3 text-sm leading-6 text-stone-600">
               これからの記録が、ここに少しずつ残っていきます。今日の分だけで十分です。
             </p>
           ) : (
             <>
-              <p className="mt-1 text-xs text-stone-500">日をタップすると、その日の記録を見られます。</p>
+              <p className="mt-1 text-sm text-stone-500">日をタップすると、その日の記録を見られます。</p>
               <div className="mt-3 space-y-2">
                 {recentDays.map((day) => {
                   const expanded = expandedDate === day.date;
@@ -592,7 +592,7 @@ export default function ReflectionPage() {
         </section>
 
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
-          <h3 className="text-lg font-semibold text-stone-800">今日のよかったこと</h3>
+          <h2 className="text-lg font-semibold text-stone-800">今日のよかったこと</h2>
           <p className="mt-1 text-sm text-stone-600">小さなことでも、ちゃんと残しておきましょう。</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {goodThingOptions.map((option) => {
@@ -602,7 +602,7 @@ export default function ReflectionPage() {
                   key={option}
                   type="button"
                   onClick={() => handleGoodThingToggle(option)}
-                  className={`rounded-full px-3 py-2 text-sm ${
+                  className={`min-h-[44px] rounded-full px-3 py-2 text-sm ${
                     active ? "bg-amber-500 text-white" : "bg-stone-100 text-stone-700"
                   }`}
                 >
@@ -622,43 +622,43 @@ export default function ReflectionPage() {
             value={note}
             onChange={(event) => handleNoteChange(event.target.value)}
             rows={4}
-            className="mt-3 w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-sm text-stone-700 outline-none"
+            className="mt-3 w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-sm text-stone-700 outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
             placeholder="今日の気持ちや小さなできごとを書いてみましょう。"
           />
         </section>
 
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
-          <h3 className="text-base font-semibold text-stone-700">自分の記録を手元に残す</h3>
+          <h2 className="text-base font-semibold text-stone-700">自分の記録を手元に残す</h2>
           <p className="mt-2 text-sm leading-6 text-stone-600">
             これまでの記録は、いつでも手元に持ち出せます。
           </p>
-          <p className="mt-1 text-xs leading-5 text-stone-500">
+          <p className="mt-1 text-sm leading-6 text-stone-500">
             このファイルはあなたの端末に保存されるだけで、どこにも送信されません。
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={handleExport}
-              className="rounded-full bg-stone-100 px-4 py-2 text-sm text-stone-700 hover:bg-stone-200 active:bg-stone-300"
+              className="min-h-[44px] rounded-full bg-stone-100 px-4 py-2 text-sm text-stone-700 hover:bg-stone-200 active:bg-stone-300"
             >
               自分の記録を保存する（JSON）
             </button>
             <button
               type="button"
               onClick={handleExportCsv}
-              className="rounded-full bg-stone-100 px-4 py-2 text-sm text-stone-700 hover:bg-stone-200 active:bg-stone-300"
+              className="min-h-[44px] rounded-full bg-stone-100 px-4 py-2 text-sm text-stone-700 hover:bg-stone-200 active:bg-stone-300"
             >
               表計算ソフト用に書き出す（CSV）
             </button>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="rounded-full bg-stone-100 px-4 py-2 text-sm text-stone-700 hover:bg-stone-200 active:bg-stone-300"
+              className="min-h-[44px] rounded-full bg-stone-100 px-4 py-2 text-sm text-stone-700 hover:bg-stone-200 active:bg-stone-300"
             >
               記録を読み込む
             </button>
           </div>
-          <p className="mt-2 text-xs leading-5 text-stone-500">
+          <p className="mt-2 text-sm leading-6 text-stone-500">
             別の端末で書き出したファイルを選ぶと、今ある記録に足す形で読み込みます。今の記録が消えることはありません。
           </p>
           <input
@@ -680,7 +680,7 @@ export default function ReflectionPage() {
                 type="button"
                 onClick={handleShowResetConfirm}
                 aria-label="すべての記録を削除する"
-                className="rounded-full px-3 py-1.5 text-xs text-stone-600 underline-offset-2 hover:text-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+                className="min-h-[44px] rounded-full px-3 py-1.5 text-sm text-stone-600 underline-offset-2 hover:text-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
               >
                 すべての記録を削除する
               </button>
