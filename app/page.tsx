@@ -353,7 +353,7 @@ export default function HomePage() {
 
         {dataRecovered && (
           <section className="rounded-[28px] border border-stone-200 bg-stone-50/80 p-4 shadow-sm">
-            <p className="text-sm leading-6 text-stone-600">
+            <p className="text-base leading-6 text-stone-600">
               一部のデータを読み込めなかったため、整えて復元しました。これまでの記録はちゃんと残っています。
             </p>
             <button
@@ -368,7 +368,7 @@ export default function HomePage() {
 
         {saveFailed && (
           <section className="rounded-[28px] border border-stone-200 bg-stone-50/80 p-4 shadow-sm">
-            <p className="text-sm leading-6 text-stone-600">
+            <p className="text-base leading-6 text-stone-600">
               記録を保存できませんでした。端末の空き容量をご確認ください。今日の記録はこのままご利用いただけます。
             </p>
             <button
@@ -383,7 +383,7 @@ export default function HomePage() {
 
         {justExitedRestMode && (
           <section className="rounded-[28px] border border-amber-100 bg-amber-50/80 p-4 shadow-sm">
-            <p className="text-sm leading-6 text-amber-700">
+            <p className="text-base leading-6 text-amber-700">
               おかえりなさい。今日もここにいてくれてありがとう。
             </p>
           </section>
@@ -401,14 +401,14 @@ export default function HomePage() {
         <section className="rounded-[28px] border border-amber-100 bg-white/80 p-4 shadow-sm">
           <p className="text-sm text-stone-500">今日の自分のポイント</p>
           <p className="mt-2 text-4xl font-semibold text-amber-700">{todayPoints}pt</p>
-          <p className="mt-2 text-sm text-stone-600">{completedCount}件の介護を記録しました。</p>
+          <p className="mt-2 text-base text-stone-600">{completedCount}件の介護を記録しました。</p>
         </section>
 
         <EncouragementCard title="今日のひとこと" body={message} />
 
         {logNotice && (
           <section aria-live="polite" className="rounded-[28px] border border-stone-200 bg-stone-50/80 p-4 shadow-sm">
-            <p className="text-sm leading-6 text-stone-600">{logNotice}</p>
+            <p className="text-base leading-6 text-stone-600">{logNotice}</p>
             <button
               type="button"
               onClick={() => setViewState((current) => ({ ...current, logNotice: "" }))}
@@ -430,7 +430,7 @@ export default function HomePage() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-stone-800">今日の記録</h2>
-              <p className="mt-1 text-sm text-stone-600">今日やったことを、ゆっくり見返せます。</p>
+              <p className="mt-1 text-base text-stone-600">今日やったことを、ゆっくり見返せます。</p>
             </div>
             <button
               type="button"
@@ -442,7 +442,7 @@ export default function HomePage() {
           </div>
 
           {todayLogs.length === 0 ? (
-            <p className="mt-3 text-sm text-stone-600">まだ記録はありません。小さな一歩でも大丈夫です。</p>
+            <p className="mt-3 text-base text-stone-600">まだ記録はありません。小さな一歩でも大丈夫です。</p>
           ) : (
             <div className="mt-3 space-y-2">
               {todayLogs.map((log) => (
@@ -474,19 +474,19 @@ export default function HomePage() {
           <label htmlFor="profile-name" className="text-lg font-semibold text-stone-800">
             プロフィール
           </label>
-          <p className="mt-1 text-sm text-stone-600">名前を入れて、今日の記録にひとつの安心を添えましょう。</p>
+          <p className="mt-1 text-base text-stone-600">名前を入れて、今日の記録にひとつの安心を添えましょう。</p>
           <input
             id="profile-name"
             value={profileName}
             onChange={(event) => handleProfileNameChange(event.target.value)}
-            className="mt-3 w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-sm text-stone-700 outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+            className="mt-3 w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-base text-stone-700 outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
             placeholder="あなたの名前"
           />
         </section>
 
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h2 className="text-lg font-semibold text-stone-800">エネルギーレベル</h2>
-          <p className="mt-1 text-sm text-stone-600">今日の気分に合わせて選びましょう。</p>
+          <p className="mt-1 text-base text-stone-600">今日の気分に合わせて選びましょう。</p>
           <div className="mt-3">
             <EnergySelector value={energyLevel} onChange={handleEnergyChange} />
           </div>

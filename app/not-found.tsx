@@ -13,7 +13,7 @@ export default function NotFound() {
             <h1 className="mt-2 text-lg font-semibold text-stone-800">
               このページは見つかりませんでした
             </h1>
-            <p className="mt-3 text-sm leading-6 text-stone-600">
+            <p className="mt-3 text-base leading-6 text-stone-600">
               URLが変わったか、ページが移動した可能性があります。あなたの記録はホームからいつでも確認できます。
             </p>
           </section>

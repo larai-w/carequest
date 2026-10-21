@@ -26,13 +26,13 @@ export default function Error({
             <h2 className="mt-2 text-lg font-semibold text-stone-800">
               うまく表示できませんでした
             </h2>
-            <p className="mt-3 text-sm leading-6 text-stone-600">
+            <p className="mt-3 text-base leading-6 text-stone-600">
               あなたの記録は端末にちゃんと残っています。データが消えたわけではないので、安心してください。
             </p>
           </section>
 
           <section className="rounded-[28px] border border-amber-100 bg-amber-50/80 p-4 shadow-sm">
-            <p className="text-sm leading-6 text-amber-700">
+            <p className="text-base leading-6 text-amber-700">
               一時的なエラーかもしれません。もう一度試してみてください。
             </p>
           </section>

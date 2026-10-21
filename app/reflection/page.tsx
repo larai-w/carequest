@@ -426,7 +426,7 @@ export default function ReflectionPage() {
       <div className="space-y-4">
         {saveFailed && (
           <section className="rounded-[28px] border border-stone-200 bg-stone-50/80 p-4 shadow-sm">
-            <p className="text-sm leading-6 text-stone-600">
+            <p className="text-base leading-6 text-stone-600">
               記録を保存できませんでした。端末の空き容量をご確認ください。今日の記録はこのままご利用いただけます。
             </p>
             <button
@@ -441,7 +441,7 @@ export default function ReflectionPage() {
 
         {resetFailed && (
           <section className="rounded-[28px] border border-stone-200 bg-stone-50/80 p-4 shadow-sm">
-            <p className="text-sm leading-6 text-stone-600">
+            <p className="text-base leading-6 text-stone-600">
               削除ができませんでした。端末の設定をご確認ください。記録はそのままです。
             </p>
             <button
@@ -456,7 +456,7 @@ export default function ReflectionPage() {
 
         {resetCompleted && (
           <section className="rounded-[28px] border border-stone-200 bg-stone-50/80 p-4 shadow-sm">
-            <p className="text-sm leading-6 text-stone-600">
+            <p className="text-base leading-6 text-stone-600">
               まっさらになりました。これまでの時間は、ちゃんとあなたのものです。
             </p>
           </section>
@@ -473,7 +473,7 @@ export default function ReflectionPage() {
 
         {logNotice && (
           <section aria-live="polite" className="rounded-[28px] border border-stone-200 bg-stone-50/80 p-4 shadow-sm">
-            <p className="text-sm leading-6 text-stone-600">{logNotice}</p>
+            <p className="text-base leading-6 text-stone-600">{logNotice}</p>
             <button
               type="button"
               onClick={() => setViewState((current) => ({ ...current, logNotice: "" }))}
@@ -495,7 +495,7 @@ export default function ReflectionPage() {
           <p className="text-sm text-stone-500">今日やったこと</p>
           <div className="mt-3 space-y-2">
             {logs.length === 0 ? (
-              <p className="text-sm text-stone-600">今日の記録はまだありません。小さな一歩でも大丈夫です。</p>
+              <p className="text-base text-stone-600">今日の記録はまだありません。小さな一歩でも大丈夫です。</p>
             ) : (
               logs.map((log) => (
                 <div key={log.id} className="relative flex items-center rounded-2xl bg-stone-50 px-3 py-3 pr-12 text-sm text-stone-700">
@@ -533,12 +533,12 @@ export default function ReflectionPage() {
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h2 className="text-lg font-semibold text-stone-800">ここ7日間のあゆみ</h2>
           {recentDays.length === 0 ? (
-            <p className="mt-3 text-sm leading-6 text-stone-600">
+            <p className="mt-3 text-base leading-6 text-stone-600">
               これからの記録が、ここに少しずつ残っていきます。今日の分だけで十分です。
             </p>
           ) : (
             <>
-              <p className="mt-1 text-sm text-stone-500">日をタップすると、その日の記録を見られます。</p>
+              <p className="mt-1 text-base text-stone-500">日をタップすると、その日の記録を見られます。</p>
               <div className="mt-3 space-y-2">
                 {recentDays.map((day) => {
                   const expanded = expandedDate === day.date;
@@ -593,7 +593,7 @@ export default function ReflectionPage() {
 
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h2 className="text-lg font-semibold text-stone-800">今日のよかったこと</h2>
-          <p className="mt-1 text-sm text-stone-600">小さなことでも、ちゃんと残しておきましょう。</p>
+          <p className="mt-1 text-base text-stone-600">小さなことでも、ちゃんと残しておきましょう。</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {goodThingOptions.map((option) => {
               const active = goodThings.includes(option);
@@ -622,17 +622,17 @@ export default function ReflectionPage() {
             value={note}
             onChange={(event) => handleNoteChange(event.target.value)}
             rows={4}
-            className="mt-3 w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-sm text-stone-700 outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+            className="mt-3 w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-base text-stone-700 outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
             placeholder="今日の気持ちや小さなできごとを書いてみましょう。"
           />
         </section>
 
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h2 className="text-base font-semibold text-stone-700">自分の記録を手元に残す</h2>
-          <p className="mt-2 text-sm leading-6 text-stone-600">
+          <p className="mt-2 text-base leading-6 text-stone-600">
             これまでの記録は、いつでも手元に持ち出せます。
           </p>
-          <p className="mt-1 text-sm leading-6 text-stone-500">
+          <p className="mt-1 text-base leading-6 text-stone-500">
             このファイルはあなたの端末に保存されるだけで、どこにも送信されません。
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -658,7 +658,7 @@ export default function ReflectionPage() {
               記録を読み込む
             </button>
           </div>
-          <p className="mt-2 text-sm leading-6 text-stone-500">
+          <p className="mt-2 text-base leading-6 text-stone-500">
             別の端末で書き出したファイルを選ぶと、今ある記録に足す形で読み込みます。今の記録が消えることはありません。
           </p>
           <input
@@ -669,7 +669,7 @@ export default function ReflectionPage() {
             className="hidden"
           />
           {importMessage ? (
-            <p className="mt-3 rounded-2xl bg-amber-50 px-3 py-3 text-sm leading-6 text-stone-700">
+            <p className="mt-3 rounded-2xl bg-amber-50 px-3 py-3 text-base leading-6 text-stone-700">
               {importMessage}
             </p>
           ) : null}

@@ -11,7 +11,7 @@ interface BackupReminderCardProps {
 export default function BackupReminderCard({ onDismiss, onExport }: BackupReminderCardProps) {
   return (
     <section className="rounded-[28px] border border-amber-100 bg-amber-50/80 p-4 shadow-sm">
-      <p className="text-sm leading-7 text-stone-700">
+      <p className="text-base leading-7 text-stone-700">
         たいせつな記録がたまってきました。
         <br />
         手元にも残しておきませんか。

@@ -44,14 +44,14 @@ export default function CloudBackupCard({ onBackup, onRestore, message, busy }: 
   return (
     <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
       <h3 className="text-base font-semibold text-stone-700">クラウドに控えておく</h3>
-      <p className="mt-2 text-sm leading-6 text-stone-600">
+      <p className="mt-2 text-base leading-6 text-stone-600">
         ログインしておくと、この端末のケアの記録をクラウドに控えておけます。別の端末でも読み込めます。
       </p>
       {/* 何が控えられて何が控えられないか(2026-09-14 /hci-check クラウド控え #5) */}
-      <p className="mt-1 text-sm leading-6 text-stone-500">
+      <p className="mt-1 text-base leading-6 text-stone-500">
         控えるのは、ケアの記録（いつ・何をしたか）だけです。ふりかえりのメモ、よかったこと、自分で足したケアは控えません。全部を別の端末へ移すときは、上の「自分の記録を保存する（JSON）」を使ってください。
       </p>
-      <p className="mt-1 text-sm leading-6 text-stone-500">
+      <p className="mt-1 text-base leading-6 text-stone-500">
         これはあくまで記録の控えです。うまくいかなくても、記録はこの端末にそのまま残ります。
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
@@ -73,17 +73,17 @@ export default function CloudBackupCard({ onBackup, onRestore, message, busy }: 
         </button>
       </div>
       {!maybeSignedIn ? (
-        <p className="mt-2 text-sm leading-6 text-stone-500">
+        <p className="mt-2 text-base leading-6 text-stone-500">
           ログインするとバックアップできます。ホーム画面の「アカウント」からログインできます。
         </p>
       ) : (
         // 最後に控えた日時(#3)。hydration 後にだけ描くので、端末の値を読んでよい。
-        <p className="mt-2 text-sm leading-6 text-stone-500">
+        <p className="mt-2 text-base leading-6 text-stone-500">
           {lastBackupLine(getLastCloudBackupAt(), isAutoBackupPaused())}
         </p>
       )}
       {message ? (
-        <p className="mt-3 rounded-2xl bg-amber-50 px-3 py-3 text-sm leading-6 text-stone-700">
+        <p className="mt-3 rounded-2xl bg-amber-50 px-3 py-3 text-base leading-6 text-stone-700">
           {message}
         </p>
       ) : null}
