@@ -29,7 +29,7 @@ export default function QuestionFinderCard() {
   return (
     <section id="question-finder" className="scroll-mt-4 rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
       <h2 className="text-sm font-medium text-stone-700">介護のことで、調べたいことはありますか</h2>
-      <p className="mt-1 text-sm leading-6 text-stone-500">
+      <p className="mt-1 text-base leading-6 text-stone-500">
         近い読みものをお探しします。入力した内容はこの端末から出ません。
       </p>
 
@@ -73,7 +73,7 @@ function Result({ result }: { result: Outcome }) {
     // 警告色(赤)は使わない。急かす配色は、慌てている人をさらに慌てさせる。
     return (
       <div className="mt-3 rounded-[20px] border border-amber-200 bg-amber-50 p-4">
-        <p className="whitespace-pre-line text-sm leading-7 text-stone-700">{result.message}</p>
+        <p className="whitespace-pre-line text-base leading-7 text-stone-700">{result.message}</p>
       </div>
     );
   }
@@ -81,14 +81,14 @@ function Result({ result }: { result: Outcome }) {
   if (result.kind === "medical" || result.kind === "none") {
     return (
       <div className="mt-3 rounded-[20px] border border-stone-200 bg-stone-50 p-4">
-        <p className="text-sm leading-7 text-stone-700">{result.message}</p>
+        <p className="text-base leading-7 text-stone-700">{result.message}</p>
       </div>
     );
   }
 
   return (
     <div>
-      <div className="mb-2 rounded-[16px] border border-stone-200 bg-stone-50 px-3 py-2 text-sm leading-6 text-stone-600">
+      <div className="mb-2 rounded-[16px] border border-stone-200 bg-stone-50 px-3 py-2 text-base leading-6 text-stone-600">
         入力内容とことばが近い、関連する読みものの候補です。質問への答えを確定するものではありません。
       </div>
       <ul className="space-y-2">

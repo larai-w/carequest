@@ -414,7 +414,7 @@ export default function QuestPage() {
         <section className="rounded-[28px] border border-amber-100 bg-white/80 p-4 shadow-sm">
           <p className="text-sm text-stone-500">今日のポイント</p>
           <p className="mt-2 text-4xl font-semibold text-amber-700">{todayPoints}pt</p>
-          <p className="mt-2 text-sm text-stone-600">{message}</p>
+          <p className="mt-2 text-base text-stone-600">{message}</p>
         </section>
 
         {recordSaveFailedTitle && (
@@ -424,7 +424,7 @@ export default function QuestPage() {
             className="rounded-[28px] border border-stone-300 bg-stone-50/90 p-4 shadow-sm"
           >
             <p className="text-sm font-semibold text-stone-800">記録を保存できませんでした</p>
-            <p className="mt-1 text-sm leading-6 text-stone-600">
+            <p className="mt-1 text-base leading-6 text-stone-600">
               「{recordSaveFailedTitle}」は、まだ記録に残っていません。端末の空き容量をご確認のうえ、もう一度タップしてください。
             </p>
             <button
@@ -445,19 +445,19 @@ export default function QuestPage() {
           >
             <p className="text-sm font-semibold text-amber-800">記録しました</p>
             <p className="mt-1 text-base font-semibold text-stone-800">{lastRecordedLog.title}</p>
-            <p className="mt-1 text-sm text-stone-600">
+            <p className="mt-1 text-base text-stone-600">
               {formatLogWhen(lastRecordedLog.completedAt, lastRecordedLog.date)}に、この端末へ保存しました。
             </p>
             {duplicateCount > 0 && (
-              <p className="mt-2 text-sm leading-6 text-stone-700">
+              <p className="mt-2 text-base leading-6 text-stone-700">
                 少し前にも同じ記録が{duplicateCount}件あります。重なって押していたら「取り消す」で1件消せます。
               </p>
             )}
             {autoBackupPaused && (
-              <p className="mt-2 text-sm leading-6 text-stone-700">{AUTO_BACKUP_PAUSED_NOTE}</p>
+              <p className="mt-2 text-base leading-6 text-stone-700">{AUTO_BACKUP_PAUSED_NOTE}</p>
             )}
             {syncNeedsAttention && syncStatus && (
-              <p className="mt-2 text-sm leading-6 text-stone-700">{syncStatus}</p>
+              <p className="mt-2 text-base leading-6 text-stone-700">{syncStatus}</p>
             )}
             <button
               type="button"
@@ -553,16 +553,16 @@ export default function QuestPage() {
 
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h2 className="text-lg font-semibold text-stone-800">今日の記録</h2>
-          <p className="mt-1 text-sm text-stone-600">{completedCount}件の介護を記録しました。</p>
+          <p className="mt-1 text-base text-stone-600">{completedCount}件の介護を記録しました。</p>
           {/* 確認カードで言った知らせは、ここで繰り返さない(「直した後」#8)。 */}
           {syncStatus && !(syncNeedsAttention && lastRecordedLog) ? (
-            <p className="mt-2 text-sm text-stone-500">{syncStatus}</p>
+            <p className="mt-2 text-base text-stone-500">{syncStatus}</p>
           ) : null}
         </section>
 
         {saveFailed && (
           <section className="rounded-[28px] border border-stone-200 bg-stone-50/80 p-4 shadow-sm">
-            <p className="text-sm leading-6 text-stone-600">
+            <p className="text-base leading-6 text-stone-600">
               端末に保存できませんでした。端末の空き容量をご確認のうえ、もう一度お試しください。
             </p>
             <button

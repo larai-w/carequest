@@ -416,7 +416,7 @@ export default function AuthPanel() {
     `min-h-[44px] rounded-full px-4 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 disabled:opacity-60 ${
       active ? "bg-stone-800 text-white" : "bg-stone-100 text-stone-600"
     }`;
-  const input = "w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-sm";
+  const input = "w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-base";
   const fieldLabel = "mb-1 block text-sm font-medium text-stone-700";
 
   // サインイン済みは、ログインフォームを畳んで「ログイン中 + サインアウト」だけ見せる。
@@ -424,8 +424,8 @@ export default function AuthPanel() {
     return (
       <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
         <h2 className="text-lg font-semibold text-stone-800">アカウント</h2>
-        <p className="mt-1 text-sm text-stone-600">{cloudLine}</p>
-        <p className="mt-3 text-sm text-stone-700">ログイン中: {currentUsername ?? "ユーザー"}</p>
+        <p className="mt-1 text-base text-stone-600">{cloudLine}</p>
+        <p className="mt-3 text-base text-stone-700">ログイン中: {currentUsername ?? "ユーザー"}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           <button type="button" onClick={handleSignOut} disabled={busy} className={subtleButton}>
             ログアウト
@@ -434,16 +434,16 @@ export default function AuthPanel() {
             クラウドと同期する
           </button>
         </div>
-        <p className="mt-3 text-sm text-stone-600" aria-live="polite">{message}</p>
+        <p className="mt-3 text-base text-stone-600" aria-live="polite">{message}</p>
 
         {ownerConflict && (
           <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50/80 p-3">
             {/* 宣言の形のボタンは、家族が「はい、自分のアカウントです」の意味で押しうる。
                 起きることを名前にし、安全なログアウトを先に置く(2026-09-14 /hci-check「直した後」#3)。 */}
-            <p className="text-sm leading-6 text-stone-700">
+            <p className="text-base leading-6 text-stone-700">
               この端末には、別のアカウントで控えていた記録があります。家族など、ほかの人の記録かもしれません。混ざらないように、クラウドとのやりとりを止めています。
             </p>
-            <p className="mt-1 text-sm leading-6 text-stone-700">
+            <p className="mt-1 text-base leading-6 text-stone-700">
               ほかの人の記録なら、ログアウトしてください。この端末の記録があなたのものなら、下のボタンで、この端末の記録をすべてこのアカウントのクラウドへ送り、クラウドの記録もこの端末に読み込みます。
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -468,13 +468,13 @@ export default function AuthPanel() {
           </button>
         ) : (
           <div className="mt-3 space-y-3 border-t border-stone-200 pt-3">
-            <p className="text-sm leading-6 text-stone-500">
+            <p className="text-base leading-6 text-stone-500">
               どちらを選んでも、この端末に保存された記録は消えません。消えるのはクラウド上の控えだけです。
             </p>
 
             {confirmingData ? (
               <div className="rounded-2xl bg-stone-50 p-3">
-                <p className="text-sm leading-6 text-stone-600">
+                <p className="text-base leading-6 text-stone-600">
                   クラウドに保存した記録を削除します。削除すると、自動でクラウドへ控えるのも止めます。よろしいですか?
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -502,7 +502,7 @@ export default function AuthPanel() {
 
             {confirmingAccount ? (
               <div className="rounded-2xl bg-stone-50 p-3">
-                <p className="text-sm leading-6 text-stone-600">
+                <p className="text-base leading-6 text-stone-600">
                   アカウントとクラウドの記録を削除します。この操作は元に戻せません。よろしいですか?
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -542,7 +542,7 @@ export default function AuthPanel() {
   return (
     <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
       <h2 className="text-lg font-semibold text-stone-800">VEAI アカウント</h2>
-      <p className="mt-1 text-sm text-stone-600">
+      <p className="mt-1 text-base text-stone-600">
         VEAI アカウントでログインすると、ケアの記録をクラウドに控えて、別の端末でも見られるようになります。ログインしなくても、すべての機能を使えます。
       </p>
 
@@ -600,7 +600,7 @@ export default function AuthPanel() {
         ) : mode === "signUp" ? (
           signUpStage === "form" ? (
             <>
-              <p className="text-sm leading-6 text-stone-500">
+              <p className="text-base leading-6 text-stone-500">
                 パスワードは8文字以上で、大文字・小文字・数字を含めてください。登録すると、メールに確認コードが届きます。
               </p>
               <button type="button" onClick={handleSignUp} disabled={busy} className={primaryButton}>
@@ -635,7 +635,7 @@ export default function AuthPanel() {
           )
         ) : resetStage === "request" ? (
           <>
-            <p className="text-sm leading-6 text-stone-500">
+            <p className="text-base leading-6 text-stone-500">
               登録したメールアドレスに、パスワード再設定用のコードをお送りします。
             </p>
             <div className="flex flex-wrap gap-2">
@@ -677,7 +677,7 @@ export default function AuthPanel() {
                 autoComplete="new-password"
               />
             </div>
-            <p className="text-sm leading-6 text-stone-500">
+            <p className="text-base leading-6 text-stone-500">
               パスワードは8文字以上で、大文字・小文字・数字を含めてください。
             </p>
             <div className="flex flex-wrap gap-2">
@@ -691,7 +691,7 @@ export default function AuthPanel() {
           </>
         )}
 
-        <p className="text-sm text-stone-600">{message}</p>
+        <p className="text-base text-stone-600">{message}</p>
         <p className="text-sm text-stone-500">未ログイン</p>
       </div>
     </section>

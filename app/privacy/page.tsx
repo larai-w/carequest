@@ -8,14 +8,14 @@ export default function PrivacyPage() {
       <div className="space-y-4">
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h2 className="text-xl font-semibold text-stone-800">プライバシーポリシー</h2>
-          <p className="mt-3 text-sm leading-7 text-stone-700">
+          <p className="mt-3 text-base leading-7 text-stone-700">
             {`介護の記録は、あなたと家族の大切なプライバシーです。${PRODUCT_NAME} が何を保存し、何をしないかを、できるだけわかりやすく説明します。`}
           </p>
         </section>
 
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h3 className="text-lg font-semibold text-stone-800">保存するもの</h3>
-          <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-7 text-stone-700">
+          <ul className="mt-3 list-disc space-y-2 pl-5 text-base leading-7 text-stone-700">
             <li>
               介護の記録・ふりかえりメモ・エネルギーレベルなどのアプリ内データは、あなたの端末(ブラウザの localStorage)に保存されます。
             </li>
@@ -30,7 +30,7 @@ export default function PrivacyPage() {
 
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h3 className="text-lg font-semibold text-stone-800">VEAI アカウントについて</h3>
-          <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-7 text-stone-700">
+          <ul className="mt-3 list-disc space-y-2 pl-5 text-base leading-7 text-stone-700">
             <li>
               {`${PRODUCT_NAME} のアカウントは「VEAI アカウント」です。将来、veai.jp の他のサービスでも同じメールアドレスとパスワードでログインできるようになります。`}
             </li>
@@ -45,7 +45,7 @@ export default function PrivacyPage() {
 
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h3 className="text-lg font-semibold text-stone-800">しないこと</h3>
-          <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-7 text-stone-700">
+          <ul className="mt-3 list-disc space-y-2 pl-5 text-base leading-7 text-stone-700">
             <li>広告のための情報収集や、第三者へのデータ販売は行いません。</li>
             <li>記録内容・操作時間・利用経路などの行動分析データを収集しません。</li>
             <li>{`veai.jp全体のページビュー計測と、${PRODUCT_NAME}アプリ内の利用計測は別です。${PRODUCT_NAME}内ではPV以外の利用計測を行いません。`}</li>
@@ -56,27 +56,27 @@ export default function PrivacyPage() {
 
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h3 className="text-lg font-semibold text-stone-800">データの削除</h3>
-          <p className="mt-3 text-sm leading-7 text-stone-700">
+          <p className="mt-3 text-base leading-7 text-stone-700">
             アプリをインストールしていない場合やログインできない場合も、運営へ削除を依頼できます。
             <Link href="/delete-account" className="ml-1 font-semibold text-amber-700 underline underline-offset-2">アカウントとデータの削除方法</Link>
           </p>
-          <p className="mt-3 text-sm leading-7 text-stone-700">
+          <p className="mt-3 text-base leading-7 text-stone-700">
             端末内のデータは、ふりかえり画面のデータ管理セクションにある「すべての記録を削除する」からアプリ内で削除できます。削除後はオンボーディングが再表示される、まっさらな状態に戻ります。
           </p>
-          <p className="mt-2 text-sm leading-7 text-stone-700">
+          <p className="mt-2 text-base leading-7 text-stone-700">
             削除の前にふりかえり画面から記録を JSON または CSV ファイルとして手元に持ち出すこともできます。
           </p>
-          <p className="mt-2 text-sm leading-7 text-stone-700">
+          <p className="mt-2 text-base leading-7 text-stone-700">
             アカウント登録をした場合は、ホーム画面の「アカウント」から、クラウドに保存した記録の削除や、アカウントそのものの削除ができます。どちらの場合も、この端末に保存された記録は残ります。記録を1件ずつ取り消したとき（×や「取り消す」）は、クラウドに控えた同じ記録も削除します。通信できないときは、次にクラウドとやりとりしたときに削除します。
           </p>
-          <p className="mt-2 text-sm leading-7 text-stone-500">
+          <p className="mt-2 text-base leading-7 text-stone-500">
             ブラウザのサイトデータ削除でも端末内のデータを消すことができます。ご不明な点は About ページ記載の運営元までご連絡ください。
           </p>
         </section>
 
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h3 className="text-lg font-semibold text-stone-800">保存する期間と、削除したあとに残るもの</h3>
-          <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-7 text-stone-700">
+          <ul className="mt-3 list-disc space-y-2 pl-5 text-base leading-7 text-stone-700">
             <li>
               クラウドの記録やアカウントを削除すると、サーバーからすぐに削除します。ただし、障害に備えた自動の控え（バックアップ）には最大35日残り、その後自動的に消えます。
             </li>
@@ -97,7 +97,7 @@ export default function PrivacyPage() {
 
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h3 className="text-lg font-semibold text-stone-800">このポリシーについて</h3>
-          <p className="mt-3 text-sm leading-7 text-stone-700">
+          <p className="mt-3 text-base leading-7 text-stone-700">
             運営元は VEAI LAB です。お問い合わせは info@veai.jp で受け付けます。内容を変更する場合は、このページでお知らせします。最終更新日: 2026年10月20日
           </p>
         </section>

@@ -18,7 +18,7 @@ export default function ResetDataCard({ onCancel, onExport, onConfirmReset }: Re
   return (
     <section className="rounded-[28px] border border-stone-200 bg-stone-50/80 p-4 shadow-sm">
       <p className="text-sm font-semibold text-stone-700">すべての記録を削除する前に</p>
-      <p className="mt-2 text-sm leading-6 text-stone-600">
+      <p className="mt-2 text-base leading-6 text-stone-600">
         これまでの記録は、先に手元に書き出しておくこともできます。
         <br />
         書き出しておけば、あとで読み返したり、別の端末に移したりすることができます。
@@ -33,7 +33,7 @@ export default function ResetDataCard({ onCancel, onExport, onConfirmReset }: Re
         </button>
       </div>
       <div className="mt-4 border-t border-stone-200 pt-4">
-        <p className="text-sm leading-6 text-stone-500">
+        <p className="text-base leading-6 text-stone-500">
           書き出しが不要な場合、そのまま削除することもできます。
         </p>
         <div className="mt-3 flex flex-wrap gap-2">

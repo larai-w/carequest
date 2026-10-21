@@ -12,7 +12,7 @@ interface SupportNudgeCardProps {
 export default function SupportNudgeCard({ onDismiss }: SupportNudgeCardProps) {
   return (
     <section className="rounded-[28px] border border-amber-100 bg-amber-50/80 p-4 shadow-sm">
-      <p className="text-sm leading-7 text-stone-700">
+      <p className="text-base leading-7 text-stone-700">
         ここ数日、おつかれがたまっていませんか。
         <br />
         あなたのことを話せる窓口があります。ひとりで抱えなくて大丈夫です。
