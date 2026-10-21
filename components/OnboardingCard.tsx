@@ -28,7 +28,7 @@ export default function OnboardingCard({ onStart }: OnboardingCardProps) {
       <button
         type="button"
         onClick={onStart}
-        className="mt-4 rounded-full bg-stone-800 px-5 py-2.5 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 active:scale-[0.97]"
+        className="mt-4 min-h-[44px] rounded-full bg-stone-800 px-5 py-2.5 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 active:scale-[0.97]"
       >
         はじめる
       </button>

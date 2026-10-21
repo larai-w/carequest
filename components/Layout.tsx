@@ -40,7 +40,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           className="fixed bottom-3 left-1/2 z-20 flex w-[calc(100%-1.5rem)] max-w-4xl -translate-x-1/2 overflow-hidden rounded-full border border-white/70 bg-white/90 px-2 py-2 shadow-lg backdrop-blur"
         >
           {navItems.map((item) => {
-            const active = pathname === item.href;
+            const active = pathname.replace(/\/$/, "") === item.href.replace(/\/$/, "");
             return (
               <Link
                 key={item.href}

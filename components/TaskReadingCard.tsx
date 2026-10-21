@@ -19,7 +19,7 @@ export default function TaskReadingCard({
 }) {
   return (
     <section className="rounded-[28px] border border-stone-200 bg-white/70 p-4 shadow-sm">
-      <p className="text-xs text-stone-500">{reading.why}</p>
+      <p className="text-sm text-stone-500">{reading.why}</p>
       <a
         href={reading.url}
         target="_blank"

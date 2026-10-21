@@ -12,6 +12,14 @@
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
+/* 下に固定したナビの裏に、フォーカスした要素が隠れないようにする（WCAG 2.4.11）。
+   測った値: ナビは画面の下から 86px（文字 100%）、290px（文字 200%、ラベルが折り返す）。
+   rem で書くと文字の大きさに合わせて伸びるので、どちらも覆える 10rem にしている。
+   ナビの形を変えたら測り直す。 */
+html {
+  scroll-padding-bottom: 10rem;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

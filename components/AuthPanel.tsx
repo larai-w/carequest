@@ -411,12 +411,13 @@ export default function AuthPanel() {
   const amberButton =
     "min-h-[44px] rounded-full bg-amber-100 px-4 py-2 text-sm font-semibold text-amber-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 disabled:opacity-60";
   const linkButton =
-    "rounded-full px-2 py-1 text-xs text-stone-500 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 hover:text-stone-700 disabled:opacity-60";
+    "min-h-[44px] rounded-full px-2 py-1 text-sm text-stone-500 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 hover:text-stone-700 disabled:opacity-60";
   const tabClass = (active: boolean) =>
-    `rounded-full px-4 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 disabled:opacity-60 ${
+    `min-h-[44px] rounded-full px-4 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 disabled:opacity-60 ${
       active ? "bg-stone-800 text-white" : "bg-stone-100 text-stone-600"
     }`;
   const input = "w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-sm";
+  const fieldLabel = "mb-1 block text-sm font-medium text-stone-700";
 
   // サインイン済みは、ログインフォームを畳んで「ログイン中 + サインアウト」だけ見せる。
   if (isSignedIn) {
@@ -467,7 +468,7 @@ export default function AuthPanel() {
           </button>
         ) : (
           <div className="mt-3 space-y-3 border-t border-stone-200 pt-3">
-            <p className="text-xs leading-5 text-stone-500">
+            <p className="text-sm leading-6 text-stone-500">
               どちらを選んでも、この端末に保存された記録は消えません。消えるのはクラウド上の控えだけです。
             </p>
 
@@ -554,23 +555,35 @@ export default function AuthPanel() {
         </button>
       </div>
       <div className="mt-3 space-y-3">
-        <input
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          className={input}
-          placeholder="メールアドレス"
-          type="email"
-          autoComplete="email"
-        />
-        {showPasswordInput ? (
+        <div>
+          <label htmlFor="auth-email" className={fieldLabel}>
+            メールアドレス
+          </label>
           <input
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
+            id="auth-email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
             className={input}
-            placeholder="パスワード"
-            type="password"
-            autoComplete={mode === "signUp" ? "new-password" : "current-password"}
+            placeholder="メールアドレス"
+            type="email"
+            autoComplete="email"
           />
+        </div>
+        {showPasswordInput ? (
+          <div>
+            <label htmlFor="auth-password" className={fieldLabel}>
+              パスワード
+            </label>
+            <input
+              id="auth-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className={input}
+              placeholder="パスワード"
+              type="password"
+              autoComplete={mode === "signUp" ? "new-password" : "current-password"}
+            />
+          </div>
         ) : null}
 
         {mode === "signIn" ? (
@@ -587,7 +600,7 @@ export default function AuthPanel() {
         ) : mode === "signUp" ? (
           signUpStage === "form" ? (
             <>
-              <p className="text-xs leading-5 text-stone-500">
+              <p className="text-sm leading-6 text-stone-500">
                 パスワードは8文字以上で、大文字・小文字・数字を含めてください。登録すると、メールに確認コードが届きます。
               </p>
               <button type="button" onClick={handleSignUp} disabled={busy} className={primaryButton}>
@@ -596,14 +609,20 @@ export default function AuthPanel() {
             </>
           ) : (
             <>
-              <input
-                value={confirmationCode}
-                onChange={(event) => setConfirmationCode(event.target.value)}
-                className={input}
-                placeholder="メールに届いた確認コード"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-              />
+              <div>
+                <label htmlFor="auth-confirmation-code" className={fieldLabel}>
+                  確認コード
+                </label>
+                <input
+                  id="auth-confirmation-code"
+                  value={confirmationCode}
+                  onChange={(event) => setConfirmationCode(event.target.value)}
+                  className={input}
+                  placeholder="メールに届いた確認コード"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                />
+              </div>
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={handleConfirmSignUp} disabled={busy} className={primaryButton}>
                   確認する
@@ -616,7 +635,7 @@ export default function AuthPanel() {
           )
         ) : resetStage === "request" ? (
           <>
-            <p className="text-xs leading-5 text-stone-500">
+            <p className="text-sm leading-6 text-stone-500">
               登録したメールアドレスに、パスワード再設定用のコードをお送りします。
             </p>
             <div className="flex flex-wrap gap-2">
@@ -630,23 +649,35 @@ export default function AuthPanel() {
           </>
         ) : (
           <>
-            <input
-              value={confirmationCode}
-              onChange={(event) => setConfirmationCode(event.target.value)}
-              className={input}
-              placeholder="メールに届いた再設定コード"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-            />
-            <input
-              value={newPassword}
-              onChange={(event) => setNewPassword(event.target.value)}
-              className={input}
-              placeholder="新しいパスワード"
-              type="password"
-              autoComplete="new-password"
-            />
-            <p className="text-xs leading-5 text-stone-500">
+            <div>
+              <label htmlFor="auth-reset-code" className={fieldLabel}>
+                再設定コード
+              </label>
+              <input
+                id="auth-reset-code"
+                value={confirmationCode}
+                onChange={(event) => setConfirmationCode(event.target.value)}
+                className={input}
+                placeholder="メールに届いた再設定コード"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+              />
+            </div>
+            <div>
+              <label htmlFor="auth-new-password" className={fieldLabel}>
+                新しいパスワード
+              </label>
+              <input
+                id="auth-new-password"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                className={input}
+                placeholder="新しいパスワード"
+                type="password"
+                autoComplete="new-password"
+              />
+            </div>
+            <p className="text-sm leading-6 text-stone-500">
               パスワードは8文字以上で、大文字・小文字・数字を含めてください。
             </p>
             <div className="flex flex-wrap gap-2">

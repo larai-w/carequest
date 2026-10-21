@@ -20,7 +20,7 @@ export default function Error({
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col items-center justify-center px-4 pb-24 pt-6 sm:px-6 lg:px-8">
         <div className="w-full max-w-md space-y-4">
           <section className="rounded-[28px] border border-stone-200 bg-white/80 p-6 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-amber-600">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-amber-700">
               {PRODUCT_NAME}
             </p>
             <h2 className="mt-2 text-lg font-semibold text-stone-800">

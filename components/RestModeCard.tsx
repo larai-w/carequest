@@ -10,7 +10,7 @@ export default function RestModeCard({ onExit }: RestModeCardProps) {
   return (
     <div className="rounded-[28px] border border-stone-200 bg-white/80 p-6 shadow-sm">
       <div className="flex flex-col items-center gap-4 text-center">
-        <div className="rounded-full bg-stone-100 px-4 py-2 text-sm font-semibold text-stone-500">
+        <div className="rounded-full bg-stone-100 px-4 py-2 text-sm font-semibold text-stone-600">
           おやすみモード中
         </div>
 
