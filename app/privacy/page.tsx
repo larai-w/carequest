@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Layout from "@/components/Layout";
+import { PRODUCT_NAME, PRODUCT_NAME_COMPACT } from "@/lib/brand";
 
 export default function PrivacyPage() {
   return (
@@ -8,7 +9,7 @@ export default function PrivacyPage() {
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h2 className="text-xl font-semibold text-stone-800">プライバシーポリシー</h2>
           <p className="mt-3 text-sm leading-7 text-stone-700">
-            介護の記録は、あなたと家族の大切なプライバシーです。Care Quest が何を保存し、何をしないかを、できるだけわかりやすく説明します。
+            {`介護の記録は、あなたと家族の大切なプライバシーです。${PRODUCT_NAME} が何を保存し、何をしないかを、できるだけわかりやすく説明します。`}
           </p>
         </section>
 
@@ -22,7 +23,7 @@ export default function PrivacyPage() {
               アカウント登録をした場合は、メールアドレスと介護の記録を、日本国内にあるサーバーに保存します(Amazon Web Services の東京リージョン。Amazon Cognito / DynamoDB を使用)。
             </li>
             <li>
-              「CareQuest へのひとこと」で送信した気分の選択と任意のメッセージは、改善のためサーバーに保存され、運営へ通知されます。ご意見にはアカウントの識別子を付けないため、個別に特定して削除することはできません。サーバーに保存したご意見は、送信から1年で自動的に削除されます。氏名・病名などの個人情報や健康情報は書かないでください。
+              {`「${PRODUCT_NAME_COMPACT} へのひとこと」で送信した気分の選択と任意のメッセージは、改善のためサーバーに保存され、運営へ通知されます。ご意見にはアカウントの識別子を付けないため、個別に特定して削除することはできません。サーバーに保存したご意見は、送信から1年で自動的に削除されます。氏名・病名などの個人情報や健康情報は書かないでください。`}
             </li>
           </ul>
         </section>
@@ -31,7 +32,7 @@ export default function PrivacyPage() {
           <h3 className="text-lg font-semibold text-stone-800">VEAI アカウントについて</h3>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-7 text-stone-700">
             <li>
-              Care Quest のアカウントは「VEAI アカウント」です。将来、veai.jp の他のサービスでも同じメールアドレスとパスワードでログインできるようになります。
+              {`${PRODUCT_NAME} のアカウントは「VEAI アカウント」です。将来、veai.jp の他のサービスでも同じメールアドレスとパスワードでログインできるようになります。`}
             </li>
             <li>
               アカウントは共通でも、記録などのデータはサービスごとに独立して保存され、サービス間で共有されません。
@@ -47,7 +48,7 @@ export default function PrivacyPage() {
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-7 text-stone-700">
             <li>広告のための情報収集や、第三者へのデータ販売は行いません。</li>
             <li>記録内容・操作時間・利用経路などの行動分析データを収集しません。</li>
-            <li>veai.jp全体のページビュー計測と、Care Questアプリ内の利用計測は別です。Care Quest内ではPV以外の利用計測を行いません。</li>
+            <li>{`veai.jp全体のページビュー計測と、${PRODUCT_NAME}アプリ内の利用計測は別です。${PRODUCT_NAME}内ではPV以外の利用計測を行いません。`}</li>
             <li>介護されているご本人の氏名・病名などの入力を求めません。</li>
             <li>記録の内容を、あなたの同意なく他のユーザーに公開しません。「みんな」画面に表示されるのは、個人が特定されない集計のみです。</li>
           </ul>

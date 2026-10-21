@@ -7,5 +7,12 @@
 // - AWS 側のリソース名や CDK の construct ID
 //
 // いまの画面には「Care Quest」と「CareQuest」の2つの書き方がある。
-// この定数は「Care Quest」の箇所だけで使っている(書き方は揃えていない)。
+// 書き方はまだ揃えていない。どちらに揃えるかは、あとでオーナーが決める。
+// それまでは、いま画面に出ている書き方のとおりに2つの定数を使い分ける。
+// app/ と components/ に名前を直接書かないこと(lib/__tests__/brand.test.ts で確かめている)。
+
+// 「Care Quest」(あいだに空白あり)の箇所で使う。
 export const PRODUCT_NAME = "Care Quest";
+
+// 「CareQuest」(空白なし)の箇所で使う。例:「CareQuest へのひとこと」。
+export const PRODUCT_NAME_COMPACT = "CareQuest";
