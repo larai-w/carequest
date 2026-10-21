@@ -488,7 +488,7 @@ export default function QuestPage() {
             <button
               type="button"
               onClick={handleRestModeToggle}
-              className={`rounded-full px-3 py-2 text-sm font-semibold ${
+              className={`min-h-[44px] rounded-full px-3 py-2 text-sm font-semibold ${
                 restMode ? "bg-amber-100 text-amber-700" : "bg-stone-100 text-stone-700"
               }`}
             >
@@ -568,7 +568,7 @@ export default function QuestPage() {
             <button
               type="button"
               onClick={dismissSaveFailedNotice}
-              className="mt-3 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+              className="mt-3 min-h-[44px] rounded-full bg-stone-100 px-3 py-1.5 text-sm font-semibold text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
             >
               わかりました
             </button>
