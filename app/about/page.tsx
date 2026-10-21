@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Layout from "@/components/Layout";
+import { PRODUCT_NAME, PRODUCT_NAME_COMPACT } from "@/lib/brand";
 import { supportContacts } from "@/lib/contacts";
 import QuestionFinderCard from "@/components/QuestionFinderCard";
 
@@ -8,9 +9,9 @@ export default function AboutPage() {
     <Layout>
       <div className="space-y-4">
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
-          <h2 className="text-xl font-semibold text-stone-800">Care Quest について</h2>
+          <h2 className="text-xl font-semibold text-stone-800">{`${PRODUCT_NAME} について`}</h2>
           <p className="mt-3 text-sm leading-7 text-stone-700">
-            Care Quest は、家族介護者のためのやさしいサポートアプリです。今日できたことに気づき、他の介護者ともつながっている感覚を持てるように作られています。
+            {`${PRODUCT_NAME} は、家族介護者のためのやさしいサポートアプリです。今日できたことに気づき、他の介護者ともつながっている感覚を持てるように作られています。`}
           </p>
         </section>
 
@@ -35,7 +36,7 @@ export default function AboutPage() {
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h3 className="text-lg font-semibold text-stone-800">安全に関する注意</h3>
           <p className="mt-3 text-sm leading-7 text-stone-700">
-            CareQuest は医療機器ではなく、診断・治療や医療上の判断を行いません。医療上の判断は医師やケアチームにご相談ください。
+            {`${PRODUCT_NAME_COMPACT} は医療機器ではなく、診断・治療や医療上の判断を行いません。医療上の判断は医師やケアチームにご相談ください。`}
           </p>
         </section>
 
@@ -115,7 +116,7 @@ export default function AboutPage() {
         <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
           <h3 className="text-lg font-semibold text-stone-800">運営元・お問い合わせ</h3>
           <p className="mt-3 text-sm leading-7 text-stone-700">
-            Care Quest は VEAI LAB が運営しています。データの削除のご依頼やお困りごとがあれば、下記までご連絡ください。
+            {`${PRODUCT_NAME} は VEAI LAB が運営しています。データの削除のご依頼やお困りごとがあれば、下記までご連絡ください。`}
           </p>
           <p className="mt-2 text-sm leading-7 text-stone-700">
             <a

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PRODUCT_NAME_COMPACT } from "@/lib/brand";
 import {
   FEEDBACK_MOODS,
   MAX_FEEDBACK_NOTE_LENGTH,
@@ -27,7 +28,7 @@ export default function FeedbackWidget() {
       <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
         <h2 className="text-lg font-semibold text-stone-800">ありがとうございます</h2>
         <p className="mt-1 text-sm leading-6 text-stone-600">
-          いただいた声は、CareQuest をよくするための検討に使います。内容を公開することはありません。
+          {`いただいた声は、${PRODUCT_NAME_COMPACT} をよくするための検討に使います。内容を公開することはありません。`}
         </p>
       </section>
     );
@@ -35,7 +36,7 @@ export default function FeedbackWidget() {
 
   return (
     <section className="rounded-[28px] border border-stone-200 bg-white/80 p-4 shadow-sm">
-      <h2 className="text-lg font-semibold text-stone-800">CareQuest へのひとこと</h2>
+      <h2 className="text-lg font-semibold text-stone-800">{`${PRODUCT_NAME_COMPACT} へのひとこと`}</h2>
       <p className="mt-1 text-sm leading-6 text-stone-600">
         匿名で届きます。記録の内容は送られません。お名前や連絡先は書かないでください。
       </p>

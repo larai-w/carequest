@@ -87,7 +87,7 @@ description: Care Quest の「プランナーが立案し、ワーカー(Sonnet/
 
 ```
 あなたは Care Quest の実装ワーカーです。プランナーが立案したタスクを1件だけ、受け入れ条件どおりに実装します。
-作業ディレクトリ: /Users/irevail8/Developer/carequest
+作業ディレクトリ: ~/Developer/carequest
 
 # 作業開始前に必ず読むもの
 1. AGENTS.md(Next.js のバージョン固有ルール。node_modules/next/dist/docs/ の該当ガイドを先に読む)
