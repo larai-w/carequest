@@ -73,6 +73,12 @@ describe('POST /feedback', () => {
     expect(res.statusCode).toBe(400);
   });
 
+  it.each([null, [], 1, true, 'text'])('JSON object以外の入力 %j は400で、保存しない', async (value) => {
+    const res = await handler(feedbackEvent(JSON.stringify(value)));
+    expect(res.statusCode).toBe(400);
+    expect(ddbMock.commandCalls(PutItemCommand)).toHaveLength(0);
+  });
+
   it('JSON でないボディは 400', async () => {
     const res = await handler(feedbackEvent('not-json'));
     expect(res.statusCode).toBe(400);

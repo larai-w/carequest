@@ -63,6 +63,9 @@ function validateFeedback(rawBody) {
   } catch {
     throw new ValidationError('body must be JSON');
   }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new ValidationError('body must be a JSON object');
+  }
   if (!VALID_MOODS.includes(parsed.mood)) {
     throw new ValidationError('mood must be one of good/okay/hard');
   }
